@@ -23,6 +23,14 @@ protected:
     corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimension dima, Dimension dimb);
 
     int nirrep_;
+    boost::shared_ptr<BasisSet> basisset_;
+
+    int nso;
+    /// Absolute AO index to relative SO index
+    int* so2index_;
+    /// Absolute AO index to irrep
+    int* so2symblk_;
+
     /// Matrix factory
     boost::shared_ptr<MatrixFactory> factory_;
     /// Number of symmetry adapted AOs per irrep

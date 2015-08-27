@@ -7,8 +7,8 @@
 #include <libfock/jk.h>
 #include <liboptions/liboptions.h>
 #include <libciomr/libciomr.h>
-
-
+#include <libiwl/iwl.hpp>
+#include <libpsio/psio.hpp>
 #include "noci_mat.h"
 #include "helpers.h"
 
@@ -25,12 +25,28 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     boost::shared_ptr<Wavefunction> wfn = Process::environment.wavefunction();
     boost::shared_ptr<Molecule> mol = Process::environment.molecule();
 
+
     nirrep_ = wfn->nirrep();
     factory_ = wfn->matrix_factory();
     nsopi_ = wfn->nsopi();
     H_copy = wfn->H()->clone();
     jk_ = JK::build_JK();
     nuclearrep_ = mol->nuclear_repulsion_energy();
+    basisset_ = wfn->basisset();
+    nso   = wfn->nso();
+    so2symblk_ = new int[nso];
+    so2index_  = new int[nso];
+    size_t so_count = 0;
+    size_t offset = 0;
+    for (int h = 0; h < nirrep_; ++h) {
+        for (int i = 0; i < nsopi_[h]; ++i) {
+            so2symblk_[so_count] = h;
+            so2index_[so_count] = so_count-offset;
+            ++so_count;
+        }
+        offset += nsopi_[h];
+    }
+
 }
 
 NOCI_Hamiltonian::~NOCI_Hamiltonian()
@@ -161,7 +177,9 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
     outfile->Flush();
 
 
-    /*
+
+
+
     if(num_alpha_nonc == 0 and num_beta_nonc == 0){
         overlap = Stilde;
         // Build the W^BA alpha density matrix
@@ -184,7 +202,6 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
                 }
             }
         }
-        // Build the W^BA beta density matrix
         for (int h = 0; h < nirrep_; ++h){
             int nocc = A->nbetapi()[h];  // NB in this case there cannot be symmetry noncoincidences
             int nso = nsopi_[h];
@@ -202,6 +219,8 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
                 }
             }
         }
+
+
         double WH_a = W_BA_a->vector_dot(H_copy);
         double WH_b  = W_BA_b->vector_dot(H_copy);
         double one_body = WH_a + WH_b;
@@ -210,6 +229,8 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
         SharedMatrix scaled_BCb = BCb->clone();
         SharedMatrix scaled_ACa = ACa->clone();
         SharedMatrix scaled_ACb = ACb->clone();
+
+
         for (int h = 0; h < nirrep_; ++h){
             int nocc = A->nalphapi()[h];  // NB in this case there cannot be symmetry noncoincidences
             int nso = nsopi_[h];
@@ -238,7 +259,85 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
                 }
             }
         }
+        boost::shared_ptr<IntegralFactory> integral_(new IntegralFactory(basisset_));
+        boost::shared_ptr<PetiteList> pet(new PetiteList(basisset_, integral_));
+        int nbf = basisset_->nbf();
+        SharedMatrix SO2AO_ = pet->sotoao();
 
+
+        int maxi4 = INDEX4(nsopi_[0]+1,nsopi_[0]+1,nsopi_[0]+1,nsopi_[0]+1)+nsopi_[0]+1;
+        double* integrals = new double[maxi4];
+        for (int l = 0; l < maxi4; ++l){
+            integrals[l] = 0.0;
+        }
+         boost::shared_ptr<PSIO> psio_ = PSIO::shared_object();
+         double integral_threshold_;
+         integral_threshold_ = options_.get_double("INTS_TOLERANCE");
+
+        IWL *iwl = new IWL(psio_.get(), PSIF_SO_TEI, integral_threshold_, 1, 1);
+        Label *lblptr = iwl->labels();
+        Value *valptr = iwl->values();
+        int labelIndex, pabs, qabs, rabs, sabs, prel, qrel, rrel, srel, psym, qsym, rsym, ssym;
+        double value;
+        bool lastBuffer;
+        do{
+            lastBuffer = iwl->last_buffer();
+            for(int index = 0; index < iwl->buffer_count(); ++index){
+                labelIndex = 4*index;
+                pabs  = abs((int) lblptr[labelIndex++]);
+                qabs  = (int) lblptr[labelIndex++];
+                rabs  = (int) lblptr[labelIndex++];
+                sabs  = (int) lblptr[labelIndex++];
+                prel  = so2index_[pabs];
+                qrel  = so2index_[qabs];
+                rrel  = so2index_[rabs];
+                srel  = so2index_[sabs];
+                psym  = so2symblk_[pabs];
+                qsym  = so2symblk_[qabs];
+                rsym  = so2symblk_[rabs];
+                ssym  = so2symblk_[sabs];
+                value = (double) valptr[index];
+                integrals[INDEX4(prel,qrel,rrel,srel)] = value;
+            } /* end loop through current buffer */
+            if(!lastBuffer) iwl->fetch();
+        }while(!lastBuffer);
+        iwl->set_keep_flag(1);
+        delete iwl;
+        double c2 = 0.0;
+
+        int a_alpha_h  = Aalpha_nonc[0].get<0>();
+        int b_alpha_h  = Balpha_nonc[0].get<0>();
+        int a_alpha_mo = Aalpha_nonc[0].get<1>();
+        int b_alpha_mo  = Balpha_nonc[0].get<1>();
+        int a_beta_h   = Abeta_nonc[0].get<0>();
+        int a_beta_mo  = Abeta_nonc[0].get<1>();
+        int b_beta_h   = Bbeta_nonc[0].get<0>();
+        int b_beta_mo  = Bbeta_nonc[0].get<1>();
+
+        SharedVector Ava = ACa->get_column(a_alpha_h,a_alpha_mo);
+        SharedVector Bva = BCa->get_column(b_alpha_h,b_alpha_mo);
+        SharedVector Avb = ACb->get_column(a_beta_h,a_beta_mo);
+        SharedVector Bvb = BCb->get_column(b_beta_h,b_beta_mo);
+
+
+        double* Ci = Bva->pointer();
+        double* Cj = Ava->pointer();
+        double* Ck = Bvb->pointer();
+        double* Cl = Avb->pointer();
+        for (int i = 0; i < nsopi_[0]; ++i){
+            for (int j = 0; j < nsopi_[0]; ++j){
+                for (int k = 0; k < nsopi_[0]; ++k){
+                    for (int l = 0; l < nsopi_[0]; ++l){
+                        c2 += integrals[INDEX4(i,j,k,l)] * Ci[i] * Cj[j] * Ck[k] * Cl[l];
+                    }
+                }
+            }
+        }
+        delete[] integrals;
+        outfile->Printf("  Matrix element from ints    = %20.12f\n",c2);
+
+}
+    /*
         std::vector<SharedMatrix>& C_left = jk_->C_left();
         C_left.clear();
         C_left.push_back(scaled_BCa);
