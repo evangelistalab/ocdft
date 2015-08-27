@@ -23,10 +23,13 @@ public:
                       std::vector<int> bocc);
     virtual ~FASNOCIS();
 protected:
+
     boost::shared_ptr<Wavefunction> ref_scf_;
     std::vector<std::pair<int,int>> active_mos_;
     std::vector<int> aocc_;
     std::vector<int> bocc_;
+
+    virtual void form_C();
 };
 
 }} // Namespaces

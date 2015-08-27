@@ -34,28 +34,398 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     nuclearrep_ = mol->nuclear_repulsion_energy();
     basisset_ = wfn->basisset();
     nso   = wfn->nso();
-    so2symblk_ = new int[nso];
-    so2index_  = new int[nso];
-    size_t so_count = 0;
-    size_t offset = 0;
-    for (int h = 0; h < nirrep_; ++h) {
-        for (int i = 0; i < nsopi_[h]; ++i) {
-            so2symblk_[so_count] = h;
-            so2index_[so_count] = so_count-offset;
-            ++so_count;
-        }
-        offset += nsopi_[h];
-    }
 
+    read_tei();
 }
 
 NOCI_Hamiltonian::~NOCI_Hamiltonian()
 {
 }
 
+double NOCI_Hamiltonian::compute_energy()
+{
+    size_t ndets = dets_.size();
+    H_ = SharedMatrix(new Matrix("H",ndets,ndets));
+    for (size_t i = 0; i < ndets; ++i){
+        std::pair<double,double> H_S = matrix_element_c1(dets_[i],dets_[i]);
+        H_->set(i,i,H_S.first);
+    }
+    H_->print();
+
+    return 0.0;
+}
+
 void NOCI_Hamiltonian::print()
 {
 }
+
+void NOCI_Hamiltonian::read_tei()
+{
+    outfile->Printf("\n  ==> Reading the two-electron integrals (C1 symmetry) <==");
+    size_t maxi4 = INDEX4(nsopi_[0]+1,nsopi_[0]+1,nsopi_[0]+1,nsopi_[0]+1)+nsopi_[0]+1;
+    tei_ints_.resize(maxi4);
+    for (size_t l = 0; l < maxi4; ++l){
+        tei_ints_[l] = 0.0;
+    }
+    double integral_threshold_ = 1.0e-12;
+    IWL *iwl = new IWL(PSIO::shared_object().get(), PSIF_SO_TEI, integral_threshold_, 1, 1);
+    Label *lblptr = iwl->labels();
+    Value *valptr = iwl->values();
+    int labelIndex, p,q,r,s;
+    double value;
+    bool lastBuffer;
+    do{
+        lastBuffer = iwl->last_buffer();
+        for(int index = 0; index < iwl->buffer_count(); ++index){
+            labelIndex = 4 * index;
+            p  = abs((int) lblptr[labelIndex++]);
+            q  = (int) lblptr[labelIndex++];
+            r  = (int) lblptr[labelIndex++];
+            s  = (int) lblptr[labelIndex++];
+            value = (double) valptr[index];
+            tei_ints_[INDEX4(p,q,r,s)] = value;
+        } /* end loop through current buffer */
+        if(!lastBuffer) iwl->fetch();
+    }while(!lastBuffer);
+    iwl->set_keep_flag(1);
+
+    delete iwl;
+}
+
+void NOCI_Hamiltonian::J(SharedMatrix D)
+{
+    TempMatrix->zero();
+
+    // Number of symmetry-adapted AOs
+    size_t nso  = nsopi_[0];
+
+    double** Tp = TempMatrix->pointer(0);
+    double** Dp = D->pointer(0);
+    for (size_t k = 0; k < nso; ++k){
+        for (size_t l = 0; l < nso; ++l){
+            double Jkl = 0.0;
+            for (size_t m = 0; m < nso; ++m){
+                for (size_t n = 0; n < nso; ++n){
+                    Jkl += tei_ints_[INDEX4(k,l,m,n)] * Dp[m][n];
+                }
+            }
+            Tp[k][l] = Jkl;
+        }
+    }
+}
+
+void NOCI_Hamiltonian::K(SharedMatrix D)
+{
+    TempMatrix->zero();
+
+    // Number of symmetry-adapted AOs
+    size_t nso  = nsopi_[0];
+
+    double** Tp = TempMatrix->pointer(0);
+    double** Dp = D->pointer(0);
+    for (size_t k = 0; k < nso; ++k){
+        for (size_t l = 0; l < nso; ++l){
+            double Kkl = 0.0;
+            for (size_t m = 0; m < nso; ++m){
+                for (size_t n = 0; n < nso; ++n){
+                    Kkl += tei_ints_[INDEX4(k,m,l,n)] * Dp[m][n];
+                }
+            }
+            Tp[k][l] = Kkl;
+        }
+    }
+}
+
+std::pair<double,double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, SharedDeterminant B)
+{
+    double overlap = 0.0;
+    double hamiltonian = 0.0;
+
+    // I. Form the corresponding alpha and beta orbitals
+    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
+    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> cbeta  = corresponding_orbitals(A->Cb(),B->Cb(),A->nbetapi(),B->nbetapi());
+    SharedMatrix ACa = calpha.get<0>();
+    SharedMatrix BCa = calpha.get<1>();
+    SharedMatrix ACb = cbeta.get<0>();
+    SharedMatrix BCb = cbeta.get<1>();
+    double detUValpha = calpha.get<3>();
+    double detUVbeta = cbeta.get<3>();
+    SharedVector s_a = calpha.get<2>();
+    SharedVector s_b = cbeta.get<2>();
+
+    // Compute the number of noncoincidences
+    double noncoincidence_threshold = 1.0e-9;
+
+    std::vector<boost::tuple<int,int,double> > Aalpha_nonc;
+    std::vector<boost::tuple<int,int,double> > Balpha_nonc;
+    double Sta = 1.0;
+    for (int h = 0; h < nirrep_; ++h){
+        // Count all the numerical noncoincidences
+        int nmin = std::min(A->nalphapi()[h],B->nalphapi()[h]);
+        for (int p = 0; p < nmin; ++p){
+            if(std::fabs(s_a->get(h,p)) >= noncoincidence_threshold){
+                Sta *= s_a->get(h,p);
+            }else{
+                Aalpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
+                Balpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
+            }
+        }
+        // Count all the symmetry noncoincidences
+        int nmax = std::max(A->nalphapi()[h],B->nalphapi()[h]);
+        bool AgeB = A->nalphapi()[h] >= B->nalphapi()[h] ? true : false;
+        for (int p = nmin; p < nmax; ++p){
+            if(AgeB){
+                Aalpha_nonc.push_back(boost::make_tuple(h,p,0.0));
+            }else{
+                Balpha_nonc.push_back(boost::make_tuple(h,p,0.0));
+            }
+        }
+    }
+
+    std::vector<boost::tuple<int,int,double> > Abeta_nonc;
+    std::vector<boost::tuple<int,int,double> > Bbeta_nonc;
+    double Stb = 1.0;
+    for (int h = 0; h < nirrep_; ++h){
+        // Count all the numerical noncoincidences
+        int nmin = std::min(A->nbetapi()[h],B->nbetapi()[h]);
+        for (int p = 0; p < nmin; ++p){
+            if(std::fabs(s_b->get(h,p)) >= noncoincidence_threshold){
+                Stb *= s_b->get(h,p);
+            }else{
+                Abeta_nonc.push_back(boost::make_tuple(h,p,s_b->get(h,p)));
+                Bbeta_nonc.push_back(boost::make_tuple(h,p,s_b->get(h,p)));
+            }
+        }
+        // Count all the symmetry noncoincidences
+        int nmax = std::max(A->nbetapi()[h],B->nbetapi()[h]);
+        bool AgeB = A->nbetapi()[h] >= B->nbetapi()[h] ? true : false;
+        for (int p = nmin; p < nmax; ++p){
+            if(AgeB){
+                Abeta_nonc.push_back(boost::make_tuple(h,p,0.0));
+            }else{
+                Bbeta_nonc.push_back(boost::make_tuple(h,p,0.0));
+            }
+        }
+    }
+    outfile->Printf("\n  Corresponding orbitals:\n");
+    outfile->Printf("  A(alpha): ");
+    for (size_t k = 0; k < Aalpha_nonc.size(); ++k){
+        int i_h = Aalpha_nonc[k].get<0>();
+        int i_mo = Aalpha_nonc[k].get<1>();
+        outfile->Printf(" (%1d,%2d)",i_h,i_mo);
+    }
+    outfile->Printf("\n  B(alpha): ");
+    for (size_t k = 0; k < Balpha_nonc.size(); ++k){
+        int i_h = Balpha_nonc[k].get<0>();
+        int i_mo = Balpha_nonc[k].get<1>();
+        outfile->Printf(" (%1d,%2d)",i_h,i_mo);
+    }
+    outfile->Printf("\n  s(alpha): ");
+    for (size_t k = 0; k < Balpha_nonc.size(); ++k){
+        double i_s = Balpha_nonc[k].get<2>();
+        outfile->Printf(" %6e",i_s);
+    }
+    outfile->Printf("\n  A(beta):  ");
+    for (size_t k = 0; k < Abeta_nonc.size(); ++k){
+        int i_h = Abeta_nonc[k].get<0>();
+        int i_mo = Abeta_nonc[k].get<1>();
+        outfile->Printf(" (%1d,%2d)",i_h,i_mo);
+    }
+    outfile->Printf("\n  B(beta):  ");
+    for (size_t k = 0; k < Bbeta_nonc.size(); ++k){
+        int i_h = Bbeta_nonc[k].get<0>();
+        int i_mo = Bbeta_nonc[k].get<1>();
+        outfile->Printf(" (%1d,%2d)",i_h,i_mo);
+    }
+    outfile->Printf("\n  s(beta):  ");
+    for (size_t k = 0; k < Balpha_nonc.size(); ++k){
+        double i_s = Bbeta_nonc[k].get<2>();
+        outfile->Printf(" %6e",i_s);
+    }
+
+    double Stilde = Sta * Stb * detUValpha * detUVbeta;
+    outfile->Printf("\n  Stilde = %.6f\n",Stilde);
+
+    int num_alpha_nonc = static_cast<int>(Aalpha_nonc.size());
+    int num_beta_nonc = static_cast<int>(Abeta_nonc.size());
+
+    if(num_alpha_nonc + num_beta_nonc != 2){
+        s_a->print();
+        s_b->print();
+    }
+    outfile->Flush();
+
+    // Number of alpha occupied orbitals
+    size_t nocc_a = A->nalphapi()[0];
+    // Number of beta occupied orbitals
+    size_t nocc_b = A->nbetapi()[0];
+    // Number of symmetry-adapted AOs
+    size_t nso  = nsopi_[0];
+
+    if(num_alpha_nonc == 0 and num_beta_nonc == 0){
+        overlap = Stilde;
+        // Build the W^BA alpha density matrix
+        SharedMatrix W_BA_a = factory_->create_shared_matrix("W_BA_a");
+        {
+            double** W = W_BA_a->pointer(0);
+            double** CA = ACa->pointer(0);
+            double** CB = BCa->pointer(0);
+            double* s = s_a->pointer(0);
+            for (size_t m = 0; m < nso; ++m){
+                for (size_t n = 0; n < nso; ++n){
+                    double Wmn = 0.0;
+                    for (int i = 0; i < nocc_a; ++i){
+                        Wmn += CB[m][i] * CA[n][i] / s[i];
+                    }
+                    W[m][n] = Wmn;
+                }
+            }
+        }
+        SharedMatrix W_BA_b = factory_->create_shared_matrix("W_BA_b");
+        {
+            double** W = W_BA_b->pointer(0);
+            double** CA = ACb->pointer(0);
+            double** CB = BCb->pointer(0);
+            double* s = s_b->pointer(0);
+            for (size_t m = 0; m < nso; ++m){
+                for (size_t n = 0; n < nso; ++n){
+                    double Wmn = 0.0;
+                    for (int i = 0; i < nocc_b; ++i){
+                        Wmn += CB[m][i] * CA[n][i] / s[i];
+                    }
+                    W[m][n] = Wmn;
+                }
+            }
+        }
+
+        double WH_a = W_BA_a->vector_dot(H_copy);
+        double WH_b  = W_BA_b->vector_dot(H_copy);
+        double one_body = WH_a + WH_b;
+
+        J(W_BA_a);
+        double WaJWa = 0.5 * W_BA_a->vector_dot(TempMatrix);
+        double WbJWa = W_BA_b->vector_dot(TempMatrix);
+        J(W_BA_b);
+        double WbJWb = 0.5 * W_BA_b->vector_dot(TempMatrix);
+
+        K(W_BA_a);
+        double WaKWa = -0.5 * W_BA_a->vector_dot(TempMatrix);
+        K(W_BA_b);
+        double WbKWb = -0.5 * W_BA_b->vector_dot(TempMatrix);
+
+        double two_body = WaJWa + WbJWa + WbJWb + WaKWa + WbKWb;
+        hamiltonian = Stilde * (one_body + two_body);
+    }
+
+    return std::make_pair(overlap,hamiltonian);
+}
+
+boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double>
+NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimension dima, Dimension dimb)
+{
+    // Form <B|S|A>
+    TempMatrix->gemm(false,false,1.0,S_,A,0.0);
+    TempMatrix2->gemm(true,false,1.0,B,TempMatrix,0.0);
+
+    // Extract the occupied blocks only
+    SharedMatrix Sba = SharedMatrix(new Matrix("Sba",dimb,dima));
+    for (int h = 0; h < nirrep_; ++h) {
+        int naocc = dima[h];
+        int nbocc = dimb[h];
+        double** Sba_h = Sba->pointer(h);
+        double** S_h = TempMatrix2->pointer(h);
+        for (int i = 0; i < nbocc; ++i){
+            for (int j = 0; j < naocc; ++j){
+                Sba_h[i][j] = S_h[i][j];
+            }
+        }
+    }
+    //    Sba->print();
+
+    // SVD <B|S|A>
+    boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UsV = Sba->svd_a_temps();
+    SharedMatrix U = UsV.get<0>();
+    SharedVector sigma = UsV.get<1>();
+    SharedMatrix V = UsV.get<2>();
+    Sba->svd_a(U,sigma,V);
+    //    sigma->print();
+    //    U->print();
+    //    V->print();
+
+    // II. Transform the occupied orbitals to the new representation
+    // Transform A with V (need to transpose V since svd returns V^T)
+    // Extract the
+    TempMatrix->identity();
+    for (int h = 0; h < nirrep_; ++h) {
+        int rows = V->rowdim(h);
+        int cols = V->coldim(h);
+        double** V_h = V->pointer(h);
+        double** T_h = TempMatrix->pointer(h);
+        for (int i = 0; i < rows; ++i){
+            for (int j = 0; j < cols; ++j){
+                T_h[i][j] = V_h[i][j];
+            }
+        }
+    }
+    TempMatrix2->gemm(false,true,1.0,A,TempMatrix,0.0);
+    SharedMatrix cA = SharedMatrix(new Matrix("Corresponding " + A->name(),A->rowspi(),dima));
+    copy_subblock(TempMatrix2,cA,cA->rowspi(),dima,true);
+
+    // Transform B with U
+    TempMatrix->identity();
+    for (int h = 0; h < nirrep_; ++h) {
+        int rows = U->rowdim(h);
+        int cols = U->coldim(h);
+        double** U_h = U->pointer(h);
+        double** T_h = TempMatrix->pointer(h);
+        for (int i = 0; i < rows; ++i){
+            for (int j = 0; j < cols; ++j){
+                T_h[i][j] = U_h[i][j];
+            }
+        }
+    }
+    TempMatrix2->gemm(false,false,1.0,B,TempMatrix,0.0);
+    SharedMatrix cB = SharedMatrix(new Matrix("Corresponding " + B->name(),B->rowspi(),dimb));
+    copy_subblock(TempMatrix2,cB,cB->rowspi(),dimb,true);
+
+
+    // Find the product of the determinants of U and V
+    double detU = 1.0;
+    for (int h = 0; h < nirrep_; ++h) {
+        int nmo = U->rowdim(h);
+        if(nmo > 1){
+            double d = 1.0;
+            int* indx = new int[nmo];
+            double** ptrU = U->pointer(h);
+            ludcmp(ptrU,nmo,indx,&d);
+            detU *= d;
+            for (int i = 0; i < nmo; ++i){
+                detU *= ptrU[i][i];
+            }
+            delete[] indx;
+        }
+    }
+    double detV = 1.0;
+    for (int h = 0; h < nirrep_; ++h) {
+        int nmo = V->rowdim(h);
+        if(nmo > 1){
+            double d = 1.0;
+            int* indx = new int[nmo];
+            double** ptrV = V->pointer(h);
+            ludcmp(ptrV,nmo,indx,&d);
+            detV *= d;
+            for (int i = 0; i < nmo; ++i){
+                detV *= ptrV[i][i];
+            }
+            delete[] indx;
+        }
+    }
+    outfile->Printf("\n det U = %f, det V = %f",detU,detV);
+    double detUV = detU * detV;
+    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> result(cA,cB,sigma,detUV);
+    return result;
+}
+
 
 std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, SharedDeterminant B)
 {
@@ -176,10 +546,6 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
     }
     outfile->Flush();
 
-
-
-
-
     if(num_alpha_nonc == 0 and num_beta_nonc == 0){
         overlap = Stilde;
         // Build the W^BA alpha density matrix
@@ -240,8 +606,8 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
             for (int m = 0; m < nso; ++m){
                 for (int i = 0; i < nocc; ++i){
                     CB[m][i] /= s[i];
-//                    CA[m][i] /= std::sqrt(s[i]);
-//                    CB[m][i] /= std::sqrt(s[i]);
+                    //                    CA[m][i] /= std::sqrt(s[i]);
+                    //                    CB[m][i] /= std::sqrt(s[i]);
                 }
             }
         }
@@ -254,8 +620,8 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
             for (int m = 0; m < nso; ++m){
                 for (int i = 0; i < nocc; ++i){
                     CB[m][i] /= s[i];
-//                    CA[m][i] /= std::sqrt(s[i]);
-//                    CB[m][i] /= std::sqrt(s[i]);
+                    //                    CA[m][i] /= std::sqrt(s[i]);
+                    //                    CB[m][i] /= std::sqrt(s[i]);
                 }
             }
         }
@@ -265,44 +631,6 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
         SharedMatrix SO2AO_ = pet->sotoao();
 
 
-        int maxi4 = INDEX4(nsopi_[0]+1,nsopi_[0]+1,nsopi_[0]+1,nsopi_[0]+1)+nsopi_[0]+1;
-        double* integrals = new double[maxi4];
-        for (int l = 0; l < maxi4; ++l){
-            integrals[l] = 0.0;
-        }
-         boost::shared_ptr<PSIO> psio_ = PSIO::shared_object();
-         double integral_threshold_;
-         integral_threshold_ = options_.get_double("INTS_TOLERANCE");
-
-        IWL *iwl = new IWL(psio_.get(), PSIF_SO_TEI, integral_threshold_, 1, 1);
-        Label *lblptr = iwl->labels();
-        Value *valptr = iwl->values();
-        int labelIndex, pabs, qabs, rabs, sabs, prel, qrel, rrel, srel, psym, qsym, rsym, ssym;
-        double value;
-        bool lastBuffer;
-        do{
-            lastBuffer = iwl->last_buffer();
-            for(int index = 0; index < iwl->buffer_count(); ++index){
-                labelIndex = 4*index;
-                pabs  = abs((int) lblptr[labelIndex++]);
-                qabs  = (int) lblptr[labelIndex++];
-                rabs  = (int) lblptr[labelIndex++];
-                sabs  = (int) lblptr[labelIndex++];
-                prel  = so2index_[pabs];
-                qrel  = so2index_[qabs];
-                rrel  = so2index_[rabs];
-                srel  = so2index_[sabs];
-                psym  = so2symblk_[pabs];
-                qsym  = so2symblk_[qabs];
-                rsym  = so2symblk_[rabs];
-                ssym  = so2symblk_[sabs];
-                value = (double) valptr[index];
-                integrals[INDEX4(prel,qrel,rrel,srel)] = value;
-            } /* end loop through current buffer */
-            if(!lastBuffer) iwl->fetch();
-        }while(!lastBuffer);
-        iwl->set_keep_flag(1);
-        delete iwl;
         double c2 = 0.0;
 
         int a_alpha_h  = Aalpha_nonc[0].get<0>();
@@ -328,15 +656,14 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
             for (int j = 0; j < nsopi_[0]; ++j){
                 for (int k = 0; k < nsopi_[0]; ++k){
                     for (int l = 0; l < nsopi_[0]; ++l){
-                        c2 += integrals[INDEX4(i,j,k,l)] * Ci[i] * Cj[j] * Ck[k] * Cl[l];
+                        c2 += tei_ints_[INDEX4(i,j,k,l)] * Ci[i] * Cj[j] * Ck[k] * Cl[l];
                     }
                 }
             }
         }
-        delete[] integrals;
         outfile->Printf("  Matrix element from ints    = %20.12f\n",c2);
 
-}
+    }
     /*
         std::vector<SharedMatrix>& C_left = jk_->C_left();
         C_left.clear();
@@ -518,112 +845,6 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
     outfile->Flush();
     */
     return std::make_pair(overlap,hamiltonian);
-}
-
-boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double>
-NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimension dima, Dimension dimb)
-{
-    // Form <B|S|A>
-    TempMatrix->gemm(false,false,1.0,S_,A,0.0);
-    TempMatrix2->gemm(true,false,1.0,B,TempMatrix,0.0);
-
-    // Extract the occupied blocks only
-    SharedMatrix Sba = SharedMatrix(new Matrix("Sba",dimb,dima));
-    for (int h = 0; h < nirrep_; ++h) {
-        int naocc = dima[h];
-        int nbocc = dimb[h];
-        double** Sba_h = Sba->pointer(h);
-        double** S_h = TempMatrix2->pointer(h);
-        for (int i = 0; i < nbocc; ++i){
-            for (int j = 0; j < naocc; ++j){
-                Sba_h[i][j] = S_h[i][j];
-            }
-        }
-    }
-//    Sba->print();
-
-    // SVD <B|S|A>
-    boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UsV = Sba->svd_a_temps();
-    SharedMatrix U = UsV.get<0>();
-    SharedVector sigma = UsV.get<1>();
-    SharedMatrix V = UsV.get<2>();
-    Sba->svd_a(U,sigma,V);
-//    sigma->print();
-//    U->print();
-//    V->print();
-
-    // II. Transform the occupied orbitals to the new representation
-    // Transform A with V (need to transpose V since svd returns V^T)
-    // Extract the
-    TempMatrix->identity();
-    for (int h = 0; h < nirrep_; ++h) {
-        int rows = V->rowdim(h);
-        int cols = V->coldim(h);
-        double** V_h = V->pointer(h);
-        double** T_h = TempMatrix->pointer(h);
-        for (int i = 0; i < rows; ++i){
-            for (int j = 0; j < cols; ++j){
-                T_h[i][j] = V_h[i][j];
-            }
-        }
-    }
-    TempMatrix2->gemm(false,true,1.0,A,TempMatrix,0.0);
-    SharedMatrix cA = SharedMatrix(new Matrix("Corresponding " + A->name(),A->rowspi(),dima));
-    copy_subblock(TempMatrix2,cA,cA->rowspi(),dima,true);
-
-    // Transform B with U
-    TempMatrix->identity();
-    for (int h = 0; h < nirrep_; ++h) {
-        int rows = U->rowdim(h);
-        int cols = U->coldim(h);
-        double** U_h = U->pointer(h);
-        double** T_h = TempMatrix->pointer(h);
-        for (int i = 0; i < rows; ++i){
-            for (int j = 0; j < cols; ++j){
-                T_h[i][j] = U_h[i][j];
-            }
-        }
-    }
-    TempMatrix2->gemm(false,false,1.0,B,TempMatrix,0.0);
-    SharedMatrix cB = SharedMatrix(new Matrix("Corresponding " + B->name(),B->rowspi(),dimb));
-    copy_subblock(TempMatrix2,cB,cB->rowspi(),dimb,true);
-
-
-    // Find the product of the determinants of U and V
-    double detU = 1.0;
-    for (int h = 0; h < nirrep_; ++h) {
-        int nmo = U->rowdim(h);
-        if(nmo > 1){
-            double d = 1.0;
-            int* indx = new int[nmo];
-            double** ptrU = U->pointer(h);
-            ludcmp(ptrU,nmo,indx,&d);
-            detU *= d;
-            for (int i = 0; i < nmo; ++i){
-                detU *= ptrU[i][i];
-            }
-            delete[] indx;
-        }
-    }
-    double detV = 1.0;
-    for (int h = 0; h < nirrep_; ++h) {
-        int nmo = V->rowdim(h);
-        if(nmo > 1){
-            double d = 1.0;
-            int* indx = new int[nmo];
-            double** ptrV = V->pointer(h);
-            ludcmp(ptrV,nmo,indx,&d);
-            detV *= d;
-            for (int i = 0; i < nmo; ++i){
-                detV *= ptrV[i][i];
-            }
-            delete[] indx;
-        }
-    }
-    outfile->Printf("\n det U = %f, det V = %f",detU,detV);
-    double detUV = detU * detV;
-    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> result(cA,cB,sigma,detUV);
-    return result;
 }
 
 }} // Namespaces

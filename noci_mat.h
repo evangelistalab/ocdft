@@ -7,15 +7,26 @@
 
 namespace psi{
 class Options;
-namespace scf{
-
+ namespace scf{
 
 class NOCI_Hamiltonian{
 public:
     explicit NOCI_Hamiltonian(Options &options, std::vector<SharedDeterminant> dets);
+
+    double compute_energy();
+
     ~NOCI_Hamiltonian();
     void print();
 protected:
+    /// Read the two-electron integrals
+    void read_tei();
+    /// Compute the Coulomb operator
+    void J(SharedMatrix D);
+    /// Compute the Exchange operator
+    void K(SharedMatrix D);
+
+    /// Compute the matrix element between determinants A and B assuming C1 symmetry
+    std::pair<double,double> matrix_element_c1(SharedDeterminant A, SharedDeterminant B);
     /// Compute the matrix element between determinants A and B
     std::pair<double,double> matrix_element(SharedDeterminant A, SharedDeterminant B);
     /// Compute the corresponding orbitals between determinant A and B
@@ -26,10 +37,6 @@ protected:
     boost::shared_ptr<BasisSet> basisset_;
 
     int nso;
-    /// Absolute AO index to relative SO index
-    int* so2index_;
-    /// Absolute AO index to irrep
-    int* so2symblk_;
 
     /// Matrix factory
     boost::shared_ptr<MatrixFactory> factory_;
@@ -37,6 +44,8 @@ protected:
     Dimension nsopi_;
     /// The one-electron integrals
     SharedMatrix H_copy;
+    /// The two-electron integrals
+    std::vector<double> tei_ints_;
     boost::shared_ptr<JK> jk_;
     /// The nuclear repulsion energy
     double nuclearrep_;

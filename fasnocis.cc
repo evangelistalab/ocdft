@@ -48,4 +48,14 @@ FASNOCIS::~FASNOCIS()
 {
 }
 
+void FASNOCIS::form_C()
+{
+//  if(not do_noci){
+//        UHF::form_C();
+//     }
+//   else{
+//         form_C_noci();
+//  }
+}
+
 }} // Namespaces
