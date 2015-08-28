@@ -14,7 +14,6 @@
 
 #define DEBUG_NOCI 0
 
-
 using namespace psi;
 
 namespace psi{ namespace scf{
@@ -29,12 +28,15 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     nirrep_ = wfn->nirrep();
     factory_ = wfn->matrix_factory();
     nsopi_ = wfn->nsopi();
-    H_copy = wfn->H()->clone();
+    Sao_ = wfn->S()->clone();
+    Hao_ = wfn->H()->clone();
     jk_ = JK::build_JK();
     nuclearrep_ = mol->nuclear_repulsion_energy();
     basisset_ = wfn->basisset();
     nso   = wfn->nso();
 
+    TempMatrix = factory_->create_shared_matrix("TempMatrix");
+    TempMatrix2 = factory_->create_shared_matrix("TempMatrix2");
     read_tei();
 }
 
@@ -44,12 +46,20 @@ NOCI_Hamiltonian::~NOCI_Hamiltonian()
 
 double NOCI_Hamiltonian::compute_energy()
 {
+    outfile->Printf("\n  ==> Computing the NOCI energy <==");
+
     size_t ndets = dets_.size();
+    S_ = SharedMatrix(new Matrix("S",ndets,ndets));
     H_ = SharedMatrix(new Matrix("H",ndets,ndets));
     for (size_t i = 0; i < ndets; ++i){
-        std::pair<double,double> H_S = matrix_element_c1(dets_[i],dets_[i]);
-        H_->set(i,i,H_S.first);
+        for (size_t j = 0; j < ndets; ++j){
+            outfile->Printf("\n  Element (%d,%d)",i,j);
+            std::pair<double,double> S_H = matrix_element_c1(dets_[i],dets_[j]);
+            S_->set(i,j,S_H.first);
+            H_->set(i,j,S_H.second);
+        }
     }
+    S_->print();
     H_->print();
 
     return 0.0;
@@ -140,6 +150,13 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A
 {
     double overlap = 0.0;
     double hamiltonian = 0.0;
+    nirrep_ = 1;
+    // Number of alpha occupied orbitals
+    size_t nocc_a = A->nalphapi()[0];
+    // Number of beta occupied orbitals
+    size_t nocc_b = A->nbetapi()[0];
+    // Number of symmetry-adapted AOs
+    size_t nso  = nsopi_[0];
 
     // I. Form the corresponding alpha and beta orbitals
     boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
@@ -156,111 +173,46 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A
     // Compute the number of noncoincidences
     double noncoincidence_threshold = 1.0e-9;
 
-    std::vector<boost::tuple<int,int,double> > Aalpha_nonc;
-    std::vector<boost::tuple<int,int,double> > Balpha_nonc;
     double Sta = 1.0;
-    for (int h = 0; h < nirrep_; ++h){
-        // Count all the numerical noncoincidences
-        int nmin = std::min(A->nalphapi()[h],B->nalphapi()[h]);
-        for (int p = 0; p < nmin; ++p){
-            if(std::fabs(s_a->get(h,p)) >= noncoincidence_threshold){
-                Sta *= s_a->get(h,p);
-            }else{
-                Aalpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
-                Balpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
-            }
-        }
-        // Count all the symmetry noncoincidences
-        int nmax = std::max(A->nalphapi()[h],B->nalphapi()[h]);
-        bool AgeB = A->nalphapi()[h] >= B->nalphapi()[h] ? true : false;
-        for (int p = nmin; p < nmax; ++p){
-            if(AgeB){
-                Aalpha_nonc.push_back(boost::make_tuple(h,p,0.0));
-            }else{
-                Balpha_nonc.push_back(boost::make_tuple(h,p,0.0));
-            }
+    std::vector<std::pair<size_t,double>> alpha_nonc;
+    for (size_t p = 0; p < nocc_a; ++p){
+        double s_p = s_a->get(0,p);
+        if(std::fabs(s_p) >= noncoincidence_threshold){
+            Sta *= s_p;
+        }else{
+            alpha_nonc.push_back(std::make_pair(p,s_p));
         }
     }
 
-    std::vector<boost::tuple<int,int,double> > Abeta_nonc;
-    std::vector<boost::tuple<int,int,double> > Bbeta_nonc;
     double Stb = 1.0;
-    for (int h = 0; h < nirrep_; ++h){
-        // Count all the numerical noncoincidences
-        int nmin = std::min(A->nbetapi()[h],B->nbetapi()[h]);
-        for (int p = 0; p < nmin; ++p){
-            if(std::fabs(s_b->get(h,p)) >= noncoincidence_threshold){
-                Stb *= s_b->get(h,p);
-            }else{
-                Abeta_nonc.push_back(boost::make_tuple(h,p,s_b->get(h,p)));
-                Bbeta_nonc.push_back(boost::make_tuple(h,p,s_b->get(h,p)));
-            }
-        }
-        // Count all the symmetry noncoincidences
-        int nmax = std::max(A->nbetapi()[h],B->nbetapi()[h]);
-        bool AgeB = A->nbetapi()[h] >= B->nbetapi()[h] ? true : false;
-        for (int p = nmin; p < nmax; ++p){
-            if(AgeB){
-                Abeta_nonc.push_back(boost::make_tuple(h,p,0.0));
-            }else{
-                Bbeta_nonc.push_back(boost::make_tuple(h,p,0.0));
-            }
+    std::vector<std::pair<size_t,double>> beta_nonc;
+    for (size_t p = 0; p < nocc_b; ++p){
+        double s_p = s_b->get(0,p);
+        if(std::fabs(s_p) >= noncoincidence_threshold){
+            Stb *= s_p;
+        }else{
+            beta_nonc.push_back(std::make_pair(p,s_p));
         }
     }
+
     outfile->Printf("\n  Corresponding orbitals:\n");
-    outfile->Printf("  A(alpha): ");
-    for (size_t k = 0; k < Aalpha_nonc.size(); ++k){
-        int i_h = Aalpha_nonc[k].get<0>();
-        int i_mo = Aalpha_nonc[k].get<1>();
-        outfile->Printf(" (%1d,%2d)",i_h,i_mo);
+    outfile->Printf("\n  Alpha: ");
+    for (auto& kv : alpha_nonc){
+        outfile->Printf(" MO = %zu, s = %e",kv.first,kv.second);
     }
-    outfile->Printf("\n  B(alpha): ");
-    for (size_t k = 0; k < Balpha_nonc.size(); ++k){
-        int i_h = Balpha_nonc[k].get<0>();
-        int i_mo = Balpha_nonc[k].get<1>();
-        outfile->Printf(" (%1d,%2d)",i_h,i_mo);
-    }
-    outfile->Printf("\n  s(alpha): ");
-    for (size_t k = 0; k < Balpha_nonc.size(); ++k){
-        double i_s = Balpha_nonc[k].get<2>();
-        outfile->Printf(" %6e",i_s);
-    }
-    outfile->Printf("\n  A(beta):  ");
-    for (size_t k = 0; k < Abeta_nonc.size(); ++k){
-        int i_h = Abeta_nonc[k].get<0>();
-        int i_mo = Abeta_nonc[k].get<1>();
-        outfile->Printf(" (%1d,%2d)",i_h,i_mo);
-    }
-    outfile->Printf("\n  B(beta):  ");
-    for (size_t k = 0; k < Bbeta_nonc.size(); ++k){
-        int i_h = Bbeta_nonc[k].get<0>();
-        int i_mo = Bbeta_nonc[k].get<1>();
-        outfile->Printf(" (%1d,%2d)",i_h,i_mo);
-    }
-    outfile->Printf("\n  s(beta):  ");
-    for (size_t k = 0; k < Balpha_nonc.size(); ++k){
-        double i_s = Bbeta_nonc[k].get<2>();
-        outfile->Printf(" %6e",i_s);
+    outfile->Printf("\n  Beta: ");
+    for (auto& kv : beta_nonc){
+        outfile->Printf(" MO = %zu, s = %e",kv.first,kv.second);
     }
 
     double Stilde = Sta * Stb * detUValpha * detUVbeta;
+
+    size_t num_alpha_nonc = alpha_nonc.size();
+    size_t num_beta_nonc = beta_nonc.size();
+
     outfile->Printf("\n  Stilde = %.6f\n",Stilde);
-
-    int num_alpha_nonc = static_cast<int>(Aalpha_nonc.size());
-    int num_beta_nonc = static_cast<int>(Abeta_nonc.size());
-
-    if(num_alpha_nonc + num_beta_nonc != 2){
-        s_a->print();
-        s_b->print();
-    }
-    outfile->Flush();
-
-    // Number of alpha occupied orbitals
-    size_t nocc_a = A->nalphapi()[0];
-    // Number of beta occupied orbitals
-    size_t nocc_b = A->nbetapi()[0];
-    // Number of symmetry-adapted AOs
-    size_t nso  = nsopi_[0];
+    outfile->Printf("\n  Noncoincidences: %da + %db \n",
+                    num_alpha_nonc,num_beta_nonc);
 
     if(num_alpha_nonc == 0 and num_beta_nonc == 0){
         overlap = Stilde;
@@ -274,7 +226,7 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A
             for (size_t m = 0; m < nso; ++m){
                 for (size_t n = 0; n < nso; ++n){
                     double Wmn = 0.0;
-                    for (int i = 0; i < nocc_a; ++i){
+                    for (size_t i = 0; i < nocc_a; ++i){
                         Wmn += CB[m][i] * CA[n][i] / s[i];
                     }
                     W[m][n] = Wmn;
@@ -290,7 +242,7 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A
             for (size_t m = 0; m < nso; ++m){
                 for (size_t n = 0; n < nso; ++n){
                     double Wmn = 0.0;
-                    for (int i = 0; i < nocc_b; ++i){
+                    for (size_t i = 0; i < nocc_b; ++i){
                         Wmn += CB[m][i] * CA[n][i] / s[i];
                     }
                     W[m][n] = Wmn;
@@ -298,8 +250,8 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A
             }
         }
 
-        double WH_a = W_BA_a->vector_dot(H_copy);
-        double WH_b  = W_BA_b->vector_dot(H_copy);
+        double WH_a = W_BA_a->vector_dot(Hao_);
+        double WH_b  = W_BA_b->vector_dot(Hao_);
         double one_body = WH_a + WH_b;
 
         J(W_BA_a);
@@ -314,7 +266,7 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A
         double WbKWb = -0.5 * W_BA_b->vector_dot(TempMatrix);
 
         double two_body = WaJWa + WbJWa + WbJWb + WaKWa + WbKWb;
-        hamiltonian = Stilde * (one_body + two_body);
+        hamiltonian = Stilde * (nuclearrep_ + one_body + two_body);
     }
 
     return std::make_pair(overlap,hamiltonian);
@@ -324,7 +276,7 @@ boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double>
 NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimension dima, Dimension dimb)
 {
     // Form <B|S|A>
-    TempMatrix->gemm(false,false,1.0,S_,A,0.0);
+    TempMatrix->gemm(false,false,1.0,Sao_,A,0.0);
     TempMatrix2->gemm(true,false,1.0,B,TempMatrix,0.0);
 
     // Extract the occupied blocks only
@@ -426,7 +378,7 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
     return result;
 }
 
-
+/*
 std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, SharedDeterminant B)
 {
     double overlap = 0.0;
@@ -587,8 +539,8 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
         }
 
 
-        double WH_a = W_BA_a->vector_dot(H_copy);
-        double WH_b  = W_BA_b->vector_dot(H_copy);
+        double WH_a = W_BA_a->vector_dot(Hao_);
+        double WH_b  = W_BA_b->vector_dot(Hao_);
         double one_body = WH_a + WH_b;
 
         SharedMatrix scaled_BCa = BCa->clone();
@@ -627,7 +579,7 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
         }
         boost::shared_ptr<IntegralFactory> integral_(new IntegralFactory(basisset_));
         boost::shared_ptr<PetiteList> pet(new PetiteList(basisset_, integral_));
-        int nbf = basisset_->nbf();
+//        int nbf = basisset_->nbf();
         SharedMatrix SO2AO_ = pet->sotoao();
 
 
@@ -745,7 +697,7 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
         hamiltonian = perfected_coupling;
 
 //        SharedMatrix h_BA_a = SharedMatrix(new Matrix("h_BA_a",A->nalphapi(),B->nalphapi()));
-//        h_BA_a->transform(BCa,H_copy,ACa);
+//        h_BA_a->transform(BCa,Hao_,ACa);
 //        double alpha_one_body2 = 0.0;
 //        for (int h = 0; h < nirrep_; ++h){
 //            int nocc = A->nalphapi()[h];  // NB in this case there cannot be symmetry noncoincidences
@@ -757,7 +709,7 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
 //        }
 
 //        SharedMatrix h_BA_b = SharedMatrix(new Matrix("h_BA_b",A->nbetapi(),B->nbetapi()));
-//        h_BA_b->transform(BCb,H_copy,ACb);
+//        h_BA_b->transform(BCb,Hao_,ACb);
 //        double beta_one_body2 = 0.0;
 //        for (int h = 0; h < nirrep_; ++h){
 //            int nocc = A->nbetapi()[h];  // NB in this case there cannot be symmetry noncoincidences
@@ -843,9 +795,10 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
 //        throw FeatureNotImplemented("CKS", "H in the case of two beta noncoincidences", __FILE__, __LINE__);
     }
     outfile->Flush();
-    */
+
     return std::make_pair(overlap,hamiltonian);
 }
+*/
 
 }} // Namespaces
 

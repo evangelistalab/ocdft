@@ -27,8 +27,8 @@ protected:
 
     /// Compute the matrix element between determinants A and B assuming C1 symmetry
     std::pair<double,double> matrix_element_c1(SharedDeterminant A, SharedDeterminant B);
-    /// Compute the matrix element between determinants A and B
-    std::pair<double,double> matrix_element(SharedDeterminant A, SharedDeterminant B);
+//    /// Compute the matrix element between determinants A and B
+//    std::pair<double,double> matrix_element(SharedDeterminant A, SharedDeterminant B);
     /// Compute the corresponding orbitals between determinant A and B
     boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double>
     corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimension dima, Dimension dimb);
@@ -43,7 +43,9 @@ protected:
     /// Number of symmetry adapted AOs per irrep
     Dimension nsopi_;
     /// The one-electron integrals
-    SharedMatrix H_copy;
+    SharedMatrix Hao_;
+    /// The overalp integrals
+    SharedMatrix Sao_;
     /// The two-electron integrals
     std::vector<double> tei_ints_;
     boost::shared_ptr<JK> jk_;
