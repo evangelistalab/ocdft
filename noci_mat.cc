@@ -155,8 +155,6 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A
     size_t nocc_a = A->nalphapi()[0];
     // Number of beta occupied orbitals
     size_t nocc_b = A->nbetapi()[0];
-    // Number of symmetry-adapted AOs
-    size_t nso  = nsopi_[0];
 
     // I. Form the corresponding alpha and beta orbitals
     boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
@@ -217,39 +215,10 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A
     if(num_alpha_nonc == 0 and num_beta_nonc == 0){
         overlap = Stilde;
         // Build the W^BA alpha density matrix
-        SharedMatrix W_BA_a = factory_->create_shared_matrix("W_BA_a");
-        {
-            double** W = W_BA_a->pointer(0);
-            double** CA = ACa->pointer(0);
-            double** CB = BCa->pointer(0);
-            double* s = s_a->pointer(0);
-            for (size_t m = 0; m < nso; ++m){
-                for (size_t n = 0; n < nso; ++n){
-                    double Wmn = 0.0;
-                    for (size_t i = 0; i < nocc_a; ++i){
-                        Wmn += CB[m][i] * CA[n][i] / s[i];
-                    }
-                    W[m][n] = Wmn;
-                }
-            }
-        }
-        SharedMatrix W_BA_b = factory_->create_shared_matrix("W_BA_b");
-        {
-            double** W = W_BA_b->pointer(0);
-            double** CA = ACb->pointer(0);
-            double** CB = BCb->pointer(0);
-            double* s = s_b->pointer(0);
-            for (size_t m = 0; m < nso; ++m){
-                for (size_t n = 0; n < nso; ++n){
-                    double Wmn = 0.0;
-                    for (size_t i = 0; i < nocc_b; ++i){
-                        Wmn += CB[m][i] * CA[n][i] / s[i];
-                    }
-                    W[m][n] = Wmn;
-                }
-            }
-        }
+        SharedMatrix W_BA_a = build_W_c1(ACa,BCa,s_a,nocc_a);
+        SharedMatrix W_BA_b = build_W_c1(ACb,BCb,s_b,nocc_b);
 
+        // Contract h with W^BA
         double WH_a = W_BA_a->vector_dot(Hao_);
         double WH_b  = W_BA_b->vector_dot(Hao_);
         double one_body = WH_a + WH_b;
@@ -268,8 +237,131 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A
         double two_body = WaJWa + WbJWa + WbJWb + WaKWa + WbKWb;
         hamiltonian = Stilde * (nuclearrep_ + one_body + two_body);
     }
+    else if(num_alpha_nonc == 1 and num_beta_nonc == 0){
+        overlap = 0.0;
+        // Build the W^BA alpha density matrix
+        size_t i = alpha_nonc[0].first;
+        SharedMatrix D_BA_i_a = build_D_i_c1(ACa,BCa,i);
+        double one_body = D_BA_i_a->vector_dot(Hao_);
 
+        // Build the W^BA alpha density matrix
+        SharedMatrix W_BA_a = build_W_c1(ACa,BCa,s_a,nocc_a - 1); // <- exclude noncoincidence
+        SharedMatrix W_BA_b = build_W_c1(ACb,BCb,s_b,nocc_b);
+
+        J(W_BA_a);
+        double DaJWa = D_BA_i_a->vector_dot(TempMatrix);
+        J(W_BA_b);
+        double DaJWb = D_BA_i_a->vector_dot(TempMatrix);
+        K(W_BA_a);
+        double DaKWa = -D_BA_i_a->vector_dot(TempMatrix);
+
+        double two_body = DaJWa + DaKWa + DaJWb;
+        hamiltonian = Stilde * (one_body + two_body);
+    }
+    else if(num_alpha_nonc == 0 and num_beta_nonc == 1){
+        overlap = 0.0;
+        // Build the W^BA alpha density matrix
+        size_t i = beta_nonc[0].first;
+        SharedMatrix D_BA_i_b = build_D_i_c1(ACb,BCb,i);
+        double one_body = D_BA_i_b->vector_dot(Hao_);
+
+        // Build the W^BA alpha density matrix
+        SharedMatrix W_BA_a = build_W_c1(ACa,BCa,s_a,nocc_a);
+        SharedMatrix W_BA_b = build_W_c1(ACb,BCb,s_b,nocc_b - 1); // <- exclude noncoincidence
+
+        J(W_BA_a);
+        double DbJWa = D_BA_i_b->vector_dot(TempMatrix);
+        J(W_BA_b);
+        double DbJWb = D_BA_i_b->vector_dot(TempMatrix);
+        K(W_BA_b);
+        double DbKWb = -D_BA_i_b->vector_dot(TempMatrix);
+
+        double two_body = DbJWa + DbKWb + DbJWb;
+        hamiltonian = Stilde * (one_body + two_body);
+    }
+    else if(num_alpha_nonc == 2 and num_beta_nonc == 0){
+        overlap = 0.0;
+        // Build the W^BA alpha density matrix
+        size_t i = alpha_nonc[0].first;
+        size_t j = alpha_nonc[1].first;
+        SharedMatrix D_BA_i_a = build_D_i_c1(ACa,BCa,i);
+        SharedMatrix D_BA_j_a = build_D_i_c1(ACa,BCa,j);
+
+        J(D_BA_j_a);
+        double DaJDa = D_BA_i_a->vector_dot(TempMatrix);
+        K(D_BA_j_a);
+        double DaKDa = -D_BA_i_a->vector_dot(TempMatrix);
+
+        double two_body = DaJDa + DaKDa;
+        hamiltonian = Stilde * two_body;
+    }
+    else if(num_alpha_nonc == 0 and num_beta_nonc == 2){
+        overlap = 0.0;
+        // Build the W^BA alpha density matrix
+        size_t i = beta_nonc[0].first;
+        size_t j = beta_nonc[1].first;
+        SharedMatrix D_BA_i_b = build_D_i_c1(ACb,BCb,i);
+        SharedMatrix D_BA_j_b = build_D_i_c1(ACb,BCb,j);
+
+        J(D_BA_j_b);
+        double DbJDb = D_BA_i_b->vector_dot(TempMatrix);
+        K(D_BA_j_b);
+        double DbKDb = -D_BA_i_b->vector_dot(TempMatrix);
+
+        double two_body = DbJDb + DbKDb;
+        hamiltonian = Stilde * two_body;
+    }
+    else if(num_alpha_nonc == 1 and num_beta_nonc == 1){
+        overlap = 0.0;
+        // Build the W^BA alpha density matrix
+        size_t i = alpha_nonc[0].first;
+        size_t j = beta_nonc[0].first;
+        SharedMatrix D_BA_i_a = build_D_i_c1(ACa,BCa,i);
+        SharedMatrix D_BA_j_b = build_D_i_c1(ACb,BCb,j);
+
+        J(D_BA_j_b);
+        double DaJDb = D_BA_i_a->vector_dot(TempMatrix);
+
+        hamiltonian = Stilde * DaJDb;
+    }
     return std::make_pair(overlap,hamiltonian);
+}
+
+SharedMatrix NOCI_Hamiltonian::build_W_c1(SharedMatrix CA, SharedMatrix CB, SharedVector s, size_t nocc)
+{
+    SharedMatrix W_BA = factory_->create_shared_matrix("W_BA");
+    {
+        double** Wp = W_BA->pointer(0);
+        double** CAp = CA->pointer(0);
+        double** CBp = CB->pointer(0);
+        double* sp = s->pointer(0);
+        for (size_t m = 0; m < nso; ++m){
+            for (size_t n = 0; n < nso; ++n){
+                double Wmn = 0.0;
+                for (size_t i = 0; i < nocc; ++i){
+                    Wmn += CBp[m][i] * CAp[n][i] / sp[i];
+                }
+                Wp[m][n] = Wmn;
+            }
+        }
+    }
+    return W_BA;
+}
+
+SharedMatrix NOCI_Hamiltonian::build_D_i_c1(SharedMatrix CA, SharedMatrix CB, size_t i)
+{
+    SharedMatrix D_BA = factory_->create_shared_matrix("D_BA");
+    {
+        double** Dp = D_BA->pointer(0);
+        double** CAp = CA->pointer(0);
+        double** CBp = CB->pointer(0);
+        for (size_t m = 0; m < nso; ++m){
+            for (size_t n = 0; n < nso; ++n){
+                Dp[m][n] += CBp[m][i] * CAp[n][i];
+            }
+        }
+    }
+    return D_BA;
 }
 
 boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double>
@@ -800,5 +892,39 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
 }
 */
 
+
+//        SharedMatrix W_BA_a = factory_->create_shared_matrix("W_BA_a");
+//        SharedMatrix W_BA_a = factory_->create_shared_matrix("W_BA_a");
+//        {
+//            double** W = W_BA_a->pointer(0);
+//            double** CA = ACa->pointer(0);
+//            double** CB = BCa->pointer(0);
+//            double* s = s_a->pointer(0);
+//            for (size_t m = 0; m < nso; ++m){
+//                for (size_t n = 0; n < nso; ++n){
+//                    double Wmn = 0.0;
+//                    for (size_t i = 0; i < nocc_a; ++i){
+//                        Wmn += CB[m][i] * CA[n][i] / s[i];
+//                    }
+//                    W[m][n] = Wmn;
+//                }
+//            }
+//        }
+//        SharedMatrix W_BA_b = factory_->create_shared_matrix("W_BA_b");
+//        {
+//            double** W = W_BA_b->pointer(0);
+//            double** CA = ACb->pointer(0);
+//            double** CB = BCb->pointer(0);
+//            double* s = s_b->pointer(0);
+//            for (size_t m = 0; m < nso; ++m){
+//                for (size_t n = 0; n < nso; ++n){
+//                    double Wmn = 0.0;
+//                    for (size_t i = 0; i < nocc_b; ++i){
+//                        Wmn += CB[m][i] * CA[n][i] / s[i];
+//                    }
+//                    W[m][n] = Wmn;
+//                }
+//            }
+//        }
 }} // Namespaces
 

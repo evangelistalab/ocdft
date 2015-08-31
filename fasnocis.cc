@@ -19,7 +19,7 @@
 //#include <libscf_solver/omegafunctors.h>
 #include "helpers.h"
 
-#define DEBUG_NOSCF 1
+#define DEBUG_NOSCF 0
 
 #define DEBUG_THIS2(EXP) \
     outfile->Printf("\n  Starting " #EXP " ..."); fflush(outfile); \

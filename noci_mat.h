@@ -20,10 +20,17 @@ public:
 protected:
     /// Read the two-electron integrals
     void read_tei();
+
+
+    // ==> Helper functions <==
     /// Compute the Coulomb operator
     void J(SharedMatrix D);
     /// Compute the Exchange operator
     void K(SharedMatrix D);
+    /// Compute W, the averaged density matrix
+    SharedMatrix build_W_c1(SharedMatrix CA, SharedMatrix CB, SharedVector s, size_t nocc);
+    /// Compute D_i, the one-orbital transition density matrix
+    SharedMatrix build_D_i_c1(SharedMatrix CA, SharedMatrix CB, size_t i);
 
     /// Compute the matrix element between determinants A and B assuming C1 symmetry
     std::pair<double,double> matrix_element_c1(SharedDeterminant A, SharedDeterminant B);
@@ -36,7 +43,7 @@ protected:
     int nirrep_;
     boost::shared_ptr<BasisSet> basisset_;
 
-    int nso;
+    size_t nso;
 
     /// Matrix factory
     boost::shared_ptr<MatrixFactory> factory_;
