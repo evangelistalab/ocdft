@@ -26,6 +26,12 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
 
 
     nirrep_ = wfn->nirrep();
+
+    if (nirrep_ > 1){
+        throw InputException("NOCI_Hamiltonian is implemented only for C1 symmetry ",
+                             "add \"SYMMETRY C1\" in the geometry specification", __FILE__, __LINE__);
+    }
+
     factory_ = wfn->matrix_factory();
     nsopi_ = wfn->nsopi();
     Sao_ = wfn->S()->clone();
@@ -62,6 +68,21 @@ double NOCI_Hamiltonian::compute_energy()
     S_->print();
     H_->print();
 
+    evecs_ = SharedMatrix(new Matrix("Eigenvectors",ndets,ndets));
+    evals_ = SharedVector(new Vector("Eigenvalues",ndets));
+
+    H_->diagonalize(evecs_,evals_);
+
+    outfile->Printf("\n       ==> NOCI Excited State Information <==\n");
+    outfile->Printf("\n    ----------------------------------------------------");
+    outfile->Printf("\n      State       Energy (Eh)    Omega (eV)   Osc. Str.");
+    outfile->Printf("\n    ----------------------------------------------------");
+    for (size_t n = 0; n < ndets; ++n){
+        double ex_energy = pc_hartree2ev * (evals_->get(n) - evals_->get(0));
+        double osc_strength = 0.0;
+        outfile->Printf("\n     @NOCI-%-4d %13.7f %11.4f %11.4f",n,evals_->get(n),ex_energy,osc_strength);
+    }
+    outfile->Printf("\n    ----------------------------------------------------\n");
     return 0.0;
 }
 
