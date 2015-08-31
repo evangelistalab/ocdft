@@ -533,7 +533,7 @@ void FASNOCIS(Options& options)
         outfile->Printf("\n  nofrz = %d nfrz = %d",nofrz,nfrz);
 
 
-        // Create all singly-excited determinants
+        // Create all alpha-alpha singly-excited determinants
         for (size_t i = 0; i < nofrz; ++i){
             for (size_t a = nofrz; a < nfrz; ++a){
                 outfile->Printf("\n  ==> State %d -> %d\n",i,a);
@@ -545,6 +545,28 @@ void FASNOCIS(Options& options)
                     bocc.push_back(j);
                 }
                 aocc.push_back(a);
+
+                boost::shared_ptr<Wavefunction> new_scf =
+                        boost::shared_ptr<Wavefunction>(
+                            new scf::FASNOCIS(options,psio,ref_scf,frozen_mos,
+                                              aocc,bocc,adoccpi));
+
+                new_scf->compute_energy();
+                dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi())));
+            }
+        }
+        // Create all beta-beta singly-excited determinants
+        for (size_t i = 0; i < nofrz; ++i){
+            for (size_t a = nofrz; a < nfrz; ++a){
+                outfile->Printf("\n  ==> State %d -> %d\n",i,a);
+
+                // Build the vector of frozen occupied orbitals
+                std::vector<size_t> aocc, bocc;
+                for (size_t j = 0; j < nofrz; ++j){
+                    if (j != i) bocc.push_back(j);
+                    aocc.push_back(j);
+                }
+                bocc.push_back(a);
 
                 boost::shared_ptr<Wavefunction> new_scf =
                         boost::shared_ptr<Wavefunction>(
