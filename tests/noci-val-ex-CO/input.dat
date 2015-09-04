@@ -1,4 +1,4 @@
-#! OCDFT CPH algorithm test, B3LYP computation on ethene
+#! CO valence excitation energy with HF NOCI  
 #sys.path.insert(0, '/home/prakash')
 sys.path.insert(0, 'add cdft path')
 import cdft
@@ -30,5 +30,3 @@ set cdft {
 energy('fasnocis')
 
 compare_values(HF_NOCI_Energy, get_variable("HF NOCI energy"),8, "NOCI HF energy") #TEST
-#compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST
-#compare_values(refocdft_triplet_spin, get_variable("OCDFT TRIPLET ENERGY"),8, "OCDFT triplet energy") #TEST
