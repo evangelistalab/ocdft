@@ -16,7 +16,7 @@ elif len(sys.argv) == 2:
 
 print "Running test using psi4 executable found in:\n%s" % psi4command
 
-ocdft_tests = ["ocdft-1"]
+ocdft_tests = ["ocdft-ch","ocdft-chp", "ocdft-cp", "ocdft-cis"]
 
 tests = ocdft_tests
 maindir = os.getcwd()
