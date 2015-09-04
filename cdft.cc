@@ -342,6 +342,7 @@ void OCDFT(Options& options)
     boost::shared_ptr<Wavefunction> ref_scf;
     std::string reference = options.get_str("REFERENCE");
     std::vector<double> energies;
+      std::vector<SharedDeterminant> dets;
     // Store the irrep, multiplicity, total energy, excitation energy, oscillator strength
     std::vector<boost::tuple<int,int,double,double,double>> state_info;
 
@@ -354,7 +355,7 @@ void OCDFT(Options& options)
         double gs_energy = ref_scf->compute_energy();
 
         energies.push_back(gs_energy);
-
+         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
         state_info.push_back(boost::make_tuple(0,1,gs_energy,0.0,0.0));
 
         // Print a molden file
@@ -379,6 +380,8 @@ void OCDFT(Options& options)
                 Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();
                 energies.push_back(new_energy);
+                dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi())));
+                 dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Cb(),new_scf->Ca(),new_scf->nbetapi(),new_scf->nalphapi())));
 
                 scf::UOCDFT* uocdft_scf = dynamic_cast<scf::UOCDFT*>(new_scf.get());
                 double singlet_exc_energy_s_plus = uocdft_scf->singlet_exc_energy_s_plus();
@@ -458,7 +461,8 @@ void OCDFT(Options& options)
         outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f %11.4f",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength);
     }
     outfile->Printf("\n    ----------------------------------------------------\n");
-
+     scf::NOCI_Hamiltonian noci_H(options,dets);
+    noci_H.compute_energy();
     // Set this early because the callback mechanism uses it.
     Process::environment.wavefunction().reset();
 }
@@ -597,7 +601,6 @@ void FASNOCIS(Options& options)
         outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f %11.4f",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength);
     }
     outfile->Printf("\n    ----------------------------------------------------\n");
-
     // Set this early because the callback mechanism uses it.
     Process::environment.wavefunction().reset();
 }
