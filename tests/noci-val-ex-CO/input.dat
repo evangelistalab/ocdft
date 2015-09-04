@@ -1,0 +1,34 @@
+#! OCDFT CPH algorithm test, B3LYP computation on ethene
+#sys.path.insert(0, '/home/prakash')
+sys.path.insert(0, 'add cdft path')
+import cdft
+
+HF_NOCI_Energy =  -112.74929280378284
+
+molecule CO {
+symmetry c1
+C       0.0000  0.0000  0.0000
+O       0.0000  0.0000  1.1282
+}
+
+
+set {
+  basis cc-pvdz
+  df_scf_guess false
+  scf_type pk
+  e_convergence 10
+  d_convergence 1
+  maxiter 100
+}
+
+set reference uhf
+set cdft {
+  OCC_FROZEN [1,0,0,0,0,0,0,0]
+  VIR_FROZEN [2,0,0,0,0,0,0,0]
+}
+
+energy('fasnocis')
+
+compare_values(HF_NOCI_Energy, get_variable("HF NOCI energy"),8, "NOCI HF energy") #TEST
+#compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST
+#compare_values(refocdft_triplet_spin, get_variable("OCDFT TRIPLET ENERGY"),8, "OCDFT triplet energy") #TEST
