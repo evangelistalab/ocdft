@@ -329,6 +329,29 @@ void NOCI(Options& options)
             //   }//occup
         } //irrep
 
+        for (auto &h_p : frozen_occ_b){
+            int irrep = h_p.first;
+            int fmo   = h_p.second;
+            std::pair<int,int> swap_occ (irrep,fmo);
+
+            //for (int h = 0; h < nirrep; ++h){
+            //   for (int i=1; i<= occ_frozen[h]; ++i){
+
+            for (int state_b=1; state_b <= vir_frozen[irrep];++state_b){
+                int state_a=0;
+                boost::shared_ptr<Wavefunction> new_scf = boost::shared_ptr<Wavefunction>(new scf::NOCI(options,psio,state_a,swap_occ,state_b,
+                                                                                                        frozen_occ_a,frozen_occ_b,
+                                                                                                        frozen_mos,
+                                                                                                        occ_frozen,vir_frozen,
+                                                                                                        Ca_gs_,Cb_gs_));
+                Process::environment.wavefunction().reset();
+                Process::environment.set_wavefunction(new_scf);
+                double new_energy = new_scf->compute_energy();
+                energies.push_back(new_energy);
+                dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi())));
+            }
+            //   }//occup
+        } //irrep
         scf::NOCI_Hamiltonian noci_H(options,dets);
         noci_H.compute_energy();
     }
