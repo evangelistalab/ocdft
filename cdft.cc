@@ -59,6 +59,8 @@ int read_options(std::string name, Options& options)
         options.add_double("CDFT_SUHF_LAMBDA",0.0);
         /*- Charge constraints -*/
         options.add_double("LEVEL_SHIFT",0.0);
+	/*- Restrict Core -*/
+	options.add_double("REW", 0.0);
         /*- Apply a fixed Lagrange multiplier -*/
         options.add_bool("OPTIMIZE_VC", true);
         /*- Value of the Lagrange multiplier -*/

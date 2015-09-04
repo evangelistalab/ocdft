@@ -582,9 +582,17 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
                     int symm = occ_h ^ vir_h ^ ground_state_symmetry_;
                     if(not do_symmetry or (symm == excited_state_symmetry_)){ // Test for symmetry
                         // Make sure we are not adding excitations to holes/particles that have been projected out
-                        if (std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6){
-                            sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));  // N.B. shifted wrt to full indexing
-                        }
+			    if(KS::options_.get_double("REW") > 0.0){ // Perform Restricted Excitation Window Calculation
+				double rew_cutoff = KS::options_.get_double("REW");
+                        	if (std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and std::fabs(e_h) < rew_cutoff ){
+                            		sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
+    				}
+			     }
+                            else{
+				if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6){ // Use Full Excitation Space
+                            		sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));  // N.B. shifted wrt to full indexing
+                            }
+				}
                     }
                 }
             }
@@ -1616,7 +1624,7 @@ void UOCDFT::compute_transition_moments()
             de[2] = trDa_ao_atom->vector_dot(dipole_ints[2]);
 
             double abs_dipole = std::sqrt(de[0] * de[0] + de[1] * de[1] + de[2] * de[2]);
-            if (abs_dipole >= 1.0e-4){
+            if (abs_dipole >= 1.0e-6){
                 std::string outstr = boost::str(boost::format("  %3d %2s %1s  %3d %2s %1s  %9f  %9f  %9f  %9f") %
                             (i.first + 1) %
                             KS::molecule_->symbol(i.first).c_str() %
@@ -1647,41 +1655,41 @@ void UOCDFT::compute_transition_moments()
     de[1] = trDa_ao->vector_dot(dipole_ints[1]);
     de[2] = trDa_ao->vector_dot(dipole_ints[2]);
 
-    outfile->Printf("\n  Dipole moments from AO integrals: %.4f %.4f %.4f",de[0],de[1],de[2]);
+    //outfile->Printf("\n  Dipole moments from AO integrals: %.4f %.4f %.4f",de[0],de[1],de[2]);
 
-    outfile->Printf("\n  Lowdin Population Analysis of the Transition Dipole Moment:\n");
-    outfile->Printf("\n  ===============================================================");
-    outfile->Printf("\n   Initial     Final     mu(x)      mu(y)      mu(z)       |mu|");
-    outfile->Printf("\n  ---------------------------------------------------------------");
-    for (auto& i : keys){
-        for (auto& f : keys){
-            trDa_ao_atom->zero();
-            auto& ifn = atom_am_to_f[i];
-            auto& ffn = atom_am_to_f[f];
-            for (int iao : ifn){
-                for (int fao : ffn){
-                    double value = trDa_ao->get(fao,iao);
-                    trDa_ao_atom->set(fao,iao,value);
-                }
-            }
-            de[0] = trDa_ao_atom->vector_dot(dipole_ints[0]);
-            de[1] = trDa_ao_atom->vector_dot(dipole_ints[1]);
-            de[2] = trDa_ao_atom->vector_dot(dipole_ints[2]);
+    //outfile->Printf("\n  Lowdin Population Analysis of the Transition Dipole Moment:\n");
+    //outfile->Printf("\n  ===============================================================");
+    //outfile->Printf("\n   Initial     Final     mu(x)      mu(y)      mu(z)       |mu|");
+    //outfile->Printf("\n  ---------------------------------------------------------------");
+    //for (auto& i : keys){
+    //    for (auto& f : keys){
+    //        trDa_ao_atom->zero();
+    //        auto& ifn = atom_am_to_f[i];
+    //        auto& ffn = atom_am_to_f[f];
+    //        for (int iao : ifn){
+    //            for (int fao : ffn){
+    //                double value = trDa_ao->get(fao,iao);
+    //                trDa_ao_atom->set(fao,iao,value);
+    //            }
+    //        }
+    //        de[0] = trDa_ao_atom->vector_dot(dipole_ints[0]);
+    //        de[1] = trDa_ao_atom->vector_dot(dipole_ints[1]);
+    //        de[2] = trDa_ao_atom->vector_dot(dipole_ints[2]);
 
-            double abs_dipole = std::sqrt(de[0] * de[0] + de[1] * de[1] + de[2] * de[2]);
-            if (abs_dipole >= 1.0e-4){
-                std::string outstr = boost::str(boost::format("  %3d %2s %1s  %3d %2s %1s  %9f  %9f  %9f  %9f") %
-                            (i.first + 1) %
-                            KS::molecule_->symbol(i.first).c_str() %
-                            l_to_symbol[i.second].c_str() %
-                            (f.first + 1) %
-                            KS::molecule_->symbol(f.first).c_str() %
-                            l_to_symbol[f.second].c_str() %
-                            de[0] % de[1] % de[2] % abs_dipole);
-                sorted_contributions.push_back(std::make_pair(abs_dipole,outstr));
-            }
-        }
-    }
+    //        double abs_dipole = std::sqrt(de[0] * de[0] + de[1] * de[1] + de[2] * de[2]);
+    //        if (abs_dipole >= 1.0e-4){
+    //            std::string outstr = boost::str(boost::format("  %3d %2s %1s  %3d %2s %1s  %9f  %9f  %9f  %9f") %
+    //                        (i.first + 1) %
+    //                        KS::molecule_->symbol(i.first).c_str() %
+    //                        l_to_symbol[i.second].c_str() %
+    //                        (f.first + 1) %
+    //                        KS::molecule_->symbol(f.first).c_str() %
+    //                        l_to_symbol[f.second].c_str() %
+    //                        de[0] % de[1] % de[2] % abs_dipole);
+    //            sorted_contributions.push_back(std::make_pair(abs_dipole,outstr));
+    //        }
+    //    }
+    //}
 
     std::sort(sorted_contributions.rbegin(),sorted_contributions.rend());
     for (auto& kv : sorted_contributions){
