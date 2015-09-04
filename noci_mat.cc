@@ -364,19 +364,19 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         SharedMatrix W_BA_b = build_W_c1(ACb,BCb,s_b,nocc_b - 1); // <- exclude noncoincidence
 
         if (use_fast_jk_){
-            std::pair<SharedMatrix,SharedMatrix> ClCr = build_W_fast_jk_c1(ACa,BCa,s_a,nocc_a);
-            fast_JK(ClCr.first,ClCr.second);
+//            std::pair<SharedMatrix,SharedMatrix> ClCr = build_W_fast_jk_c1(ACa,BCa,s_a,nocc_a);
+//            fast_JK(ClCr.first,ClCr.second);
 
-            double DbJWa = D_BA_i_b->vector_dot(Jso_);
+//            double DbJWa = D_BA_i_b->vector_dot(Jso_);
 
-            ClCr = build_W_fast_jk_c1(ACb,BCb,s_b,nocc_b - 1);
-            fast_JK(ClCr.first,ClCr.second);
+//            ClCr = build_W_fast_jk_c1(ACb,BCb,s_b,nocc_b - 1);
+//            fast_JK(ClCr.first,ClCr.second);
 
-            double DbJWb = D_BA_i_b->vector_dot(Jso_);
-            double DbKWb = -D_BA_i_b->vector_dot(Kso_);
+//            double DbJWb = D_BA_i_b->vector_dot(Jso_);
+//            double DbKWb = -D_BA_i_b->vector_dot(Kso_);
 
-            double two_body = DbJWa + DbKWb + DbJWb;
-            hamiltonian = Stilde * (one_body + two_body);
+//            double two_body = DbJWa + DbKWb + DbJWb;
+//            hamiltonian = Stilde * (one_body + two_body);
         }else{
             J(W_BA_a);
             double DbJWa = D_BA_i_b->vector_dot(TempMatrix);
@@ -398,14 +398,14 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         SharedMatrix D_BA_j_a = build_D_i_c1(ACa,BCa,j);
 
         if (use_fast_jk_){
-            std::pair<SharedMatrix,SharedMatrix> ClCr = build_D_fast_i_c1(ACa,BCa,j);
-            fast_JK(ClCr.first,ClCr.second);
+//            std::pair<SharedMatrix,SharedMatrix> ClCr = build_D_fast_i_c1(ACa,BCa,j);
+//            fast_JK(ClCr.first,ClCr.second);
 
-            double DaJDa = D_BA_i_a->vector_dot(Jso_);
-            double DaKDa = -D_BA_i_a->vector_dot(Kso_);
+//            double DaJDa = D_BA_i_a->vector_dot(Jso_);
+//            double DaKDa = -D_BA_i_a->vector_dot(Kso_);
 
-            double two_body = DaJDa + DaKDa;
-            hamiltonian = Stilde * two_body;
+//            double two_body = DaJDa + DaKDa;
+//            hamiltonian = Stilde * two_body;
         }else{
             J(D_BA_j_a);
             double DaJDa = D_BA_i_a->vector_dot(TempMatrix);
@@ -425,14 +425,14 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         SharedMatrix D_BA_j_b = build_D_i_c1(ACb,BCb,j);
 
         if (use_fast_jk_){
-            std::pair<SharedMatrix,SharedMatrix> ClCr = build_D_fast_i_c1(ACb,BCb,j);
-            fast_JK(ClCr.first,ClCr.second);
+//            std::pair<SharedMatrix,SharedMatrix> ClCr = build_D_fast_i_c1(ACb,BCb,j);
+//            fast_JK(ClCr.first,ClCr.second);
 
-            double DbJDb = D_BA_i_b->vector_dot(Jso_);
-            double DbKDb = -D_BA_i_b->vector_dot(Kso_);
+//            double DbJDb = D_BA_i_b->vector_dot(Jso_);
+//            double DbKDb = -D_BA_i_b->vector_dot(Kso_);
 
-            double two_body = DbJDb + DbKDb;
-            hamiltonian = Stilde * two_body;
+//            double two_body = DbJDb + DbKDb;
+//            hamiltonian = Stilde * two_body;
         }else{
         J(D_BA_j_b);
         double DbJDb = D_BA_i_b->vector_dot(TempMatrix);
@@ -452,12 +452,12 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         SharedMatrix D_BA_j_b = build_D_i_c1(ACb,BCb,j);
 
         if (use_fast_jk_){
-            std::pair<SharedMatrix,SharedMatrix> ClCr = build_D_fast_i_c1(ACb,BCb,j);
-            fast_JK(ClCr.first,ClCr.second);
+//            std::pair<SharedMatrix,SharedMatrix> ClCr = build_D_fast_i_c1(ACb,BCb,j);
+//            fast_JK(ClCr.first,ClCr.second);
 
-            double DaJDb = D_BA_i_a->vector_dot(Jso_);
+//            double DaJDb = D_BA_i_a->vector_dot(Jso_);
 
-            hamiltonian = Stilde * DaJDb;
+//            hamiltonian = Stilde * DaJDb;
         }else{
             J(D_BA_j_b);
             double DaJDb = D_BA_i_a->vector_dot(TempMatrix);
