@@ -100,6 +100,7 @@ int read_options(std::string name, Options& options)
         /*- Select the type of excited state to target -*/
         options.add_int("CDFT_NUM_PROJECT_OUT",1);
 
+        options.add_bool("USE_FAST_JK", false);
 
         options.add("AOCC_FROZEN", new ArrayType());
         options.add("AVIR_FROZEN", new ArrayType());
