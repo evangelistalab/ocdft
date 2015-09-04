@@ -179,6 +179,10 @@ void NOCI(Options& options)
     boost::shared_ptr<Wavefunction> ref_scf;
     std::string reference = options.get_str("REFERENCE");
     std::vector<double> energies;
+    bool valence = true;
+    if(options.get_str("CDFT_EXC_TYPE") == "CORE"){
+        valence = false;
+    }
     std::vector<SharedDeterminant> dets;
     // Store the irrep, multiplicity, total energy, excitation energy, oscillator strength
     std::vector<boost::tuple<int,int,double,double,double>> state_info;
@@ -228,14 +232,19 @@ void NOCI(Options& options)
         std::vector<std::pair<int,int>> frozen_occ_a;
         std::vector<std::pair<int,int>> frozen_occ_b;
 
-        for (int h = 0; h < nirrep; ++h){
+                 for (int h = 0; h < nirrep; ++h){
             for (int i = 0; i < occ_frozen[h]; ++i){
                 frozen_mos.push_back(std::make_pair(h,nalphapi[h] - 1 - i));
-                frozen_occ_a.push_back(std::make_pair(h,nalphapi[h] - 1 - i));
-                frozen_occ_b.push_back(std::make_pair(h,nbetapi[h] - 1 - i));
+                if(valence){
+                    frozen_occ_a.push_back(std::make_pair(h,nalphapi[h] - 1 - i));
+                    frozen_occ_b.push_back(std::make_pair(h,nbetapi[h] - 1 - i));
+                }
+                else{
+                    frozen_occ_a.push_back(std::make_pair(h,i));
+                    frozen_occ_b.push_back(std::make_pair(h,i));
+                }
             }
         }
-
 
         for (int h = 0; h < nirrep; ++h){
             for (int i = 0; i < vir_frozen[h]; ++i){
@@ -319,7 +328,7 @@ void NOCI(Options& options)
                                                                                                         frozen_occ_a,frozen_occ_b,
                                                                                                         frozen_mos,
                                                                                                         occ_frozen,vir_frozen,
-                                                                                                        Ca_gs_,Cb_gs_));
+                                                                                                        Ca_gs_,Cb_gs_,valence));
                 Process::environment.wavefunction().reset();
                 Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();
@@ -343,7 +352,7 @@ void NOCI(Options& options)
                                                                                                         frozen_occ_a,frozen_occ_b,
                                                                                                         frozen_mos,
                                                                                                         occ_frozen,vir_frozen,
-                                                                                                        Ca_gs_,Cb_gs_));
+                                                                                                        Ca_gs_,Cb_gs_,valence));
                 Process::environment.wavefunction().reset();
                 Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();

@@ -17,11 +17,12 @@ public:
     explicit NOCI(Options &options, boost::shared_ptr<PSIO> psio);
     explicit NOCI(Options &options, boost::shared_ptr<PSIO> psio, int state_a,std::pair<int,int> fmo, int state_b, std::vector<std::pair<int,int>> frozen_occ_a,std::vector<std::pair<int,int>> frozen_occ_b, std::vector<std::pair<int,int>> frozen_mos,
                   std::vector<int> occ_frozen,
-                  std::vector<int> vir_frozen, SharedMatrix Ca_gs, SharedMatrix Cb_gs);
+                  std::vector<int> vir_frozen, SharedMatrix Ca_gs, SharedMatrix Cb_gs,bool valence_in);
     virtual ~NOCI();
 
 protected:
 
+      bool valence;
      bool do_noci;
      bool do_alpha_states;
      int state_a_;

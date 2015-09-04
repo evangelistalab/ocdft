@@ -24,7 +24,7 @@ NOCI::NOCI(Options &options, boost::shared_ptr<PSIO> psio, int state_a, std::pai
            std::vector<std::pair<int,int>>frozen_occ_a,std::vector<std::pair<int,int>>frozen_occ_b,
            std::vector<std::pair<int,int>>frozen_mos,
            std::vector<int>occ_frozen,std::vector<int>vir_frozen,
-           SharedMatrix Ca_gs_, SharedMatrix Cb_gs_)
+           SharedMatrix Ca_gs_, SharedMatrix Cb_gs_,bool valence_in)
 : UHF(options, psio),
   do_noci(true),do_alpha_states(state_a),
   state_a_(state_a),
@@ -36,7 +36,8 @@ NOCI::NOCI(Options &options, boost::shared_ptr<PSIO> psio, int state_a, std::pai
   occ_frozen_(occ_frozen),
   vir_frozen_(vir_frozen),
   Ca_gs(Ca_gs_),
-  Cb_gs(Cb_gs_)
+  Cb_gs(Cb_gs_),
+    valence(valence_in)
 {
     //outfile->Printf("\n  ==> first excitation CI OFFFFGGG    <==\n\n");
     init();
@@ -96,9 +97,9 @@ void NOCI::init_excitation()
 
 void NOCI::guess()
 {
- if(do_noci){
+if(do_noci){
         iteration_ = 0;
-        load_orbitals();
+       load_orbitals();
         U_swap->identity();
         if(do_alpha_states){
             int irrep = std::get<0>(fmo_);
@@ -122,21 +123,17 @@ void NOCI::guess()
         Cb_fmo->gemm(false,false,1.0,Cb_gs,U_swap,0.0);
         Ca_fmo->copy(Ca_gs);
     }
-/*
-   Ca_->copy(Ca_gs);
-   Cb_->copy(Cb_gs); this is incorrect
+//    Ca_->copy(Ca_gs);
+//    Cb_->copy(Cb_gs); this is incorrect
 
-below is better comvergence
-   Ca_->copy(Ca_fmo);
-   Cb_->copy(Cb_fmo);
-*/
-      UHF::guess();
-
-
+ //   Ca_->copy(Ca_fmo);
+ //   Cb_->copy(Cb_fmo);
+    UHF::guess();
     form_D();
     E_ = compute_initial_E();
     for(int h=0; h <nirrep_; ++h){
         int oo;
+        if(valence ){
         oo=nalphapi_[h]-occ_frozen_[h];
         int aa=nalphapi_[h]+vir_frozen_[h];
         int ov;
@@ -152,11 +149,33 @@ below is better comvergence
                 ov+=1;
             }//a
         }//i
+        }
+        else
+        {
+        oo=occ_frozen_[h];
+        int aa=nalphapi_[h]+vir_frozen_[h];
+        int ov;
+        for (int i=0; i <nsopi_[h]; ++i){
+            int n=0;
+            for (int j=oo; j < nalphapi_[h]; ++j){
+                double Cpq =Ca_gs->get(h,i,j);
+                rCa0->set(h,i,n,Cpq);
+                n=n+1;
+            }//j
+            ov=nalphapi_[h]-oo;
+            for (int a=aa;a <nmopi_[h];++a){
+                double Cpq=Ca_gs->get(h,i,a);
+                rCa0->set(h,i,ov,Cpq);
+                ov+=1;
+            }//a
+        }//i
+        }
     } //irrep
 
 
     for(int h=0; h <nirrep_; ++h){
         int oo;
+        if(valence ){
             oo=nbetapi_[h]-occ_frozen_[h];
             int aa=nbetapi_[h]+vir_frozen_[h];
             int ov;
@@ -172,6 +191,27 @@ below is better comvergence
                     ov+=1;
                 }//a
             }//i
+        }
+        else{
+            oo=occ_frozen_[h];
+            int aa=nbetapi_[h]+vir_frozen_[h];
+            int ov;
+            for (int i=0; i <nsopi_[h]; ++i){
+                int n=0;
+                for (int j=oo; j < nbetapi_[h]; ++j){
+                    double Cpq =Cb_gs->get(h,i,j);
+                    rCb0->set(h,i,n,Cpq);
+                    n=n+1;
+                }//j
+                ov=nbetapi_[h]-oo;
+                for (int a=aa;a <nmopi_[h];++a){
+                    double Cpq=Cb_gs->get(h,i,a);
+                    rCb0->set(h,i,ov,Cpq);
+                    ov+=1;
+                }//a
+            }//i
+        }
+
     } //irrep
 }else{
 UHF::guess();
@@ -206,15 +246,18 @@ void NOCI::form_C()
 
 void NOCI::form_C_noci()
 {
+rFpq->zero();
+    rFpq_a->transform(Fa_,rCa0);
+    rFpq_b->transform(Fb_,rCb0);
 
-        rFpq_a->transform(Fa_,rCa0);
-        rFpq_b->transform(Fb_,rCb0);
 
     rFpq->copy(rFpq_a);
     rFpq->add(rFpq_b);
     rFpq->scale(0.5);
     rFpq->diagonalize(rUa_,Repsilon_a_);
 
+    rCa0->print();
+    Repsilon_a_->print();
     rUb_->copy(rUa_);
     rCa_->gemm(false,false,1.0,rCa0,rUa_,0.0);
     rCb_->gemm(false,false,1.0,rCb0,rUb_,0.0);
@@ -222,11 +265,12 @@ void NOCI::form_C_noci()
     rCa0->copy(rCa_);
     rCb0->copy(rCb_);
 
-  //  rCa_->print();
-
     Ca_->zero();
+    Cb_->zero();
     for(int h=0; h <nirrep_; ++h){
-        int oo=nalphapi_[h]-occ_frozen_[h];
+        int oo;
+        if(valence){
+        oo=nalphapi_[h]-occ_frozen_[h];
         for (int i=0; i < nsopi_[h]; ++i){
             for(int j=0; j <(nalphapi_[h]-occ_frozen_[h]); ++j){
                 Ca_->set(h,i,j,rCa_->get(h,i,j));
@@ -243,10 +287,36 @@ void NOCI::form_C_noci()
                  m=m+1;
             }
         }
+        }
+        else{
+            oo=occ_frozen_[h];
+            for (int i=0; i < nsopi_[h]; ++i){
+                for(int j=0; j <oo; ++j){
+                    Ca_->set(h,i,j,Ca_fmo->get(h,i,j));
+                }
+                int n=0;
+                for(int jf=oo; jf <nalphapi_[h];++jf){
+                    Ca_->set(h,i,jf,rCa_->get(h,i,n));
+                    n=n+1;
+                }
+                for(int af=nalphapi_[h]; af <(nalphapi_[h]+vir_frozen_[h]);++af){
+                    Ca_->set(h,i,af,Ca_fmo->get(h,i,af));
+                }
+                int m=nalphapi_[h]-oo;
+                for (int a=(nalphapi_[h]+vir_frozen_[h]);a<nmopi_[h];++a){
+                     Ca_->set(h,i,a,rCa_->get(h,i,m));
+                     m=m+1;
+                }
+            }
+        }
+
+
     }
 
     for(int h=0; h <nirrep_; ++h){
-        int oo=nbetapi_[h]-occ_frozen_[h];
+        int oo;
+        if(valence){
+        oo=nbetapi_[h]-occ_frozen_[h];
         for (int i=0; i < nsopi_[h]; ++i){
             for(int j=0; j <nbetapi_[h]-occ_frozen_[h]; ++j){
                 Cb_->set(h,i,j,rCb_->get(h,i,j));
@@ -263,6 +333,29 @@ void NOCI::form_C_noci()
                  m=m+1;
             }
         }
+        }
+        else{
+            oo=occ_frozen_[h];
+            for (int i=0; i < nsopi_[h]; ++i){
+                for(int j=0; j <oo; ++j){
+                    Cb_->set(h,i,j,Cb_fmo->get(h,i,j));
+                }
+                int n=0;
+                for(int j=oo; j <nbetapi_[h];++j){
+                    Cb_->set(h,i,j,rCb_->get(h,i,n));
+                    n=n+1;
+                }
+                for(int af=nbetapi_[h]; af <(nbetapi_[h]+vir_frozen_[h]);++af){
+                    Cb_->set(h,i,af,Cb_fmo->get(h,i,af));
+                }
+                int m=nbetapi_[h]-oo;
+                for (int a=(nbetapi_[h]+vir_frozen_[h]);a<nmopi_[h];++a){
+                     Cb_->set(h,i,a,rCb_->get(h,i,m));
+                     m=m+1;
+                }
+            }
+        }
+
     }
 
 }
