@@ -484,7 +484,7 @@ void FASNOCIS(Options& options)
         double gs_energy = ref_scf->compute_energy();
         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
 
-
+        Process::environment.globals["HF NOCI energy"] = gs_energy;
         // Print a molden file
         if ( options["MOLDEN_WRITE"].has_changed() ) {
             boost::shared_ptr<MoldenWriter> molden(new MoldenWriter(ref_scf));
