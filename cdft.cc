@@ -586,18 +586,6 @@ void FASNOCIS(Options& options)
         throw InputException("Unknown reference " + reference, "REFERENCE", __FILE__, __LINE__);
     }
 
-    outfile->Printf("\n       ==> OCDFT Excited State Information <==\n");
-
-    outfile->Printf("\n    ----------------------------------------------------");
-    outfile->Printf("\n      State       Energy (Eh)    Omega (eV)   Osc. Str.");
-    outfile->Printf("\n    ----------------------------------------------------");
-    for (size_t n = 0; n < state_info.size(); ++n){
-        double singlet_exc_en = state_info[n].get<3>();
-        double osc_strength = state_info[n].get<4>();
-        outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f %11.4f",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength);
-    }
-    outfile->Printf("\n    ----------------------------------------------------\n");
-
     // Set this early because the callback mechanism uses it.
     Process::environment.wavefunction().reset();
 }

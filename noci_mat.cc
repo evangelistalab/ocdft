@@ -21,6 +21,10 @@ namespace psi{ namespace scf{
 NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDeterminant> dets)
     : options_(options), dets_(dets)
 {
+
+    outfile->Printf("\n  ==> Nonorthogonal CI (NOCI) <==\n\n");
+    outfile->Printf("  Number of determinants: %zu\n",dets_.size());
+
     boost::shared_ptr<Wavefunction> wfn = Process::environment.wavefunction();
     boost::shared_ptr<Molecule> mol = Process::environment.molecule();
 
@@ -49,16 +53,22 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     basisset_ = wfn->basisset();
     nso   = wfn->nso();
 
-    //    Jso_ = factory_->create_shared_matrix("J");
-    //    Kso_ = factory_->create_shared_matrix("K");
     TempMatrix = factory_->create_shared_matrix("TempMatrix");
     TempMatrix2 = factory_->create_shared_matrix("TempMatrix2");
 
+    std::string scf_type = options.get_str("SCF_TYPE");
 
-    if (use_fast_jk_){
-        outfile->Printf("\n  Using the fast JK algorithms");
-    }else{
-        read_tei();
+    if (scf_type == "DF"){
+        use_fast_jk_ = true;
+        outfile->Printf("\n  Using Density Fitting and LibFock JK algorithm\n");
+    }
+    if (scf_type == "PK"){
+        if (use_fast_jk_){
+            outfile->Printf("\n  Using PK integrals and LibFock JK algorithm\n");
+        }else{
+            outfile->Printf("\n  Using PK integrals and the incore JK algorithm\n");
+            read_tei();
+        }
     }
 }
 
@@ -68,7 +78,7 @@ NOCI_Hamiltonian::~NOCI_Hamiltonian()
 
 double NOCI_Hamiltonian::compute_energy()
 {
-    outfile->Printf("\n  ==> Computing the NOCI energy <==");
+    outfile->Printf("\n  Computing the NOCI Hamiltonian\n\n");
 
     size_t ndets = dets_.size();
     S_ = SharedMatrix(new Matrix("Overlap matrix",ndets,ndets));
@@ -76,7 +86,6 @@ double NOCI_Hamiltonian::compute_energy()
     S2_ = SharedMatrix(new Matrix("S2",ndets,ndets));
     for (size_t i = 0; i < ndets; ++i){
         for (size_t j = 0; j < ndets; ++j){
-            outfile->Printf("\n  Element (%d,%d)",i,j);
             std::vector<double> S_H_S2 = matrix_element_c1(dets_[i],dets_[j]);
             S_->set(i,j,S_H_S2[0]);
             H_->set(i,j,S_H_S2[1]);
@@ -84,45 +93,38 @@ double NOCI_Hamiltonian::compute_energy()
         }
     }
 
-//    for (size_t i = 2; i < 3; ++i){
-//        for (size_t j = 3; j < 4; ++j){
-//            outfile->Printf("\n  Element (%d,%d)",i,j);
-//            std::vector<double> S_H_S2 = matrix_element_c1(dets_[i],dets_[j]);
-//            S_->set(i,j,S_H_S2[0]);
-//            H_->set(i,j,S_H_S2[1]);
-//            S2_->set(i,j,S_H_S2[2]);
-//            outfile->Printf("\n  Element (%d,%d)",j,i);
-//            S_H_S2 = matrix_element_c1(dets_[j],dets_[i]);
-//            S_->set(j,i,S_H_S2[0]);
-//            H_->set(j,i,S_H_S2[1]);
-//            S2_->set(j,i,S_H_S2[2]);
-//        }
-//    }
-
-    S_->print();
-    H_->print();
-    S2_->print();
+    if (ndets <= 10){
+        S_->print();
+        H_->print();
+        S2_->print();
+    }
 
     SharedMatrix H_t = H_->transpose();
     H_t->scale(-1.0);
     H_t->add(H_);
-    outfile->Printf("\n       Nonhermiticy metrix: %e\n",H_t->sum_of_squares());
+    double norm_Hdiff = std::sqrt(H_t->sum_of_squares());
+    if (H_t->sum_of_squares() > 1.0e-10){
+        outfile->Printf("\n    Warning: The Hamiltonian matrix is not Hermitian.");
+        outfile->Printf("\n             ||H - tr(H)||_F = %e",norm_Hdiff);
+    }
+
+    outfile->Printf("\n  Diagonalizing the NOCI Hamiltonian\n");
 
     evecs_ = SharedMatrix(new Matrix("Eigenvectors",ndets,ndets));
     evals_ = SharedVector(new Vector("Eigenvalues",ndets));
 
     H_->diagonalize(evecs_,evals_);
 
-    outfile->Printf("\n       ==> NOCI Excited State Information <==\n");
-    outfile->Printf("\n    ----------------------------------------------------");
-    outfile->Printf("\n      State       Energy (Eh)    Omega (eV)   Osc. Str.");
-    outfile->Printf("\n    ----------------------------------------------------");
+    outfile->Printf("\n  ==> NOCI Excited State Information <==\n");
+    outfile->Printf("\n  ----------------------------------------------------");
+    outfile->Printf("\n    State       Energy (Eh)    Omega (eV)   Osc. Str.");
+    outfile->Printf("\n  ----------------------------------------------------");
     for (size_t n = 0; n < ndets; ++n){
         double ex_energy = pc_hartree2ev * (evals_->get(n) - evals_->get(0));
         double osc_strength = 0.0;
-        outfile->Printf("\n     @NOCI-%-4d %23.12f %11.4f %11.4f",n,evals_->get(n),ex_energy,osc_strength);
+        outfile->Printf("\n  @NOCI-%-4d %20.12f %11.4f    %11.4e",n,evals_->get(n),ex_energy,osc_strength);
     }
-    outfile->Printf("\n    ----------------------------------------------------\n");
+    outfile->Printf("\n  ----------------------------------------------------\n");
     return 0.0;
 }
 
@@ -269,6 +271,7 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         }
     }
 
+#if DEBUG_NOCI
     outfile->Printf("\n  Corresponding orbitals:\n");
     outfile->Printf("\n  Alpha: ");
     for (auto& kv : alpha_nonc){
@@ -278,15 +281,18 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
     for (auto& kv : beta_nonc){
         outfile->Printf(" MO = %zu, s = %e",kv.first,kv.second);
     }
+#endif
 
     double Stilde = Sta * Stb * detUValpha * detUVbeta;
 
     size_t num_alpha_nonc = alpha_nonc.size();
     size_t num_beta_nonc = beta_nonc.size();
 
+#if DEBUG_NOCI
     outfile->Printf("\n  Stilde = %.6f\n",Stilde);
     outfile->Printf("\n  Noncoincidences: %da + %db \n",
                     num_alpha_nonc,num_beta_nonc);
+#endif
 
     if(num_alpha_nonc == 0 and num_beta_nonc == 0){
         overlap = Stilde;
@@ -415,16 +421,11 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         SharedMatrix D_BA_ij_a = build_D_i_c1(ACa,BCa,j,i);
         SharedMatrix D_BA_ji_a = build_D_i_c1(ACa,BCa,i,j);
 
-//        D_BA_i_a->print();
-//        D_BA_j_a->print();
-
         if (use_fast_jk_){
             build_D_i_JK_c1(ACa,BCa,j);
 
-            Jso_libfock_->print();
-            Kso_libfock_->print();
-            double DaJDa = D_BA_ii_a->vector_dot(Jso_libfock_);
-            Kso_libfock_->transpose_this();
+            double DaJDa = D_BA_ii_a->vector_dot(Jso_libfock_); 
+            Kso_libfock_->transpose_this();            
             double DaKDa = -D_BA_ii_a->vector_dot(Kso_libfock_);
 
             double two_body = DaJDa + DaKDa;
@@ -580,7 +581,10 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
             }
         }
     }
+
+#if DEBUG_NOCI
     Sba->print();
+#endif
 
     // SVD <B|S|A>
     boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UsV = Sba->svd_a_temps();
@@ -588,15 +592,18 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
     SharedVector sigma = UsV.get<1>();
     SharedMatrix V = UsV.get<2>();
     Sba->svd_a(U,sigma,V);
+
+#if DEBUG_NOCI
+    outfile->Printf("\n  SVD decomposition of the overlap matrix");
     sigma->print();
     U->print();
     V->print();
+#endif
 
-    double noncoincidence_threshold = 1.0e-9;
-    V->transpose_this();
     // II. Transform the occupied orbitals to the new representation
     // Transform A with V (need to transpose V since svd returns V^T)
     // Extract the
+    V->transpose_this();
     TempMatrix->identity();
     for (int h = 0; h < nirrep_; ++h) {
         int rows = V->rowdim(h);
@@ -609,7 +616,6 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
                 }
         }
     }
-    TempMatrix->print();
     TempMatrix2->gemm(false,false,1.0,A,TempMatrix,0.0);
     SharedMatrix cA = SharedMatrix(new Matrix("Corresponding " + A->name(),A->rowspi(),dima));
     copy_subblock(TempMatrix2,cA,cA->rowspi(),dima,true);
@@ -627,11 +633,11 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
                 }
         }
     }
-    TempMatrix->print();
     TempMatrix2->gemm(false,false,1.0,B,TempMatrix,0.0);
     SharedMatrix cB = SharedMatrix(new Matrix("Corresponding " + B->name(),B->rowspi(),dimb));
     copy_subblock(TempMatrix2,cB,cB->rowspi(),dimb,true);
 
+#if DEBUG_NOCI
     SharedMatrix cBScA = Matrix::triplet(cB,Sso_,cA,true,false,false);
     cBScA->print();
 
@@ -640,7 +646,7 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
 
     SharedMatrix cBScB = Matrix::triplet(cB,Sso_,cB,true,false,false);
     cBScB->print();
-
+#endif
 
     // Find the product of the determinants of U and V
     double detU = 1.0;
@@ -673,7 +679,9 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
             delete[] indx;
         }
     }
+#if DEBUG_NOCI
     outfile->Printf("\n det U = %f, det V = %f",detU,detV);
+#endif
     double detUV = detU * detV;
     boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> result(cA,cB,sigma,detUV);
     return result;
