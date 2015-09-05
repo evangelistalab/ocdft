@@ -17,11 +17,12 @@ public:
     explicit NOCI(Options &options, boost::shared_ptr<PSIO> psio);
     explicit NOCI(Options &options, boost::shared_ptr<PSIO> psio, int state_a,std::pair<int,int> fmo, int state_b, std::vector<std::pair<int,int>> frozen_occ_a,std::vector<std::pair<int,int>> frozen_occ_b, std::vector<std::pair<int,int>> frozen_mos,
                   std::vector<int> occ_frozen,
-                  std::vector<int> vir_frozen, SharedMatrix Ca_gs, SharedMatrix Cb_gs);
+                  std::vector<int> vir_frozen, SharedMatrix Ca_gs, SharedMatrix Cb_gs,bool valence_in);
     virtual ~NOCI();
 
 protected:
 
+      bool valence;
      bool do_noci;
      bool do_alpha_states;
      int state_a_;
@@ -65,14 +66,6 @@ protected:
 
     double den_diff;
 
-    SharedMatrix Cocc_a0;
-    SharedMatrix Cvrt_a0;
-
-    SharedMatrix Cocc_b0;
-    SharedMatrix Cvrt_b0;
-
-    SharedMatrix Cocc_aN;
-    SharedMatrix Cvrt_aN;
 
     SharedMatrix Cocc_bN;
     SharedMatrix Cvrt_bN;
@@ -83,15 +76,11 @@ protected:
      SharedMatrix Ca0;
      SharedMatrix Cb0;
 
-     SharedVector epsilon_a_;
-     SharedVector epsilon_b_;
-
 
      SharedMatrix Ca_gs;
      SharedMatrix Cb_gs;
 
 
-     SharedMatrix C_tmp;
 
      SharedMatrix U_fmo;
      SharedMatrix U_swap;
@@ -112,11 +101,10 @@ protected:
       SharedMatrix rCa_;
       SharedMatrix rCb_;
 
+     SharedMatrix Ft_;
     /// A copy of the one-electron potential
-    SharedMatrix H_copy;
 
     /// Flag to save the one-electron part of the Hamiltonian
-    bool save_H_;
 
 
     // UKS specific functions
@@ -127,17 +115,9 @@ protected:
 
 
     // Overloaded UKS function
-    virtual void save_density_and_energy();
-    virtual void form_G();
-    virtual void form_F();
     virtual void form_C();
-    virtual void form_D();
-    virtual void save_information();
-    virtual double compute_E();
-    virtual double compute_energy();
-
+ virtual bool test_convergency();
     virtual void guess();
-    bool test_convergency();
 
 };
 

@@ -129,7 +129,8 @@ void UOCDFT::init_excitation(boost::shared_ptr<Wavefunction> ref_scf)
 
     std::string exc_method = KS::options_.get_str("CDFT_EXC_METHOD");
     if(exc_method == "CHP-F"){
-        do_opt_spectators = false;
+        throw InputException("Frozen CHP algorithm has not been implemented", "REFERENCE to UKS", __FILE__, __LINE__);
+        //do_opt_spectators = false;
     }else if(exc_method == "CH"){
         do_parts = false;
     }else if(exc_method == "CP"){

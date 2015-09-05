@@ -2,9 +2,9 @@
 
 import cdft
 
-refdft                = -78.62361950910612 #TEST 
-refocdft_singlet_spin = -78.366031258 #TEST
-refocdft_triplet_spin = -78.455205000 #TEST
+refdft                = -78.62361950040257 #TEST
+refocdft_singlet_spin = -78.366031243 #TEST
+refocdft_triplet_spin = -78.455204997 #TEST
 
 molecule {
 0 1
@@ -36,7 +36,7 @@ set cdft {
 
 set dft_functional B3LYP
 
-energy('cdft')
+energy('ocdft')
 
 compare_values(refdft, get_variable("DFT ENERGY"),8, "DFT energy") #TEST
 compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST

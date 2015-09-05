@@ -179,6 +179,10 @@ void NOCI(Options& options)
     boost::shared_ptr<Wavefunction> ref_scf;
     std::string reference = options.get_str("REFERENCE");
     std::vector<double> energies;
+    bool valence = true;
+    if(options.get_str("CDFT_EXC_TYPE") == "CORE"){
+        valence = false;
+    }
     std::vector<SharedDeterminant> dets;
     // Store the irrep, multiplicity, total energy, excitation energy, oscillator strength
     std::vector<boost::tuple<int,int,double,double,double>> state_info;
@@ -228,14 +232,19 @@ void NOCI(Options& options)
         std::vector<std::pair<int,int>> frozen_occ_a;
         std::vector<std::pair<int,int>> frozen_occ_b;
 
-        for (int h = 0; h < nirrep; ++h){
+                 for (int h = 0; h < nirrep; ++h){
             for (int i = 0; i < occ_frozen[h]; ++i){
                 frozen_mos.push_back(std::make_pair(h,nalphapi[h] - 1 - i));
-                frozen_occ_a.push_back(std::make_pair(h,nalphapi[h] - 1 - i));
-                frozen_occ_b.push_back(std::make_pair(h,nbetapi[h] - 1 - i));
+                if(valence){
+                    frozen_occ_a.push_back(std::make_pair(h,nalphapi[h] - 1 - i));
+                    frozen_occ_b.push_back(std::make_pair(h,nbetapi[h] - 1 - i));
+                }
+                else{
+                    frozen_occ_a.push_back(std::make_pair(h,i));
+                    frozen_occ_b.push_back(std::make_pair(h,i));
+                }
             }
         }
-
 
         for (int h = 0; h < nirrep; ++h){
             for (int i = 0; i < vir_frozen[h]; ++i){
@@ -319,7 +328,7 @@ void NOCI(Options& options)
                                                                                                         frozen_occ_a,frozen_occ_b,
                                                                                                         frozen_mos,
                                                                                                         occ_frozen,vir_frozen,
-                                                                                                        Ca_gs_,Cb_gs_));
+                                                                                                        Ca_gs_,Cb_gs_,valence));
                 Process::environment.wavefunction().reset();
                 Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();
@@ -329,6 +338,29 @@ void NOCI(Options& options)
             //   }//occup
         } //irrep
 
+        for (auto &h_p : frozen_occ_b){
+            int irrep = h_p.first;
+            int fmo   = h_p.second;
+            std::pair<int,int> swap_occ (irrep,fmo);
+
+            //for (int h = 0; h < nirrep; ++h){
+            //   for (int i=1; i<= occ_frozen[h]; ++i){
+
+            for (int state_b=1; state_b <= vir_frozen[irrep];++state_b){
+                int state_a=0;
+                boost::shared_ptr<Wavefunction> new_scf = boost::shared_ptr<Wavefunction>(new scf::NOCI(options,psio,state_a,swap_occ,state_b,
+                                                                                                        frozen_occ_a,frozen_occ_b,
+                                                                                                        frozen_mos,
+                                                                                                        occ_frozen,vir_frozen,
+                                                                                                        Ca_gs_,Cb_gs_,valence));
+                Process::environment.wavefunction().reset();
+                Process::environment.set_wavefunction(new_scf);
+                double new_energy = new_scf->compute_energy();
+                energies.push_back(new_energy);
+                dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi())));
+            }
+            //   }//occup
+        } //irrep
         scf::NOCI_Hamiltonian noci_H(options,dets);
         noci_H.compute_energy();
     }
@@ -342,6 +374,7 @@ void OCDFT(Options& options)
     boost::shared_ptr<Wavefunction> ref_scf;
     std::string reference = options.get_str("REFERENCE");
     std::vector<double> energies;
+      std::vector<SharedDeterminant> dets;
     // Store the irrep, multiplicity, total energy, excitation energy, oscillator strength
     std::vector<boost::tuple<int,int,double,double,double>> state_info;
 
@@ -354,7 +387,7 @@ void OCDFT(Options& options)
         double gs_energy = ref_scf->compute_energy();
 
         energies.push_back(gs_energy);
-
+         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
         state_info.push_back(boost::make_tuple(0,1,gs_energy,0.0,0.0));
 
         // Print a molden file
@@ -379,6 +412,8 @@ void OCDFT(Options& options)
                 Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();
                 energies.push_back(new_energy);
+                dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi())));
+                 dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Cb(),new_scf->Ca(),new_scf->nbetapi(),new_scf->nalphapi())));
 
                 scf::UOCDFT* uocdft_scf = dynamic_cast<scf::UOCDFT*>(new_scf.get());
                 double singlet_exc_energy_s_plus = uocdft_scf->singlet_exc_energy_s_plus();
@@ -458,7 +493,8 @@ void OCDFT(Options& options)
         outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f %11.4f",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength);
     }
     outfile->Printf("\n    ----------------------------------------------------\n");
-
+     scf::NOCI_Hamiltonian noci_H(options,dets);
+    noci_H.compute_energy();
     // Set this early because the callback mechanism uses it.
     Process::environment.wavefunction().reset();
 }
@@ -484,7 +520,7 @@ void FASNOCIS(Options& options)
         double gs_energy = ref_scf->compute_energy();
         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
 
-
+        Process::environment.globals["HF NOCI energy"] = gs_energy;
         // Print a molden file
         if ( options["MOLDEN_WRITE"].has_changed() ) {
             boost::shared_ptr<MoldenWriter> molden(new MoldenWriter(ref_scf));
