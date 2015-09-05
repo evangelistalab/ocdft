@@ -32,10 +32,10 @@ protected:
     /// Compute W, the averaged density matrix
     SharedMatrix build_W_c1(SharedMatrix CA, SharedMatrix CB, SharedVector s, size_t nocc);
     /// Compute D_i, the one-orbital transition density matrix
-    SharedMatrix build_D_i_c1(SharedMatrix CA, SharedMatrix CB, size_t i);
+    SharedMatrix build_D_i_c1(SharedMatrix CA, SharedMatrix CB, size_t i, size_t j);
     /// Compute the left/right C matrix necessary to bild W, the averaged density matrix
     void build_W_JK_c1(SharedMatrix CA, SharedMatrix CB, SharedVector s, size_t n);
-    std::pair<SharedMatrix,SharedMatrix> build_D_fast_i_c1(SharedMatrix CA, SharedMatrix CB, size_t i);
+    void build_D_i_JK_c1(SharedMatrix CA, SharedMatrix CB, size_t i);
 
 
     /// Compute the matrix element between determinants A and B assuming C1 symmetry

@@ -49,16 +49,17 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     basisset_ = wfn->basisset();
     nso   = wfn->nso();
 
-//    Jso_ = factory_->create_shared_matrix("J");
-//    Kso_ = factory_->create_shared_matrix("K");
+    //    Jso_ = factory_->create_shared_matrix("J");
+    //    Kso_ = factory_->create_shared_matrix("K");
     TempMatrix = factory_->create_shared_matrix("TempMatrix");
     TempMatrix2 = factory_->create_shared_matrix("TempMatrix2");
 
 
     if (use_fast_jk_){
         outfile->Printf("\n  Using the fast JK algorithms");
+    }else{
+        read_tei();
     }
-    read_tei();
 }
 
 NOCI_Hamiltonian::~NOCI_Hamiltonian()
@@ -82,9 +83,30 @@ double NOCI_Hamiltonian::compute_energy()
             S2_->set(i,j,S_H_S2[2]);
         }
     }
+
+//    for (size_t i = 2; i < 3; ++i){
+//        for (size_t j = 3; j < 4; ++j){
+//            outfile->Printf("\n  Element (%d,%d)",i,j);
+//            std::vector<double> S_H_S2 = matrix_element_c1(dets_[i],dets_[j]);
+//            S_->set(i,j,S_H_S2[0]);
+//            H_->set(i,j,S_H_S2[1]);
+//            S2_->set(i,j,S_H_S2[2]);
+//            outfile->Printf("\n  Element (%d,%d)",j,i);
+//            S_H_S2 = matrix_element_c1(dets_[j],dets_[i]);
+//            S_->set(j,i,S_H_S2[0]);
+//            H_->set(j,i,S_H_S2[1]);
+//            S2_->set(j,i,S_H_S2[2]);
+//        }
+//    }
+
     S_->print();
     H_->print();
     S2_->print();
+
+    SharedMatrix H_t = H_->transpose();
+    H_t->scale(-1.0);
+    H_t->add(H_);
+    outfile->Printf("\n       Nonhermiticy metrix: %e\n",H_t->sum_of_squares());
 
     evecs_ = SharedMatrix(new Matrix("Eigenvectors",ndets,ndets));
     evals_ = SharedVector(new Vector("Eigenvalues",ndets));
@@ -228,7 +250,7 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
     double Sta = 1.0;
     std::vector<std::pair<size_t,double>> alpha_nonc;
     for (size_t p = 0; p < nocc_a; ++p){
-        double s_p = s_a->get(0,p);
+        double s_p = s_a->get(p);
         if(std::fabs(s_p) >= noncoincidence_threshold){
             Sta *= s_p;
         }else{
@@ -315,7 +337,7 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         overlap = 0.0;
         // Build the W^BA alpha density matrix
         size_t i = alpha_nonc[0].first;
-        SharedMatrix D_BA_i_a = build_D_i_c1(ACa,BCa,i);
+        SharedMatrix D_BA_i_a = build_D_i_c1(ACa,BCa,i,i);
         double one_body = D_BA_i_a->vector_dot(Hso_);
 
         // Build the W^BA alpha density matrix
@@ -327,8 +349,6 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
 
             double DaJWa = D_BA_i_a->vector_dot(Jso_libfock_);
             double DaKWa = -D_BA_i_a->vector_dot(Kso_libfock_);
-            D_BA_i_a->print();
-            Kso_libfock_->print();
 
             build_W_JK_c1(ACb,BCb,s_b,nocc_b);
 
@@ -342,8 +362,6 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
             J(W_BA_b);
             double DaJWb = D_BA_i_a->vector_dot(TempMatrix);
             K(W_BA_a);
-            D_BA_i_a->print();
-            TempMatrix->print();
             double DaKWa = -D_BA_i_a->vector_dot(TempMatrix);
 
             double two_body = DaJWa + DaJWb + DaKWa;
@@ -356,7 +374,7 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         overlap = 0.0;
         // Build the W^BA alpha density matrix
         size_t i = beta_nonc[0].first;
-        SharedMatrix D_BA_i_b = build_D_i_c1(ACb,BCb,i);
+        SharedMatrix D_BA_i_b = build_D_i_c1(ACb,BCb,i,i);
         double one_body = D_BA_i_b->vector_dot(Hso_);
 
         // Build the W^BA alpha density matrix
@@ -364,19 +382,17 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         SharedMatrix W_BA_b = build_W_c1(ACb,BCb,s_b,nocc_b - 1); // <- exclude noncoincidence
 
         if (use_fast_jk_){
-//            std::pair<SharedMatrix,SharedMatrix> ClCr = build_W_fast_jk_c1(ACa,BCa,s_a,nocc_a);
-//            fast_JK(ClCr.first,ClCr.second);
+            build_W_JK_c1(ACa,BCa,s_a,nocc_a);
 
-//            double DbJWa = D_BA_i_b->vector_dot(Jso_);
+            double DbJWa = D_BA_i_b->vector_dot(Jso_libfock_);
 
-//            ClCr = build_W_fast_jk_c1(ACb,BCb,s_b,nocc_b - 1);
-//            fast_JK(ClCr.first,ClCr.second);
+            build_W_JK_c1(ACb,BCb,s_b,nocc_b - 1);
 
-//            double DbJWb = D_BA_i_b->vector_dot(Jso_);
-//            double DbKWb = -D_BA_i_b->vector_dot(Kso_);
+            double DbJWb = D_BA_i_b->vector_dot(Jso_libfock_);
+            double DbKWb = -D_BA_i_b->vector_dot(Kso_libfock_);
 
-//            double two_body = DbJWa + DbKWb + DbJWb;
-//            hamiltonian = Stilde * (one_body + two_body);
+            double two_body = DbJWa + DbKWb + DbJWb;
+            hamiltonian = Stilde * (one_body + two_body);
         }else{
             J(W_BA_a);
             double DbJWa = D_BA_i_b->vector_dot(TempMatrix);
@@ -389,29 +405,38 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
             hamiltonian = Stilde * (one_body + two_body);
         }
     }
-    else if(num_alpha_nonc == 2 and num_beta_nonc == 0){
+   else if(num_alpha_nonc == 2 and num_beta_nonc == 0){
         overlap = 0.0;
         // Build the W^BA alpha density matrix
         size_t i = alpha_nonc[0].first;
         size_t j = alpha_nonc[1].first;
-        SharedMatrix D_BA_i_a = build_D_i_c1(ACa,BCa,i);
-        SharedMatrix D_BA_j_a = build_D_i_c1(ACa,BCa,j);
+        SharedMatrix D_BA_ii_a = build_D_i_c1(ACa,BCa,i,i);
+        SharedMatrix D_BA_jj_a = build_D_i_c1(ACa,BCa,j,j);
+        SharedMatrix D_BA_ij_a = build_D_i_c1(ACa,BCa,j,i);
+        SharedMatrix D_BA_ji_a = build_D_i_c1(ACa,BCa,i,j);
+
+//        D_BA_i_a->print();
+//        D_BA_j_a->print();
 
         if (use_fast_jk_){
-//            std::pair<SharedMatrix,SharedMatrix> ClCr = build_D_fast_i_c1(ACa,BCa,j);
-//            fast_JK(ClCr.first,ClCr.second);
+            build_D_i_JK_c1(ACa,BCa,j);
 
-//            double DaJDa = D_BA_i_a->vector_dot(Jso_);
-//            double DaKDa = -D_BA_i_a->vector_dot(Kso_);
+            Jso_libfock_->print();
+            Kso_libfock_->print();
+            double DaJDa = D_BA_ii_a->vector_dot(Jso_libfock_);
+            Kso_libfock_->transpose_this();
+            double DaKDa = -D_BA_ii_a->vector_dot(Kso_libfock_);
 
-//            double two_body = DaJDa + DaKDa;
-//            hamiltonian = Stilde * two_body;
+            double two_body = DaJDa + DaKDa;
+            hamiltonian = Stilde * two_body;
         }else{
-            J(D_BA_j_a);
-            double DaJDa = D_BA_i_a->vector_dot(TempMatrix);
-            K(D_BA_j_a);
-            double DaKDa = -D_BA_i_a->vector_dot(TempMatrix);
-
+            J(D_BA_jj_a);
+            double DaJDa = D_BA_ii_a->vector_dot(TempMatrix);
+            K(D_BA_jj_a);
+            TempMatrix->transpose_this();
+            double DaKDa = -D_BA_ii_a->vector_dot(TempMatrix);
+//            J(D_BA_ij_a);
+//            double DaKDa = -D_BA_ji_a->vector_dot(TempMatrix);
             double two_body = DaJDa + DaKDa;
             hamiltonian = Stilde * two_body;
         }
@@ -421,26 +446,28 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         // Build the W^BA alpha density matrix
         size_t i = beta_nonc[0].first;
         size_t j = beta_nonc[1].first;
-        SharedMatrix D_BA_i_b = build_D_i_c1(ACb,BCb,i);
-        SharedMatrix D_BA_j_b = build_D_i_c1(ACb,BCb,j);
+        SharedMatrix D_BA_ii_b = build_D_i_c1(ACb,BCb,i,i);
+        SharedMatrix D_BA_jj_b = build_D_i_c1(ACb,BCb,j,j);
+        SharedMatrix D_BA_ij_b = build_D_i_c1(ACb,BCb,j,i);
+        SharedMatrix D_BA_ji_b = build_D_i_c1(ACb,BCb,i,j);
 
         if (use_fast_jk_){
-//            std::pair<SharedMatrix,SharedMatrix> ClCr = build_D_fast_i_c1(ACb,BCb,j);
-//            fast_JK(ClCr.first,ClCr.second);
+            build_D_i_JK_c1(ACb,BCb,j);
 
-//            double DbJDb = D_BA_i_b->vector_dot(Jso_);
-//            double DbKDb = -D_BA_i_b->vector_dot(Kso_);
+            double DbJDb = D_BA_ii_b->vector_dot(Jso_libfock_);
+            Kso_libfock_->transpose_this();
+            double DbKDb = -D_BA_ii_b->vector_dot(Kso_libfock_);
 
-//            double two_body = DbJDb + DbKDb;
-//            hamiltonian = Stilde * two_body;
+            double two_body = DbJDb + DbKDb;
+            hamiltonian = Stilde * two_body;
         }else{
-        J(D_BA_j_b);
-        double DbJDb = D_BA_i_b->vector_dot(TempMatrix);
-        K(D_BA_j_b);
-        double DbKDb = -D_BA_i_b->vector_dot(TempMatrix);
+            J(D_BA_jj_b);
+            double DbJDb = D_BA_ii_b->vector_dot(TempMatrix);
+            J(D_BA_ij_b);
+            double DbKDb = -D_BA_ji_b->vector_dot(TempMatrix);
 
-        double two_body = DbJDb + DbKDb;
-        hamiltonian = Stilde * two_body;
+            double two_body = DbJDb + DbKDb;
+            hamiltonian = Stilde * two_body;
         }
     }
     else if(num_alpha_nonc == 1 and num_beta_nonc == 1){
@@ -448,16 +475,15 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         // Build the W^BA alpha density matrix
         size_t i = alpha_nonc[0].first;
         size_t j = beta_nonc[0].first;
-        SharedMatrix D_BA_i_a = build_D_i_c1(ACa,BCa,i);
-        SharedMatrix D_BA_j_b = build_D_i_c1(ACb,BCb,j);
+        SharedMatrix D_BA_i_a = build_D_i_c1(ACa,BCa,i,i);
+        SharedMatrix D_BA_j_b = build_D_i_c1(ACb,BCb,j,j);
 
         if (use_fast_jk_){
-//            std::pair<SharedMatrix,SharedMatrix> ClCr = build_D_fast_i_c1(ACb,BCb,j);
-//            fast_JK(ClCr.first,ClCr.second);
+            build_D_i_JK_c1(ACb,BCb,j);
 
-//            double DaJDb = D_BA_i_a->vector_dot(Jso_);
+            double DaJDb = D_BA_i_a->vector_dot(Jso_libfock_);
 
-//            hamiltonian = Stilde * DaJDb;
+            hamiltonian = Stilde * DaJDb;
         }else{
             J(D_BA_j_b);
             double DaJDb = D_BA_i_a->vector_dot(TempMatrix);
@@ -505,23 +531,21 @@ void NOCI_Hamiltonian::build_W_JK_c1(SharedMatrix CA, SharedMatrix CB, SharedVec
     fast_JK(Cl,Cr);
 }
 
-SharedMatrix NOCI_Hamiltonian::build_D_i_c1(SharedMatrix CA, SharedMatrix CB, size_t i)
+SharedMatrix NOCI_Hamiltonian::build_D_i_c1(SharedMatrix CA, SharedMatrix CB, size_t i, size_t j)
 {
     SharedMatrix D_BA = factory_->create_shared_matrix("D_BA");
-    {
-        double** Dp = D_BA->pointer(0);
-        double** CAp = CA->pointer(0);
-        double** CBp = CB->pointer(0);
-        for (size_t m = 0; m < nso; ++m){
-            for (size_t n = 0; n < nso; ++n){
-                Dp[m][n] += CBp[m][i] * CAp[n][i];
-            }
+    double** Dp = D_BA->pointer(0);
+    double** CAp = CA->pointer(0);
+    double** CBp = CB->pointer(0);
+    for (size_t m = 0; m < nso; ++m){
+        for (size_t n = 0; n < nso; ++n){
+            Dp[m][n] = CBp[m][j] * CAp[n][i];
         }
     }
     return D_BA;
 }
 
-std::pair<SharedMatrix,SharedMatrix> NOCI_Hamiltonian::build_D_fast_i_c1(SharedMatrix CA, SharedMatrix CB, size_t i)
+void NOCI_Hamiltonian::build_D_i_JK_c1(SharedMatrix CA, SharedMatrix CB, size_t i)
 {
     SharedMatrix Cl = SharedMatrix(new Matrix("C left",nso,1));
     SharedMatrix Cr = SharedMatrix(new Matrix("C right",nso,1));
@@ -530,10 +554,10 @@ std::pair<SharedMatrix,SharedMatrix> NOCI_Hamiltonian::build_D_fast_i_c1(SharedM
     double** CAp = CA->pointer(0);
     double** CBp = CB->pointer(0);
     for (size_t m = 0; m < nso; ++m){
-            Clp[m][0] = CBp[m][i];
-            Crp[m][0] = CAp[m][i];
+        Clp[m][0] = CBp[m][i];
+        Crp[m][0] = CAp[m][i];
     }
-    return std::make_pair(Cl,Cr);
+    fast_JK(Cl,Cr);
 }
 
 boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double>
@@ -556,7 +580,7 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
             }
         }
     }
-    //    Sba->print();
+    Sba->print();
 
     // SVD <B|S|A>
     boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UsV = Sba->svd_a_temps();
@@ -564,10 +588,12 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
     SharedVector sigma = UsV.get<1>();
     SharedMatrix V = UsV.get<2>();
     Sba->svd_a(U,sigma,V);
-    //    sigma->print();
-    //    U->print();
-    //    V->print();
+    sigma->print();
+    U->print();
+    V->print();
 
+    double noncoincidence_threshold = 1.0e-9;
+    V->transpose_this();
     // II. Transform the occupied orbitals to the new representation
     // Transform A with V (need to transpose V since svd returns V^T)
     // Extract the
@@ -578,12 +604,13 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
         double** V_h = V->pointer(h);
         double** T_h = TempMatrix->pointer(h);
         for (int i = 0; i < rows; ++i){
-            for (int j = 0; j < cols; ++j){
-                T_h[i][j] = V_h[i][j];
-            }
+                for (int j = 0; j < cols; ++j){
+                        T_h[i][j] = V_h[i][j];
+                }
         }
     }
-    TempMatrix2->gemm(false,true,1.0,A,TempMatrix,0.0);
+    TempMatrix->print();
+    TempMatrix2->gemm(false,false,1.0,A,TempMatrix,0.0);
     SharedMatrix cA = SharedMatrix(new Matrix("Corresponding " + A->name(),A->rowspi(),dima));
     copy_subblock(TempMatrix2,cA,cA->rowspi(),dima,true);
 
@@ -595,14 +622,24 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
         double** U_h = U->pointer(h);
         double** T_h = TempMatrix->pointer(h);
         for (int i = 0; i < rows; ++i){
-            for (int j = 0; j < cols; ++j){
-                T_h[i][j] = U_h[i][j];
-            }
+                for (int j = 0; j < cols; ++j){
+                        T_h[i][j] = U_h[i][j];
+                }
         }
     }
+    TempMatrix->print();
     TempMatrix2->gemm(false,false,1.0,B,TempMatrix,0.0);
     SharedMatrix cB = SharedMatrix(new Matrix("Corresponding " + B->name(),B->rowspi(),dimb));
     copy_subblock(TempMatrix2,cB,cB->rowspi(),dimb,true);
+
+    SharedMatrix cBScA = Matrix::triplet(cB,Sso_,cA,true,false,false);
+    cBScA->print();
+
+    SharedMatrix cAScA = Matrix::triplet(cA,Sso_,cA,true,false,false);
+    cAScA->print();
+
+    SharedMatrix cBScB = Matrix::triplet(cB,Sso_,cB,true,false,false);
+    cBScB->print();
 
 
     // Find the product of the determinants of U and V
