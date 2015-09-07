@@ -1,0 +1,34 @@
+import cdft 
+
+refnoci = [-91.899678674625,-91.836519620918, -91.785315434642,
+           -91.743621181759, -91.719253700987, -91.709089354942,
+           -91.680975106109, -91.655471581949, -91.235855648715]
+
+molecule {
+1 1
+C          2.37059       -1.21851        0.91624
+N          1.25941       -1.84561        0.86389
+H          2.70138       -0.59950       -0.05828
+H          0.17401       -2.15371        1.00621
+}
+
+set {
+  basis sto-3g
+  df_scf_guess false
+  scf_type pk
+  reference uhf
+  e_convergence 9
+  d_convergence 1
+  maxiter 100
+}
+
+set cdft {
+  OCC_FROZEN [2]
+  VIR_FROZEN [2]
+}
+
+energy('fasnocis')
+
+for n in xrange(9):
+    compare_values(refnoci[n], get_variable("NOCI ENERGY STATE %d" % n),8, "NOCI Energy State %d" % n) #TEST
+

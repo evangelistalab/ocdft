@@ -11,18 +11,24 @@ class Options;
 
 class NOCI_Hamiltonian{
 public:
-    explicit NOCI_Hamiltonian(Options &options, std::vector<SharedDeterminant> dets);
 
+    // ==> Class Interface <==
+
+    /// Constructor
+    explicit NOCI_Hamiltonian(Options &options, std::vector<SharedDeterminant> dets);    
+    /// Diagonalize the Hamiltonian in the basis of determinants
     double compute_energy();
+    /// Return the eigenvalues
+    SharedVector evals() {return evals_;}
+    /// Return the eigenvectors
+    SharedMatrix evecs() {return evecs_;}
 
-    ~NOCI_Hamiltonian();
-    void print();
 protected:
-    /// Read the two-electron integrals
+
+    // ==> Class Private Functions <==
+
+    /// Read the two-electron integrals from disk
     void read_tei();
-
-
-    // ==> Helper functions <==
     /// Compute the Coulomb operator
     void J(SharedMatrix D);
     /// Compute the Exchange operator
@@ -40,18 +46,16 @@ protected:
 
     /// Compute the matrix element between determinants A and B assuming C1 symmetry
     std::vector<double> matrix_element_c1(SharedDeterminant A, SharedDeterminant B);
-//    /// Compute the matrix element between determinants A and B
-//    std::pair<double,double> matrix_element(SharedDeterminant A, SharedDeterminant B);
     /// Compute the corresponding orbitals between determinant A and B
     boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double>
     corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimension dima, Dimension dimb);
 
+    /// The number of irreps
     int nirrep_;
+    /// The number of symmetry-adapted orbitals
+    size_t nso;
     /// Use PSI4's JK object
     bool use_fast_jk_ = false;
-    boost::shared_ptr<BasisSet> basisset_;
-
-    size_t nso;
 
     /// Matrix factory
     boost::shared_ptr<MatrixFactory> factory_;
@@ -67,10 +71,6 @@ protected:
     std::vector<double> tei_ints_;
     /// The JK builder object
     boost::shared_ptr<JK> jk_;
-//    /// The J matrix in the SO
-//    SharedMatrix Jso_;
-//    /// The K matrix in the SO basis
-//    SharedMatrix Kso_;
     /// The nuclear repulsion energy
     double nuclearrep_;
     /// Temporary matrices

@@ -50,7 +50,6 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     jk_->set_do_wK(false);
     jk_->initialize();
     nuclearrep_ = mol->nuclear_repulsion_energy();
-    basisset_ = wfn->basisset();
     nso   = wfn->nso();
 
     TempMatrix = factory_->create_shared_matrix("TempMatrix");
@@ -70,10 +69,6 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
             read_tei();
         }
     }
-}
-
-NOCI_Hamiltonian::~NOCI_Hamiltonian()
-{
 }
 
 double NOCI_Hamiltonian::compute_energy()
@@ -126,10 +121,6 @@ double NOCI_Hamiltonian::compute_energy()
     }
     outfile->Printf("\n  ----------------------------------------------------\n");
     return 0.0;
-}
-
-void NOCI_Hamiltonian::print()
-{
 }
 
 void NOCI_Hamiltonian::read_tei()

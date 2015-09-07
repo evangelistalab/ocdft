@@ -618,6 +618,15 @@ void FASNOCIS(Options& options)
         }
         scf::NOCI_Hamiltonian noci_H(options,dets);
         noci_H.compute_energy();
+
+        SharedVector evals = noci_H.evals();
+
+        // Save the state energy to
+        for (size_t n = 0; n < evals->dim(); ++n){
+            std::string str = "NOCI ENERGY STATE " + std::to_string(n);
+            Process::environment.globals[str] = evals->get(n);
+        }
+
     }else {
         throw InputException("Unknown reference " + reference, "REFERENCE", __FILE__, __LINE__);
     }
