@@ -111,15 +111,22 @@ double NOCI_Hamiltonian::compute_energy()
     H_->diagonalize(evecs_,evals_);
 
     outfile->Printf("\n  ==> NOCI Excited State Information <==\n");
-    outfile->Printf("\n  ----------------------------------------------------");
-    outfile->Printf("\n    State       Energy (Eh)    Omega (eV)   Osc. Str.");
-    outfile->Printf("\n  ----------------------------------------------------");
+    outfile->Printf("\n  -----------------------------------------------------------------");
+    outfile->Printf("\n    State       S          Energy (Eh)    Omega (eV)    Osc. Str.");
+    outfile->Printf("\n  -----------------------------------------------------------------");
     for (size_t n = 0; n < ndets; ++n){
         double ex_energy = pc_hartree2ev * (evals_->get(n) - evals_->get(0));
         double osc_strength = 0.0;
-        outfile->Printf("\n  @NOCI-%-4d %20.12f %11.4f    %11.4e",n,evals_->get(n),ex_energy,osc_strength);
+        double s2 = 0.0;
+        for (size_t i = 0; i < ndets; ++i){
+            for (size_t j = 0; j < ndets; ++j){
+                s2 += evecs_->get(i,n) * S2_->get(i,j) * evecs_->get(j,n);
+            }
+        }
+        double s = 0.5 * (std::sqrt(1.0 + 4.0 * s2) - 1.0)+ 1.0e-6;
+        outfile->Printf("\n   @NOCI %-4d %.3f %20.12f %11.4f   %11.4e",n,s,evals_->get(n),ex_energy,osc_strength);
     }
-    outfile->Printf("\n  ----------------------------------------------------\n");
+    outfile->Printf("\n  -----------------------------------------------------------------");
     return 0.0;
 }
 
@@ -329,6 +336,30 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
 
         // Spin contribution
         s2 = 0.5 * Stilde * static_cast<double>(nocc_a - nocc_b);
+        // Spin contribution
+        // Compute S^BA
+        SharedMatrix SBAaa = Matrix::triplet(BCa,Sso_,ACa,true,false,false);
+        SharedMatrix SBAbb = Matrix::triplet(BCb,Sso_,ACb,true,false,false);
+        SharedMatrix SBAab = Matrix::triplet(BCa,Sso_,ACb,true,false,false);
+        SharedMatrix SBAba = Matrix::triplet(BCb,Sso_,ACa,true,false,false);
+
+        // one-body
+        for (size_t j = 0; j < nocc_b; ++j){
+            s2 += Stilde * SBAbb->get(j,j) / s_b->get(j);
+        }
+
+        // two-body
+        for (size_t i = 0; i < nocc_a; ++i){
+            for (size_t j = 0; j < nocc_b; ++j){
+                s2 +=  - Stilde * SBAab->get(i,j) * SBAba->get(j,i) / (s_a->get(i) * s_b->get(j));
+            }
+        }
+        for (size_t i = 0; i < nocc_b; ++i){
+            for (size_t j = 0; j < nocc_b; ++j){
+//                s2 += - Stilde * SBAbb->get(i,j) * SBAbb->get(j,i) / (s_a->get(i) * s_b->get(j));
+            }
+        }
+
     }
     else if(num_alpha_nonc == 1 and num_beta_nonc == 0){
         overlap = 0.0;
@@ -482,6 +513,15 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
 
             hamiltonian = Stilde * DaJDb;
         }
+
+        // Spin contribution
+        // Compute S^BA
+        SharedMatrix SBAaa = Matrix::triplet(BCa,Sso_,ACa,true,false,false);
+        SharedMatrix SBAbb = Matrix::triplet(BCb,Sso_,ACb,true,false,false);
+        SharedMatrix SBAab = Matrix::triplet(BCa,Sso_,ACb,true,false,false);
+        SharedMatrix SBAba = Matrix::triplet(BCa,Sso_,ACb,true,false,false);
+
+        s2 = Stilde * (SBAaa->get(i,i) * SBAbb->get(j,j) - SBAab->get(i,j) * SBAba->get(j,i));
     }
     return {overlap,hamiltonian,s2};
 }
