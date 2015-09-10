@@ -483,7 +483,7 @@ void FASNOCIS(Options& options)
         ref_scf = boost::shared_ptr<Wavefunction>(new scf::FASNOCIS(options, psio));
         Process::environment.set_wavefunction(ref_scf);
         double gs_energy = ref_scf->compute_energy();
-
+        energies.push_back(gs_energy);
          if (options.get_bool("REF_MIX")){
         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
         }
