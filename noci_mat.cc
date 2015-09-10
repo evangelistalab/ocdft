@@ -120,6 +120,7 @@ double NOCI_Hamiltonian::compute_energy()
         outfile->Printf("\n  @NOCI-%-4d %20.12f %11.4f    %11.4e",n,evals_->get(n),ex_energy,osc_strength);
     }
     outfile->Printf("\n  ----------------------------------------------------\n");
+    evecs_->print();
     return 0.0;
 }
 
