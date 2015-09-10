@@ -104,6 +104,8 @@ int read_options(std::string name, Options& options)
 
         options.add_bool("USE_FAST_JK", false);
 
+        options.add_bool("REF_MIX", false);
+
         options.add("AOCC_FROZEN", new ArrayType());
         options.add("AVIR_FROZEN", new ArrayType());
 
@@ -198,8 +200,9 @@ void NOCI(Options& options)
         energies.push_back(gs_energy);
 
         // Push the ground state determinant
+       if (options.get_bool("REF_MIX")){
         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
-
+       }
         // I am going to ask user to give me
         //  OCC_ACTIVE based on each irrep
         //  VIR_ACTIVE based on each irrep
@@ -253,35 +256,6 @@ void NOCI(Options& options)
         }
 
 
-        for (auto &h_p : frozen_mos){
-            outfile->Printf("\n  ireep = %d mo = %d",h_p.first,h_p.second);
-
-        }
-
-        outfile->Printf("\n not sure abott this %d",frozen_mos[1].second);
-
-
-
-
-        //       for (int h = 0; h < nirrep; ++h){
-        //            outfile->Printf("\n  irrep = %d Nalpha %d FNa = %d",h,nalphapi[h],occ_frozen[h]);
-        //           for (int i = 0; i < nmopi_[h]; ++i){
-
-        //               if (i < nalphapi[h] - occ_frozen[h]){
-        //                  occup_a.push_back(boost::make_tuple(h,i,1.0));
-        //               }
-        //               else if (i >= nalphapi[h] - occ_frozen[h] && i < nalphapi[h] ){
-        //                   occup_a.push_back(boost::make_tuple(h,i,0.0));
-        //                }
-        //               else if (i >= nalphapi[h] - occ_frozen[h] && i < nalphapi[h] ){
-        //                                  occup_a.push_back(boost::make_tuple(h,i,0.0));
-        //                               }
-        //               else{
-        //                   occup_a.push_back(boost::make_tuple(h,i,0.0));
-        //               }
-        //           }
-        //       }
-
         for (size_t n = 0; n < occup_a.size(); ++n){
             outfile->Printf("\n  occup_a = %d %d mo = %f\n",occup_a[n].get<0>(),occup_a[n].get<1>(),occup_a[n].get<2>());
 
@@ -305,22 +279,13 @@ void NOCI(Options& options)
             nstates +=occ_frozen[h]*vir_frozen[h];
         }
 
-        outfile->Printf("\n no. of states involved single excitations only %d\n", nstates);
 
 
-        //         for (auto &h_p : frozen_occ_a){
-        //             int irrep = h_p.first;
-        //             int fmo   = h_p.second;
-        //          //   outfile->Printf("frozen_occ_a %d %d %d\n", irrep, fmo,vir_frozen[irrep],nalphapi);
-        //         }
 
         for (auto &h_p : frozen_occ_a){
             int irrep = h_p.first;
             int fmo   = h_p.second;
             std::pair<int,int> swap_occ (irrep,fmo);
-
-            //for (int h = 0; h < nirrep; ++h){
-            //   for (int i=1; i<= occ_frozen[h]; ++i){
 
             for (int state_a=1; state_a <= vir_frozen[irrep];++state_a){
                 int state_b=0;
@@ -362,7 +327,7 @@ void NOCI(Options& options)
             //   }//occup
         } //irrep
         scf::NOCI_Hamiltonian noci_H(options,dets);
-        noci_H.compute_energy();
+        noci_H.compute_energy(energies);
     }
 }
 
@@ -494,7 +459,7 @@ void OCDFT(Options& options)
     }
     outfile->Printf("\n    ----------------------------------------------------\n");
      scf::NOCI_Hamiltonian noci_H(options,dets);
-    noci_H.compute_energy();
+    noci_H.compute_energy(energies);
     // Set this early because the callback mechanism uses it.
     Process::environment.wavefunction().reset();
 }
@@ -518,8 +483,10 @@ void FASNOCIS(Options& options)
         ref_scf = boost::shared_ptr<Wavefunction>(new scf::FASNOCIS(options, psio));
         Process::environment.set_wavefunction(ref_scf);
         double gs_energy = ref_scf->compute_energy();
-        dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
 
+         if (options.get_bool("REF_MIX")){
+        dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
+        }
         Process::environment.globals["HF NOCI energy"] = gs_energy;
         // Print a molden file
         if ( options["MOLDEN_WRITE"].has_changed() ) {
@@ -617,7 +584,7 @@ void FASNOCIS(Options& options)
             }
         }
         scf::NOCI_Hamiltonian noci_H(options,dets);
-        noci_H.compute_energy();
+        noci_H.compute_energy(energies);
 
         SharedVector evals = noci_H.evals();
 

@@ -17,7 +17,7 @@ public:
     /// Constructor
     explicit NOCI_Hamiltonian(Options &options, std::vector<SharedDeterminant> dets);    
     /// Diagonalize the Hamiltonian in the basis of determinants
-    double compute_energy();
+    double compute_energy(std::vector<double> energies);
     /// Return the eigenvalues
     SharedVector evals() {return evals_;}
     /// Return the eigenvectors

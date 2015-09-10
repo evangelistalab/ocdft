@@ -71,7 +71,7 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     }
 }
 
-double NOCI_Hamiltonian::compute_energy()
+double NOCI_Hamiltonian::compute_energy(std::vector<double> energies)
 {
     outfile->Printf("\n  Computing the NOCI Hamiltonian\n\n");
 
@@ -110,12 +110,21 @@ double NOCI_Hamiltonian::compute_energy()
 
     H_->diagonalize(evecs_,evals_);
 
+   outfile->Printf("\n Ground state energy: %20.12f \n", energies[0]);
+   outfile->Printf("\n Hartree_2_ev  %20.12f \n", pc_hartree2ev);
+
     outfile->Printf("\n  ==> NOCI Excited State Information <==\n");
     outfile->Printf("\n  ------------------------------------------------------------------");
     outfile->Printf("\n    State        S          Energy (Eh)    Omega (eV)    Osc. Str.");
     outfile->Printf("\n  ------------------------------------------------------------------");
     for (size_t n = 0; n < ndets; ++n){
-        double ex_energy = pc_hartree2ev * (evals_->get(n) - evals_->get(0));
+       double ex_energy;
+       if(options_.get_bool("REF_MIX")){
+         ex_energy = pc_hartree2ev * (evals_->get(n) - evals_->get(0));
+        }
+        else{
+         ex_energy = pc_hartree2ev * (evals_->get(n) - energies[0]);
+        }
         double osc_strength = 0.0;
         double s2 = 0.0;
         for (size_t i = 0; i < ndets; ++i){
