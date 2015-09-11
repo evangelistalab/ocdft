@@ -459,15 +459,16 @@ void OCDFT(Options& options)
     for (size_t n = 0; n < state_info.size(); ++n){
         double singlet_exc_en = state_info[n].get<3>();
         double osc_strength = state_info[n].get<4>();
-        outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f %11.4f",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength);
+        outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f %16.12f",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength);
     }
     outfile->Printf("\n    ----------------------------------------------------\n");
      if ( options["DO_NOCI_AND_OCDFT"].has_changed() ) {
      scf::NOCI_Hamiltonian noci_H(options,dets);
-    noci_H.compute_energy(energies);
-}
-    // Set this early because the callback mechanism uses it.
-    Process::environment.wavefunction().reset();
+     noci_H.compute_energy(energies);
+     }
+     // Set this early because the callback mechanism uses it.
+     Process::environment.wavefunction().reset();
+
 }
 
 
