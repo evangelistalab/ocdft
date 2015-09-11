@@ -1,8 +1,8 @@
     -----------------------------------------------------------------------
           Psi4: An Open-Source Ab Initio Electronic Structure Package
-                              Psi4 0.2.258 Driver
+                              Psi4 0.3.126 Driver
 
-                          Git: Rev {master} c523548 dirty
+                          Git: Rev {master} edd45cc 
 
     J. M. Turney, A. C. Simmonett, R. M. Parrish, E. G. Hohenstein,
     F. A. Evangelista, J. T. Fermann, B. J. Mintz, L. A. Burns, J. J. Wilke,
@@ -16,10 +16,10 @@
     -----------------------------------------------------------------------
 
 
-    Psi4 started on: Fri Sep  4 11:29:07 2015
+    Psi4 started on: Fri Sep 11 12:44:31 2015
 
-    Process ID:   5449
-    PSI4DATADIR: /home/wallace/Source/psi4public/lib
+    Process ID:  66600
+    PSI4DATADIR: /Users/wderri2/Source/psi4/lib
     Memory level set to 256.000 MB
 
   ==> Input File <==
@@ -29,9 +29,9 @@
 
 import cdft
 
-refdft                = -78.62361950040257 #TEST
-refocdft_singlet_spin = -78.366031243 #TEST
-refocdft_triplet_spin = -78.455204997 #TEST
+refdft                = -78.59098798412917 #TEST
+refocdft_singlet_spin = -78.322890378 #TEST
+refocdft_triplet_spin = -78.422511639 #TEST
 
 molecule {
 0 1
@@ -44,8 +44,8 @@ C   0.000000   0.000000  -0.668188
 }
 
 set {
-  basis def2-TZVP
-  df_basis_scf cc-pVTZ-JKFIT
+  basis cc-pvdz
+  df_basis_scf cc-pvdz-jkfit
   guess sad
   scf_type df
   dft_spherical_points 302
@@ -69,7 +69,7 @@ compare_values(refdft, get_variable("DFT ENERGY"),8, "DFT energy") #TEST
 compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST
 compare_values(refocdft_triplet_spin, get_variable("OCDFT TRIPLET ENERGY"),8, "OCDFT triplet energy") #TEST
 --------------------------------------------------------------------------
-/home/wallace/Source/cdft/cdft.so loaded.
+/Users/wderri2/Source/cdft/cdft.so loaded.
 Reading options from the CDFT block
 Calling plugin cdft.so.
 
@@ -89,14 +89,14 @@ Calling plugin cdft.so.
 
     Geometry (in Angstrom), charge = 0, multiplicity = 1:
 
-       Center              X                  Y                   Z       
-    ------------   -----------------  -----------------  -----------------
-           H         -0.000000000000     0.923274000000     1.238289000000
-           H          0.000000000000    -0.923274000000     1.238289000000
-           H         -0.000000000000     0.923274000000    -1.238289000000
-           H          0.000000000000    -0.923274000000    -1.238289000000
-           C          0.000000000000     0.000000000000     0.668188000000
-           C          0.000000000000     0.000000000000    -0.668188000000
+       Center              X                  Y                   Z               Mass       
+    ------------   -----------------  -----------------  -----------------  -----------------
+           H         -0.000000000000     0.923274000000     1.238289000000     1.007825032070
+           H          0.000000000000    -0.923274000000     1.238289000000     1.007825032070
+           H         -0.000000000000     0.923274000000    -1.238289000000     1.007825032070
+           H          0.000000000000    -0.923274000000    -1.238289000000     1.007825032070
+           C          0.000000000000     0.000000000000     0.668188000000    12.000000000000
+           C          0.000000000000     0.000000000000    -0.668188000000    12.000000000000
 
   Running in d2h symmetry.
 
@@ -123,12 +123,12 @@ Calling plugin cdft.so.
 
   ==> Primary Basis <==
 
-  Basis Set: DEF2-TZVP
-    Number of shells: 38
-    Number of basis function: 86
-    Number of Cartesian functions: 96
+  Basis Set: CC-PVDZ
+    Number of shells: 24
+    Number of basis function: 48
+    Number of Cartesian functions: 50
     Spherical Harmonics?: true
-    Max angular momentum: 3
+    Max angular momentum: 2
 
   ==> DFT Potential <==
 
@@ -172,10 +172,10 @@ Calling plugin cdft.so.
     Pruning alpha    =              1
     Radial Points    =             75
     Spherical Points =            302
-    Total Points     =         134196
+    Total Points     =         133224
     Total Blocks     =            124
-    Max Points       =           4774
-    Max Functions    =             86
+    Max Points       =           4721
+    Max Functions    =             48
 
 
   ==> Unrestricted Orthogonality Constrained DFT (OCDFT) <==
@@ -185,16 +185,16 @@ Calling plugin cdft.so.
    -------------------------------------------------------
     Irrep   Nso     Nmo     Nalpha   Nbeta   Ndocc  Nsocc
    -------------------------------------------------------
-     Ag        19      19       0       0       0       0
-     B1g        4       4       0       0       0       0
-     B2g        8       8       0       0       0       0
-     B3g       12      12       0       0       0       0
-     Au         4       4       0       0       0       0
-     B1u       19      19       0       0       0       0
-     B2u       12      12       0       0       0       0
-     B3u        8       8       0       0       0       0
+     Ag        11      11       0       0       0       0
+     B1g        2       2       0       0       0       0
+     B2g        4       4       0       0       0       0
+     B3g        7       7       0       0       0       0
+     Au         2       2       0       0       0       0
+     B1u       11      11       0       0       0       0
+     B2u        7       7       0       0       0       0
+     B3u        4       4       0       0       0       0
    -------------------------------------------------------
-    Total      86      86       8       8       8       0
+    Total      48      48       8       8       8       0
    -------------------------------------------------------
 
  OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
@@ -217,14 +217,14 @@ Calling plugin cdft.so.
 
    => Auxiliary Basis Set <=
 
-  Basis Set: CC-PVTZ-JKFIT
-    Number of shells: 90
-    Number of basis function: 278
-    Number of Cartesian functions: 332
+  Basis Set: CC-PVDZ-JKFIT
+    Number of shells: 84
+    Number of basis function: 232
+    Number of Cartesian functions: 262
     Spherical Harmonics?: true
-    Max angular momentum: 4
+    Max angular momentum: 3
 
-  Minimum eigenvalue in the overlap matrix is 2.3390882456E-04.
+  Minimum eigenvalue in the overlap matrix is 4.8552890517E-03.
   Using Symmetric Orthogonalization.
   SCF Guess: Superposition of Atomic Densities via on-the-fly atomic UHF.
 
@@ -232,21 +232,21 @@ Calling plugin cdft.so.
 
                            Total Energy        Delta E     RMS |[F,P]|
 
-   @DF-UKS iter   0:   -78.77073106611597   -7.87707e+01   2.52808e-02 
-   @DF-UKS iter   1:   -78.58473913959163    1.85992e-01   7.30263e-03 
-   @DF-UKS iter   2:   -78.58128849462285    3.45064e-03   4.09412e-03 DIIS
-   @DF-UKS iter   3:   -78.62350712577418   -4.22186e-02   2.13348e-04 DIIS
-   @DF-UKS iter   4:   -78.62361876509721   -1.11639e-04   2.58748e-05 DIIS
-   @DF-UKS iter   5:   -78.62361946861456   -7.03517e-07   4.12483e-06 DIIS
-   @DF-UKS iter   6:   -78.62361950018732   -3.15728e-08   5.07368e-07 DIIS
-   @DF-UKS iter   7:   -78.62361950039909   -2.11770e-10   4.03839e-08 DIIS
-   @DF-UKS iter   8:   -78.62361950040257   -3.48166e-12   4.72099e-09 DIIS
+   @DF-UKS iter   0:   -79.08015887491855   -7.90802e+01   5.93845e-02 
+   @DF-UKS iter   1:   -78.53922945754778    5.40929e-01   1.98603e-02 
+   @DF-UKS iter   2:   -78.53351372762830    5.71573e-03   1.02003e-02 DIIS
+   @DF-UKS iter   3:   -78.59097816362083   -5.74644e-02   1.76022e-04 DIIS
+   @DF-UKS iter   4:   -78.59098759106882   -9.42745e-06   2.99852e-05 DIIS
+   @DF-UKS iter   5:   -78.59098797481937   -3.83751e-07   3.83596e-06 DIIS
+   @DF-UKS iter   6:   -78.59098798410561   -9.28624e-09   3.03852e-07 DIIS
+   @DF-UKS iter   7:   -78.59098798412909   -2.34763e-11   1.82756e-08 DIIS
+   @DF-UKS iter   8:   -78.59098798412920   -1.13687e-13   3.07235e-09 DIIS
 
   ==> Post-Iterations <==
 
-   @Spin Contamination Metric:   3.463895837E-14
+   @Spin Contamination Metric:   1.776356839E-15
    @S^2 Expected:                0.000000000E+00
-   @S^2 Observed:                3.463895837E-14
+   @S^2 Observed:                1.776356839E-15
    @S   Expected:                0.000000000E+00
    @S   Observed:                0.000000000E+00
 
@@ -255,73 +255,49 @@ Calling plugin cdft.so.
 
     Alpha Occupied:                                                       
 
-       1Ag   -10.175581     1B1u  -10.174728     2Ag    -0.763571  
-       2B1u   -0.584914     1B2u   -0.473520     3Ag    -0.425915  
-       1B3g   -0.361438     1B3u   -0.279671  
+       1Ag   -10.188657     1B1u  -10.187883     2Ag    -0.759815  
+       2B1u   -0.580420     1B2u   -0.467258     3Ag    -0.419290  
+       1B3g   -0.355710     1B3u   -0.272927  
 
     Alpha Virtual:                                                        
 
-       1B2g   -0.007490     4Ag     0.064306     2B2u    0.087618  
-       3B1u    0.088199     2B3g    0.148602     5Ag     0.188569  
-       6Ag     0.208847     2B3u    0.216734     4B1u    0.217499  
-       3B2u    0.265689     2B2g    0.307325     5B1u    0.338369  
-       4B2u    0.416852     6B1u    0.454583     7Ag     0.459051  
-       3B3g    0.487923     1B1g    0.542837     7B1u    0.559499  
-       4B3g    0.621886     3B3u    0.718802     1Au     0.771322  
-       8Ag     0.795891     9Ag     0.887856     5B2u    0.953366  
-       8B1u    1.052405     5B3g    1.083569     3B2g    1.102826  
-       9B1u    1.230424    10Ag     1.310244     4B3u    1.408367  
-       6B2u    1.519883    10B1u    1.530393     4B2g    1.586319  
-       6B3g    1.587352     7B2u    1.695621     2B1g    1.721233  
-      11B1u    1.732771    11Ag     1.778830     5B3u    1.806050  
-       5B2g    1.829176    12Ag     2.005527     2Au     2.186220  
-       7B3g    2.219712     8B2u    2.290454    13Ag     2.348684  
-      12B1u    2.396966     9B2u    2.408391     6B3u    2.502500  
-      14Ag     2.589733     8B3g    2.599805    13B1u    2.612616  
-       3B1g    2.757797    15Ag     2.815941    14B1u    2.909370  
-       7B3u    2.942828     9B3g    2.979131     3Au     3.026544  
-       6B2g    3.082574    10B2u    3.121521     4B1g    3.146723  
-      16Ag     3.159321    10B3g    3.291805     7B2g    3.364990  
-      15B1u    3.368312     8B3u    3.403168    11B2u    3.452646  
-      16B1u    3.618825     4Au     3.697702    17Ag     4.063429  
-      11B3g    4.097764    12B2u    4.190244     8B2g    4.332079  
-      18Ag     4.374623    17B1u    4.561386    12B3g    4.596877  
-      18B1u    4.950993    19Ag    21.914644    19B1u   22.514306  
+       1B2g    0.006723     4Ag     0.081579     2B2u    0.105464  
+       3B1u    0.113047     2B3g    0.185508     4B1u    0.310192  
+       5Ag     0.406436     3B2u    0.424477     2B3u    0.478255  
+       6Ag     0.498478     5B1u    0.550824     2B2g    0.567973  
+       4B2u    0.646776     3B3g    0.679660     6B1u    0.723525  
+       7Ag     0.804508     1B1g    0.904986     4B3g    1.014663  
+       3B3u    1.018796     7B1u    1.022554     1Au     1.049866  
+       8Ag     1.340410     5B3g    1.476536     5B2u    1.487681  
+       3B2g    1.547808     8B1u    1.581091     9Ag     1.586098  
+       6B2u    1.630985     2B1g    1.699322     4B3u    1.703700  
+       9B1u    1.937594     4B2g    1.939778     2Au     2.076465  
+       6B3g    2.113743    10Ag     2.208506    10B1u    2.329270  
+      11Ag     2.373491     7B2u    2.456369    11B1u    2.771971  
+       7B3g    3.040911  
 
     Beta Occupied:                                                        
 
-       1Ag   -10.175581     1B1u  -10.174728     2Ag    -0.763571  
-       2B1u   -0.584914     1B2u   -0.473520     3Ag    -0.425915  
-       1B3g   -0.361438     1B3u   -0.279671  
+       1Ag   -10.188657     1B1u  -10.187883     2Ag    -0.759815  
+       2B1u   -0.580420     1B2u   -0.467258     3Ag    -0.419290  
+       1B3g   -0.355710     1B3u   -0.272927  
 
     Beta Virtual:                                                         
 
-       1B2g   -0.007490     4Ag     0.064306     2B2u    0.087618  
-       3B1u    0.088199     2B3g    0.148602     5Ag     0.188569  
-       6Ag     0.208847     2B3u    0.216734     4B1u    0.217499  
-       3B2u    0.265689     2B2g    0.307325     5B1u    0.338369  
-       4B2u    0.416852     6B1u    0.454583     7Ag     0.459051  
-       3B3g    0.487923     1B1g    0.542837     7B1u    0.559499  
-       4B3g    0.621886     3B3u    0.718802     1Au     0.771322  
-       8Ag     0.795891     9Ag     0.887856     5B2u    0.953366  
-       8B1u    1.052405     5B3g    1.083569     3B2g    1.102826  
-       9B1u    1.230424    10Ag     1.310244     4B3u    1.408367  
-       6B2u    1.519883    10B1u    1.530393     4B2g    1.586319  
-       6B3g    1.587352     7B2u    1.695621     2B1g    1.721233  
-      11B1u    1.732771    11Ag     1.778830     5B3u    1.806050  
-       5B2g    1.829176    12Ag     2.005527     2Au     2.186220  
-       7B3g    2.219712     8B2u    2.290454    13Ag     2.348684  
-      12B1u    2.396966     9B2u    2.408391     6B3u    2.502500  
-      14Ag     2.589733     8B3g    2.599805    13B1u    2.612616  
-       3B1g    2.757797    15Ag     2.815941    14B1u    2.909370  
-       7B3u    2.942828     9B3g    2.979131     3Au     3.026544  
-       6B2g    3.082574    10B2u    3.121521     4B1g    3.146723  
-      16Ag     3.159321    10B3g    3.291805     7B2g    3.364990  
-      15B1u    3.368312     8B3u    3.403168    11B2u    3.452646  
-      16B1u    3.618825     4Au     3.697702    17Ag     4.063429  
-      11B3g    4.097764    12B2u    4.190244     8B2g    4.332079  
-      18Ag     4.374623    17B1u    4.561386    12B3g    4.596877  
-      18B1u    4.950993    19Ag    21.914644    19B1u   22.514306  
+       1B2g    0.006723     4Ag     0.081579     2B2u    0.105464  
+       3B1u    0.113047     2B3g    0.185508     4B1u    0.310192  
+       5Ag     0.406436     3B2u    0.424477     2B3u    0.478255  
+       6Ag     0.498478     5B1u    0.550824     2B2g    0.567973  
+       4B2u    0.646776     3B3g    0.679660     6B1u    0.723525  
+       7Ag     0.804508     1B1g    0.904986     4B3g    1.014663  
+       3B3u    1.018796     7B1u    1.022554     1Au     1.049866  
+       8Ag     1.340410     5B3g    1.476536     5B2u    1.487681  
+       3B2g    1.547808     8B1u    1.581091     9Ag     1.586098  
+       6B2u    1.630985     2B1g    1.699322     4B3u    1.703700  
+       9B1u    1.937594     4B2g    1.939778     2Au     2.076465  
+       6B3g    2.113743    10Ag     2.208506    10B1u    2.329270  
+      11Ag     2.373491     7B2u    2.456369    11B1u    2.771971  
+       7B3g    3.040911  
 
     Final Occupation by Irrep:
              Ag   B1g   B2g   B3g    Au   B1u   B2u   B3u 
@@ -330,7 +306,7 @@ Calling plugin cdft.so.
 
   Energy converged.
 
-  @DF-UKS Final Energy:   -78.62361950040257
+  @DF-UKS Final Energy:   -78.59098798412920
 
    => Energetics <=
 
@@ -366,6 +342,16 @@ Properties computed using the SCF density matrix
 
   Saving occupied orbitals to File 180.
 
+  UHF NO Occupations:
+  HONO-2 :    2 Ag 2.0000000
+  HONO-1 :    2B1u 2.0000000
+  HONO-0 :    3 Ag 2.0000000
+  LUNO+0 :    3B1u 0.0000000
+  LUNO+1 :    4 Ag 0.0000000
+  LUNO+2 :    2B3g 0.0000000
+  LUNO+3 :    4B1u 0.0000000
+
+
 
   ==== Computing 1 state of symmetry 5 ====
 
@@ -383,14 +369,14 @@ Properties computed using the SCF density matrix
 
     Geometry (in Angstrom), charge = 0, multiplicity = 1:
 
-       Center              X                  Y                   Z       
-    ------------   -----------------  -----------------  -----------------
-           H         -0.000000000000     0.923274000000     1.238289000000
-           H          0.000000000000    -0.923274000000     1.238289000000
-           H         -0.000000000000     0.923274000000    -1.238289000000
-           H          0.000000000000    -0.923274000000    -1.238289000000
-           C          0.000000000000     0.000000000000     0.668188000000
-           C          0.000000000000     0.000000000000    -0.668188000000
+       Center              X                  Y                   Z               Mass       
+    ------------   -----------------  -----------------  -----------------  -----------------
+           H         -0.000000000000     0.923274000000     1.238289000000     1.007825032070
+           H          0.000000000000    -0.923274000000     1.238289000000     1.007825032070
+           H         -0.000000000000     0.923274000000    -1.238289000000     1.007825032070
+           H          0.000000000000    -0.923274000000    -1.238289000000     1.007825032070
+           C          0.000000000000     0.000000000000     0.668188000000    12.000000000000
+           C          0.000000000000     0.000000000000    -0.668188000000    12.000000000000
 
   Running in d2h symmetry.
 
@@ -417,12 +403,12 @@ Properties computed using the SCF density matrix
 
   ==> Primary Basis <==
 
-  Basis Set: DEF2-TZVP
-    Number of shells: 38
-    Number of basis function: 86
-    Number of Cartesian functions: 96
+  Basis Set: CC-PVDZ
+    Number of shells: 24
+    Number of basis function: 48
+    Number of Cartesian functions: 50
     Spherical Harmonics?: true
-    Max angular momentum: 3
+    Max angular momentum: 2
 
   ==> DFT Potential <==
 
@@ -466,10 +452,10 @@ Properties computed using the SCF density matrix
     Pruning alpha    =              1
     Radial Points    =             75
     Spherical Points =            302
-    Total Points     =         134196
+    Total Points     =         133224
     Total Blocks     =            124
-    Max Points       =           4774
-    Max Functions    =             86
+    Max Points       =           4721
+    Max Functions    =             48
 
 
   ==> Unrestricted Orthogonality Constrained DFT (OCDFT) <==
@@ -488,16 +474,16 @@ Properties computed using the SCF density matrix
    -------------------------------------------------------
     Irrep   Nso     Nmo     Nalpha   Nbeta   Ndocc  Nsocc
    -------------------------------------------------------
-     Ag        19      19       0       0       0       0
-     B1g        4       4       0       0       0       0
-     B2g        8       8       0       0       0       0
-     B3g       12      12       0       0       0       0
-     Au         4       4       0       0       0       0
-     B1u       19      19       0       0       0       0
-     B2u       12      12       0       0       0       0
-     B3u        8       8       0       0       0       0
+     Ag        11      11       0       0       0       0
+     B1g        2       2       0       0       0       0
+     B2g        4       4       0       0       0       0
+     B3g        7       7       0       0       0       0
+     Au         2       2       0       0       0       0
+     B1u       11      11       0       0       0       0
+     B2u        7       7       0       0       0       0
+     B3u        4       4       0       0       0       0
    -------------------------------------------------------
-    Total      86      86       8       8       8       0
+    Total      48      48       8       8       8       0
    -------------------------------------------------------
 
  OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
@@ -520,14 +506,14 @@ Properties computed using the SCF density matrix
 
    => Auxiliary Basis Set <=
 
-  Basis Set: CC-PVTZ-JKFIT
-    Number of shells: 90
-    Number of basis function: 278
-    Number of Cartesian functions: 332
+  Basis Set: CC-PVDZ-JKFIT
+    Number of shells: 84
+    Number of basis function: 232
+    Number of Cartesian functions: 262
     Spherical Harmonics?: true
-    Max angular momentum: 4
+    Max angular momentum: 3
 
-  Minimum eigenvalue in the overlap matrix is 2.3390882456E-04.
+  Minimum eigenvalue in the overlap matrix is 4.8552890517E-03.
   Using Symmetric Orthogonalization.
   Projecting out 0 previous holes
 
@@ -538,20 +524,20 @@ Properties computed using the SCF density matrix
   --------------------------------------
     N   Occupied     Virtual     E(eV)  
   --------------------------------------
-    1      1B3u  ->    1B2g       7.406
-    2      1B3g  ->    2B2u      12.219
-    3      3Ag   ->    3B1u      13.990
-    4      1B3u  ->    2B2g      15.973
-    5      1B2u  ->    2B3g      16.929
-    6      1B3g  ->    3B2u      17.065
-    7      3Ag   ->    4B1u      17.508
-    8      2B1u  ->    4Ag       17.666
-    9      3Ag   ->    5B1u      20.797
-   10      2B1u  ->    5Ag       21.048
+    1      1B3u  ->    1B2g       7.610
+    2      1B3g  ->    2B2u      12.549
+    3      3Ag   ->    3B1u      14.486
+    4      1B2u  ->    2B3g      17.763
+    5      2B1u  ->    4Ag       18.014
+    6      3Ag   ->    4B1u      19.850
+    7      1B3g  ->    3B2u      21.230
+    8      1B3u  ->    2B2g      22.882
+    9      2Ag   ->    3B1u      23.752
+   10      3Ag   ->    5B1u      26.398
   --------------------------------------
 
-  HOLES:        1B3u (-0.279671)
-  PARTICLES:    1B2g (-0.007490)
+  HOLES:        1B3u (-0.272927)
+  PARTICLES:    1B2g (+0.006723)
 
   ==> Iterations <==
 
@@ -559,70 +545,64 @@ Properties computed using the SCF density matrix
 
   Projecting out 0 previous holes
 
-  HOLES:        1B3u (-0.257167)
-  PARTICLES:    1B2g (-0.094523)
+  HOLES:        1B3u (-0.236998)
+  PARTICLES:    1B2g (-0.074192)
 
-   @DF-UKS iter   1:   -78.40542535520522   -2.70513e+01   4.08616e-03 
+   @DF-UKS iter   1:   -78.36936774631378   -2.69105e+01   4.36065e-03 
   Projecting out 0 previous holes
 
-  HOLES:        1B3u (-0.231518)
-  PARTICLES:    1B2g (-0.076441)
+  HOLES:        1B3u (-0.221654)
+  PARTICLES:    1B2g (-0.063187)
 
-   @DF-UKS iter   2:   -78.40596913512123   -5.43780e-04   1.68004e-03 DIIS
+   @DF-UKS iter   2:   -78.37065027781765   -1.28253e-03   1.66214e-03 DIIS
   Projecting out 0 previous holes
 
-  HOLES:        1B3u (-0.231496)
-  PARTICLES:    1B2g (-0.077769)
+  HOLES:        1B3u (-0.219969)
+  PARTICLES:    1B2g (-0.063297)
 
-   @DF-UKS iter   3:   -78.41058616620744   -4.61703e-03   1.79457e-04 DIIS
+   @DF-UKS iter   3:   -78.37264926868005   -1.99899e-03   2.59183e-04 DIIS
   Projecting out 0 previous holes
 
-  HOLES:        1B3u (-0.230715)
-  PARTICLES:    1B2g (-0.077427)
+  HOLES:        1B3u (-0.219716)
+  PARTICLES:    1B2g (-0.063215)
 
-   @DF-UKS iter   4:   -78.41061459074282   -2.84245e-05   2.94812e-05 DIIS
+   @DF-UKS iter   4:   -78.37270017169214   -5.09030e-05   2.61950e-05 DIIS
   Projecting out 0 previous holes
 
-  HOLES:        1B3u (-0.230549)
-  PARTICLES:    1B2g (-0.077363)
+  HOLES:        1B3u (-0.219747)
+  PARTICLES:    1B2g (-0.063237)
 
-   @DF-UKS iter   5:   -78.41061791509108   -3.32435e-06   9.26045e-06 DIIS
+   @DF-UKS iter   5:   -78.37270096983488   -7.98143e-07   3.88714e-06 DIIS
   Projecting out 0 previous holes
 
-  HOLES:        1B3u (-0.230564)
-  PARTICLES:    1B2g (-0.077376)
+  HOLES:        1B3u (-0.219756)
+  PARTICLES:    1B2g (-0.063244)
 
-   @DF-UKS iter   6:   -78.41061811488976   -1.99799e-07   1.87652e-06 DIIS
+   @DF-UKS iter   6:   -78.37270100732985   -3.74950e-08   8.11554e-07 DIIS
   Projecting out 0 previous holes
 
-  HOLES:        1B3u (-0.230563)
-  PARTICLES:    1B2g (-0.077376)
+  HOLES:        1B3u (-0.219755)
+  PARTICLES:    1B2g (-0.063243)
 
-   @DF-UKS iter   7:   -78.41061811926681   -4.37706e-09   2.25243e-07 DIIS
+   @DF-UKS iter   7:   -78.37270100886526   -1.53541e-09   9.95940e-08 DIIS
   Projecting out 0 previous holes
 
-  HOLES:        1B3u (-0.230563)
-  PARTICLES:    1B2g (-0.077376)
+  HOLES:        1B3u (-0.219755)
+  PARTICLES:    1B2g (-0.063243)
 
-   @DF-UKS iter   8:   -78.41061811967084   -4.04029e-10   1.32777e-07 DIIS
+   @DF-UKS iter   8:   -78.37270100887966   -1.43956e-11   2.18697e-08 DIIS
   Projecting out 0 previous holes
 
-  HOLES:        1B3u (-0.230563)
-  PARTICLES:    1B2g (-0.077376)
+  HOLES:        1B3u (-0.219755)
+  PARTICLES:    1B2g (-0.063243)
 
-   @DF-UKS iter   9:   -78.41061811971483   -4.39826e-11   7.70918e-09 DIIS
-  Projecting out 0 previous holes
-
-  HOLES:        1B3u (-0.230563)
-  PARTICLES:    1B2g (-0.077376)
-
-   @DF-UKS iter  10:   -78.41061811971488   -5.68434e-14   7.83305e-10 DIIS
+   @DF-UKS iter   9:   -78.37270100888097   -1.30740e-12   1.36819e-09 DIIS
 
   ==> Post-Iterations <==
 
-   @Spin Contamination Metric:   1.000520660E+00
+   @Spin Contamination Metric:   1.000360967E+00
    @S^2 Expected:                0.000000000E+00
-   @S^2 Observed:                1.000520660E+00
+   @S^2 Observed:                1.000360967E+00
    @S   Expected:                0.000000000E+00
    @S   Observed:                0.000000000E+00
 
@@ -631,73 +611,49 @@ Properties computed using the SCF density matrix
 
     Alpha Occupied:                                                       
 
-       1B2g -100.000000     1Ag   -10.191968     1B1u  -10.191238  
-       2Ag    -0.780509     2B1u   -0.595418     1B2u   -0.487466  
-       3Ag    -0.441355     1B3g   -0.370895  
+       1B2g -100.000000     1Ag   -10.196394     1B1u  -10.195758  
+       2Ag    -0.771019     2B1u   -0.585809     1B2u   -0.475697  
+       3Ag    -0.428759     1B3g   -0.359951  
 
     Alpha Virtual:                                                        
 
-       1B3u   -0.231005     4Ag     0.059286     2B2u    0.081521  
-       3B1u    0.086030     2B3g    0.146483     5Ag     0.182901  
-       6Ag     0.205341     2B3u    0.210286     4B1u    0.214472  
-       3B2u    0.259079     2B2g    0.289134     5B1u    0.319912  
-       4B2u    0.407780     6B1u    0.447018     7Ag     0.453236  
-       3B3g    0.478569     1B1g    0.531901     7B1u    0.547428  
-       4B3g    0.611392     3B3u    0.707142     1Au     0.754233  
-       8Ag     0.784569     9Ag     0.879344     5B2u    0.942092  
-       8B1u    1.042578     5B3g    1.075352     3B2g    1.090115  
-       9B1u    1.216229    10Ag     1.301370     4B3u    1.393836  
-       6B2u    1.505740    10B1u    1.519193     4B2g    1.569115  
-       6B3g    1.576932     7B2u    1.689367     2B1g    1.713848  
-      11B1u    1.723879    11Ag     1.764944     5B3u    1.795290  
-       5B2g    1.817904    12Ag     1.997505     2Au     2.176966  
-       7B3g    2.207768     8B2u    2.275788    13Ag     2.342240  
-      12B1u    2.387167     9B2u    2.394065     6B3u    2.480527  
-      14Ag     2.576455     8B3g    2.591998    13B1u    2.604644  
-       3B1g    2.736985    15Ag     2.797261    14B1u    2.899716  
-       7B3u    2.926096     9B3g    2.968464     3Au     3.007479  
-       6B2g    3.070231    10B2u    3.104102     4B1g    3.131423  
-      16Ag     3.143702    10B3g    3.278884     7B2g    3.346896  
-      15B1u    3.357137     8B3u    3.390726    11B2u    3.436321  
-      16B1u    3.603460     4Au     3.681145    17Ag     4.045315  
-      11B3g    4.087554    12B2u    4.180783     8B2g    4.312468  
-      18Ag     4.359054    17B1u    4.537563    12B3g    4.576491  
-      18B1u    4.936051    19Ag    21.898750    19B1u   22.497782  
+       1B3u   -0.220040     4Ag     0.079058     2B2u    0.101145  
+       3B1u    0.111814     2B3g    0.183845     4B1u    0.307796  
+       5Ag     0.401744     3B2u    0.419609     2B3u    0.471620  
+       6Ag     0.495082     5B1u    0.540249     2B2g    0.551794  
+       4B2u    0.637752     3B3g    0.673554     6B1u    0.719271  
+       7Ag     0.800662     1B1g    0.897579     7B1u    1.007905  
+       4B3g    1.008145     3B3u    1.011071     1Au     1.040320  
+       8Ag     1.332506     5B3g    1.475131     5B2u    1.484252  
+       3B2g    1.542614     8B1u    1.574539     9Ag     1.578191  
+       6B2u    1.623888     2B1g    1.694932     4B3u    1.697972  
+       9B1u    1.927138     4B2g    1.930053     2Au     2.067078  
+       6B3g    2.109415    10Ag     2.203441    10B1u    2.325721  
+      11Ag     2.369962     7B2u    2.449862    11B1u    2.764959  
+       7B3g    3.032907  
 
     Beta Occupied:                                                        
 
-       1Ag   -10.191727     1B1u  -10.190861     2Ag    -0.796991  
-       2B1u   -0.588180     1B2u   -0.488750     3Ag    -0.443327  
-       1B3g   -0.369231     1B3u   -0.310014  
+       1Ag   -10.195812     1B1u  -10.195037     2Ag    -0.785836  
+       2B1u   -0.577275     1B2u   -0.476480     3Ag    -0.430673  
+       1B3g   -0.358087     1B3u   -0.295273  
 
     Beta Virtual:                                                         
 
-       1B2g   -0.017782     4Ag     0.060206     2B2u    0.080311  
-       3B1u    0.086319     2B3g    0.145623     5Ag     0.186523  
-       6Ag     0.195678     2B3u    0.204016     4B1u    0.216575  
-       3B2u    0.255829     2B2g    0.298196     5B1u    0.333511  
-       4B2u    0.405391     6B1u    0.446396     7Ag     0.454619  
-       3B3g    0.480834     1B1g    0.521233     7B1u    0.545797  
-       4B3g    0.614141     3B3u    0.703347     1Au     0.761795  
-       8Ag     0.775300     9Ag     0.873832     5B2u    0.943216  
-       8B1u    1.041842     5B3g    1.078749     3B2g    1.097662  
-       9B1u    1.220727    10Ag     1.301809     4B3u    1.386084  
-       6B2u    1.504304    10B1u    1.521112     4B2g    1.567717  
-       6B3g    1.577297     7B2u    1.687304     2B1g    1.709892  
-      11B1u    1.724056    11Ag     1.760681     5B3u    1.802004  
-       5B2g    1.824646    12Ag     1.993179     2Au     2.178093  
-       7B3g    2.206687     8B2u    2.278170    13Ag     2.333509  
-      12B1u    2.387983     9B2u    2.394238     6B3u    2.463363  
-      14Ag     2.572174     8B3g    2.592822    13B1u    2.603924  
-       3B1g    2.723060    15Ag     2.795576    14B1u    2.899015  
-       7B3u    2.916344     9B3g    2.971063     3Au     3.009219  
-       6B2g    3.074657    10B2u    3.101693     4B1g    3.134602  
-      16Ag     3.140768    10B3g    3.279360     7B2g    3.343004  
-      15B1u    3.358198     8B3u    3.388791    11B2u    3.428208  
-      16B1u    3.598384     4Au     3.678087    17Ag     4.049953  
-      11B3g    4.087095    12B2u    4.180093     8B2g    4.305131  
-      18Ag     4.355235    17B1u    4.535769    12B3g    4.573209  
-      18B1u    4.938637    19Ag    21.898261    19B1u   22.498103  
+       1B2g    0.002033     4Ag     0.081107     2B2u    0.099775  
+       3B1u    0.113303     2B3g    0.183913     4B1u    0.309215  
+       5Ag     0.400204     3B2u    0.416104     2B3u    0.464399  
+       6Ag     0.490928     5B1u    0.542818     2B2g    0.562509  
+       4B2u    0.636139     3B3g    0.673668     6B1u    0.720935  
+       7Ag     0.799635     1B1g    0.894100     3B3u    1.002797  
+       4B3g    1.010178     7B1u    1.016086     1Au     1.047747  
+       8Ag     1.323719     5B3g    1.477732     5B2u    1.485452  
+       3B2g    1.545217     8B1u    1.572709     9Ag     1.578493  
+       6B2u    1.620618     2B1g    1.688160     4B3u    1.700901  
+       9B1u    1.931023     4B2g    1.937126     2Au     2.066340  
+       6B3g    2.108912    10Ag     2.203338    10B1u    2.327067  
+      11Ag     2.368673     7B2u    2.449547    11B1u    2.764506  
+       7B3g    3.033616  
 
     Final Occupation by Irrep:
              Ag   B1g   B2g   B3g    Au   B1u   B2u   B3u 
@@ -706,7 +662,7 @@ Properties computed using the SCF density matrix
 
   Energy converged.
 
-  @DF-UKS Final Energy:   -78.41061811971488
+  @DF-UKS Final Energy:   -78.37270100888097
 
    => Energetics <=
 
@@ -743,7 +699,7 @@ Properties computed using the SCF density matrix
 
   Analysis of the hole/particle MOs in terms of the ground state DFT MOs
   Hole:          0B3u =  100.0% 1B3u
-  Particle:      0B2g =  99.9% 1B2g
+  Particle:      0B2g =  100.0% 1B2g
 
 
   Computing transition dipole moments
@@ -757,7 +713,7 @@ Properties computed using the SCF density matrix
   A(beta):  
   B(beta):  
   s(beta):  
-  Stilde = 0.998380
+  Stilde = 0.998989
 
 
 Properties will be evaluated at   0.000000,   0.000000,   0.000000 Bohr
@@ -767,131 +723,97 @@ Properties will be evaluated at   0.000000,   0.000000,   0.000000 Bohr
 Properties computed using the OCDFT TRANSITION density matrix
 
   Transition Dipole Moment: (a.u.)
-     X:     0.0000      Y:     0.0000      Z:    -2.9004     Total:     2.9004
+     X:     0.0000      Y:     0.0000      Z:    -2.6721     Total:     2.6721
 
   Transition Dipole Moment: (Debye)
-     X:     0.0000      Y:     0.0000      Z:    -7.3722     Total:     7.3722
+     X:     0.0000      Y:     0.0000      Z:    -6.7919     Total:     6.7919
 
 
-  Dipole moments from AO integrals: 0.0000 -0.0000 0.0000
+  Dipole moments from AO integrals: 0.0000 -0.0000 -0.0000
   Mulliken Population Analysis of the Transition Dipole Moment:
 
   ===============================================================
    Initial     Final     mu(x)      mu(y)      mu(z)       |mu|
   ---------------------------------------------------------------
-    4  H s    4  H s  -0.000000   0.258446   0.346626   0.432370
-    3  H s    3  H s   0.000000  -0.258446   0.346626   0.432370
-    2  H s    2  H s  -0.000000   0.258446  -0.346626   0.432370
-    1  H s    1  H s   0.000000  -0.258446  -0.346626   0.432370
-    4  H p    4  H p  -0.000000   0.086967   0.116639   0.145492
-    3  H p    3  H p   0.000000  -0.086967   0.116639   0.145492
-    2  H p    2  H p  -0.000000   0.086967  -0.116639   0.145492
-    1  H p    1  H p   0.000000  -0.086967  -0.116639   0.145492
-    4  H s    3  H s  -0.000000   0.000015   0.114633   0.114633
-    3  H s    4  H s   0.000000  -0.000015   0.114633   0.114633
-    2  H s    1  H s  -0.000000   0.000015  -0.114633   0.114633
-    1  H s    2  H s   0.000000  -0.000015  -0.114633   0.114633
-    4  H s    4  H p  -0.000000   0.002395   0.101226   0.101255
-    3  H s    3  H p   0.000000  -0.002395   0.101226   0.101255
-    2  H s    2  H p  -0.000000   0.002395  -0.101226   0.101255
-    1  H s    1  H p   0.000000  -0.002395  -0.101226   0.101255
-    4  H s    2  H s   0.000000  -0.041248  -0.000046   0.041248
-    3  H s    1  H s  -0.000000   0.041248  -0.000046   0.041248
-    2  H s    4  H s   0.000000  -0.041248   0.000046   0.041248
-    1  H s    3  H s  -0.000000   0.041248   0.000046   0.041248
-    4  H p    4  H s  -0.000000  -0.002068   0.029525   0.029598
-    3  H p    3  H s   0.000000   0.002068   0.029525   0.029598
-    2  H p    2  H s  -0.000000  -0.002068  -0.029525   0.029598
-    1  H p    1  H s   0.000000   0.002068  -0.029525   0.029598
-    4  H s    3  H p  -0.000000   0.000047   0.015230   0.015230
-    3  H s    4  H p   0.000000  -0.000047   0.015230   0.015230
-    2  H s    1  H p  -0.000000   0.000047  -0.015230   0.015230
-    1  H s    2  H p   0.000000  -0.000047  -0.015230   0.015230
-    4  H s    2  H p  -0.000000   0.010594  -0.004597   0.011549
-    3  H s    1  H p   0.000000  -0.010594  -0.004597   0.011549
-    2  H s    4  H p  -0.000000   0.010594   0.004597   0.011549
-    1  H s    3  H p   0.000000  -0.010594   0.004597   0.011549
-    4  H p    3  H s  -0.000000   0.000040   0.005542   0.005542
-    3  H p    4  H s   0.000000  -0.000040   0.005542   0.005542
-    2  H p    1  H s  -0.000000   0.000040  -0.005542   0.005542
-    1  H p    2  H s   0.000000  -0.000040  -0.005542   0.005542
-    4  H p    2  H s  -0.000000   0.003242   0.001341   0.003508
-    2  H p    4  H s  -0.000000   0.003242  -0.001341   0.003508
-    3  H p    1  H s   0.000000  -0.003242   0.001341   0.003508
-    1  H p    3  H s   0.000000  -0.003242  -0.001341   0.003508
-    4  H s    1  H p   0.000000  -0.002262  -0.001363   0.002641
-    3  H s    2  H p  -0.000000   0.002262  -0.001363   0.002641
-    2  H s    3  H p   0.000000  -0.002262   0.001363   0.002641
-    1  H s    4  H p  -0.000000   0.002262   0.001363   0.002641
-    3  H p    4  H p   0.000000   0.000000   0.000914   0.000914
-    1  H p    2  H p   0.000000   0.000000  -0.000914   0.000914
-    4  H p    3  H p   0.000000   0.000000   0.000914   0.000914
-    2  H p    1  H p   0.000000   0.000000  -0.000914   0.000914
-    4  H p    1  H s  -0.000000   0.000663   0.000337   0.000744
-    3  H p    2  H s   0.000000  -0.000663   0.000337   0.000744
-    2  H p    3  H s  -0.000000   0.000663  -0.000337   0.000744
-    1  H p    4  H s   0.000000  -0.000663  -0.000337   0.000744
-    6  C s    4  H s   0.000000  -0.000215  -0.000645   0.000680
-    6  C s    3  H s  -0.000000   0.000215  -0.000645   0.000680
-    5  C s    2  H s   0.000000  -0.000215   0.000645   0.000680
-    5  C s    1  H s  -0.000000   0.000215   0.000645   0.000680
-    6  C s    6  C s   0.000000   0.000000  -0.000447   0.000447
-    5  C s    5  C s   0.000000   0.000000   0.000447   0.000447
-    3  H s    6  C s  -0.000000   0.000228  -0.000256   0.000343
-    2  H s    5  C s   0.000000  -0.000228   0.000256   0.000343
-    4  H s    6  C s   0.000000  -0.000228  -0.000256   0.000343
-    1  H s    5  C s  -0.000000   0.000228   0.000256   0.000343
-    6  C s    4  H p  -0.000000   0.000214   0.000188   0.000285
-    6  C s    3  H p   0.000000  -0.000214   0.000188   0.000285
-    5  C s    2  H p  -0.000000   0.000214  -0.000188   0.000285
-    5  C s    1  H p   0.000000  -0.000214  -0.000188   0.000285
-    4  H p    2  H p   0.000000  -0.000226  -0.000000   0.000226
-    3  H p    1  H p  -0.000000   0.000226  -0.000000   0.000226
-    2  H p    4  H p   0.000000  -0.000226   0.000000   0.000226
-    1  H p    3  H p  -0.000000   0.000226   0.000000   0.000226
-    4  H p    6  C s  -0.000000   0.000068  -0.000006   0.000068
-    3  H p    6  C s   0.000000  -0.000068  -0.000006   0.000068
-    2  H p    5  C s  -0.000000   0.000068   0.000006   0.000068
-    1  H p    5  C s   0.000000  -0.000068   0.000006   0.000068
-    6  C s    2  H s  -0.000000   0.000035   0.000043   0.000055
-    6  C s    1  H s   0.000000  -0.000035   0.000043   0.000055
-    5  C s    4  H s  -0.000000   0.000035  -0.000043   0.000055
-    5  C s    3  H s   0.000000  -0.000035  -0.000043   0.000055
-    4  H s    5  C s  -0.000000   0.000035   0.000018   0.000040
-    3  H s    5  C s   0.000000  -0.000035   0.000018   0.000040
-    2  H s    6  C s  -0.000000   0.000035  -0.000018   0.000040
-    1  H s    6  C s   0.000000  -0.000035  -0.000018   0.000040
-    4  H s    1  H s   0.000000  -0.000019  -0.000026   0.000033
-    2  H s    3  H s   0.000000  -0.000019   0.000026   0.000033
-    3  H s    2  H s  -0.000000   0.000019  -0.000026   0.000033
-    1  H s    4  H s  -0.000000   0.000019   0.000026   0.000033
-    6  C s    2  H p   0.000000  -0.000016   0.000010   0.000019
-    6  C s    1  H p  -0.000000   0.000016   0.000010   0.000019
-    5  C s    4  H p   0.000000  -0.000016  -0.000010   0.000019
-    5  C s    3  H p  -0.000000   0.000016  -0.000010   0.000019
-    4  H p    5  C s   0.000000  -0.000004  -0.000002   0.000005
-    1  H p    6  C s  -0.000000   0.000004   0.000002   0.000005
-    3  H p    5  C s  -0.000000   0.000004  -0.000002   0.000005
-    2  H p    6  C s   0.000000  -0.000004   0.000002   0.000005
+    4  H s    4  H s  -0.000000   0.167895   0.225180   0.280882
+    3  H s    3  H s   0.000000  -0.167895   0.225180   0.280882
+    2  H s    2  H s  -0.000000   0.167895  -0.225180   0.280882
+    1  H s    1  H s   0.000000  -0.167895  -0.225180   0.280882
+    4  H p    4  H p  -0.000000   0.145593   0.195268   0.243571
+    3  H p    3  H p   0.000000  -0.145593   0.195268   0.243571
+    2  H p    2  H p  -0.000000   0.145593  -0.195268   0.243571
+    1  H p    1  H p   0.000000  -0.145593  -0.195268   0.243571
+    4  H s    3  H s   0.000000  -0.000283   0.104034   0.104034
+    3  H s    4  H s  -0.000000   0.000283   0.104034   0.104034
+    2  H s    1  H s   0.000000  -0.000283  -0.104034   0.104034
+    1  H s    2  H s  -0.000000   0.000283  -0.104034   0.104034
+    4  H s    4  H p   0.000000   0.003539   0.078052   0.078132
+    3  H s    3  H p  -0.000000  -0.003539   0.078052   0.078132
+    2  H s    2  H p   0.000000   0.003539  -0.078052   0.078132
+    1  H s    1  H p  -0.000000  -0.003539  -0.078052   0.078132
+    4  H s    2  H s   0.000000  -0.042232   0.000146   0.042232
+    3  H s    1  H s  -0.000000   0.042232   0.000146   0.042232
+    2  H s    4  H s   0.000000  -0.042232  -0.000146   0.042232
+    1  H s    3  H s  -0.000000   0.042232  -0.000146   0.042232
+    4  H p    4  H s  -0.000000  -0.002838   0.037429   0.037536
+    3  H p    3  H s   0.000000   0.002838   0.037429   0.037536
+    2  H p    2  H s  -0.000000  -0.002838  -0.037429   0.037536
+    1  H p    1  H s   0.000000   0.002838  -0.037429   0.037536
+    4  H s    3  H p  -0.000000   0.000057   0.018970   0.018970
+    3  H s    4  H p   0.000000  -0.000057   0.018970   0.018970
+    2  H s    1  H p  -0.000000   0.000057  -0.018970   0.018970
+    1  H s    2  H p   0.000000  -0.000057  -0.018970   0.018970
+    4  H s    2  H p  -0.000000   0.014695  -0.006807   0.016195
+    3  H s    1  H p   0.000000  -0.014695  -0.006807   0.016195
+    2  H s    4  H p  -0.000000   0.014695   0.006807   0.016195
+    1  H s    3  H p   0.000000  -0.014695   0.006807   0.016195
+    4  H p    3  H s  -0.000000   0.000045   0.011412   0.011412
+    3  H p    4  H s   0.000000  -0.000045   0.011412   0.011412
+    2  H p    1  H s  -0.000000   0.000045  -0.011412   0.011412
+    1  H p    2  H s   0.000000  -0.000045  -0.011412   0.011412
+    4  H p    2  H s  -0.000000   0.007383   0.003218   0.008054
+    3  H p    1  H s   0.000000  -0.007383   0.003218   0.008054
+    2  H p    4  H s  -0.000000   0.007383  -0.003218   0.008054
+    1  H p    3  H s   0.000000  -0.007383  -0.003218   0.008054
+    4  H s    1  H p   0.000000  -0.002997  -0.002041   0.003625
+    3  H s    2  H p  -0.000000   0.002997  -0.002041   0.003625
+    2  H s    3  H p   0.000000  -0.002997   0.002041   0.003625
+    1  H s    4  H p  -0.000000   0.002997   0.002041   0.003625
+    4  H p    3  H p   0.000000   0.000000   0.002334   0.002334
+    3  H p    4  H p   0.000000   0.000000   0.002334   0.002334
+    2  H p    1  H p   0.000000   0.000000  -0.002334   0.002334
+    1  H p    2  H p   0.000000   0.000000  -0.002334   0.002334
+    4  H p    1  H s  -0.000000   0.001409   0.000793   0.001617
+    3  H p    2  H s   0.000000  -0.001409   0.000793   0.001617
+    2  H p    3  H s  -0.000000   0.001409  -0.000793   0.001617
+    1  H p    4  H s   0.000000  -0.001409  -0.000793   0.001617
+    4  H p    2  H p   0.000000  -0.000762  -0.000000   0.000762
+    3  H p    1  H p  -0.000000   0.000762  -0.000000   0.000762
+    2  H p    4  H p   0.000000  -0.000762   0.000000   0.000762
+    1  H p    3  H p  -0.000000   0.000762   0.000000   0.000762
+    4  H s    1  H s  -0.000000   0.000033   0.000044   0.000056
+    3  H s    2  H s   0.000000  -0.000033   0.000044   0.000056
+    2  H s    3  H s  -0.000000   0.000033  -0.000044   0.000056
+    1  H s    4  H s   0.000000  -0.000033  -0.000044   0.000056
   ===============================================================
 
 
   ===============================================================
 
-  Excited mixed state   : excitation energy =  0.213001 Eh =   5.7961 eV =   46748.4 cm**-1 
+  Excited mixed state   : excitation energy =  0.218287 Eh =   5.9399 eV =   47908.4 cm**-1 
 
   ==> Spin-adaptation correction using S+ <==
   Most important corresponding occupied/virtual orbitals:
 
   Pair  Irrep  MO  <phi_b|phi_a>
      0     B3u    0    1.000000
-     1      Ag    0    0.017955
-     2     B1u    0    0.009114
-     3      Ag    1    0.007733
-     4     B2u    0    0.006790
-     5     B3g    0    0.003046
-     6     B1u    1    0.000092
-     7      Ag    2    0.000081
+     1      Ag    0    0.014184
+     2     B1u    0    0.008397
+     3      Ag    1    0.007265
+     4     B2u    0    0.005603
+     5     B3g    0    0.002256
+     6     B1u    1    0.000057
+     7      Ag    2    0.000056
 
   Original occupation numbers:
 	NA   [     3,    0,    1,    1,    0,    2,    1,    0 ]
@@ -901,18 +823,18 @@ Properties computed using the OCDFT TRANSITION density matrix
 	NA   [     3,    0,    1,    1,    0,    2,    1,    1 ]
 	NB   [     3,    0,    0,    1,    0,    2,    1,    0 ]
 
-  Triplet state energy (S+) 1-B1u        -78.455204997 Eh 
+  Triplet state energy (S+) 1-B1u        -78.422511639 Eh 
 
-  Singlet state energy (S+) 1-B1u        -78.366031243 Eh 
+  Singlet state energy (S+) 1-B1u        -78.322890378 Eh 
 
-  Excited triplet state 1-B1u : excitation energy (S+) =  0.168415 Eh =   4.5828 eV =   36962.7 cm**-1 
-  Excited singlet state 1-B1u : excitation energy (S+) =  0.257588 Eh =   7.0093 eV =   56534.1 cm**-1 
+  Excited triplet state 1-B1u : excitation energy (S+) =  0.168476 Eh =   4.5845 eV =   36976.3 cm**-1 
+  Excited singlet state 1-B1u : excitation energy (S+) =  0.268098 Eh =   7.2953 eV =   58840.6 cm**-1 
 
-  Transition Dipole Moment = (0.000000,0.000000,-2.900428)
+  Transition Dipole Moment = (0.000000,0.000000,-2.672126)
 
-   @Spin Contamination Metric:   2.000520660E+00
+   @Spin Contamination Metric:   2.000360967E+00
    @S^2 Expected:                0.000000000E+00
-   @S^2 Observed:                2.000520660E+00
+   @S^2 Observed:                2.000360967E+00
    @S   Expected:                0.000000000E+00
    @S   Observed:                0.000000000E+00
 
@@ -922,13 +844,23 @@ Properties computed using the OCDFT TRANSITION density matrix
 
   Saving occupied orbitals to File 180.
 
+  UHF NO Occupations:
+  HONO-2 :    2B1u 1.9999647
+  HONO-1 :    3 Ag 1.9998994
+  HONO-0 :    1B3u 1.0000000
+  LUNO+0 :    1B2g 1.0000000
+  LUNO+1 :    4 Ag 0.0001006
+  LUNO+2 :    3B1u 0.0000353
+  LUNO+3 :    5 Ag 0.0000264
+
+
        ==> OCDFT Excited State Information <==
 
     ----------------------------------------------------
       State       Energy (Eh)    Omega (eV)   Osc. Str.
     ----------------------------------------------------
-     @OCDFT-0     -78.6236195      0.0000      0.0000
-     @OCDFT-1     -78.4106181      7.0093      1.4446
+     @OCDFT-0     -78.5909880      0.0000      0.0000
+     @OCDFT-1     -78.3727010      7.2953      1.2762
     ----------------------------------------------------
 
 *** PSI4 exiting successfully. Buy a developer a beer!

@@ -1,11 +1,9 @@
 #! OCDFT CPH algorithm test, B3LYP computation on ethene
 
-
 import cdft
-
-refdft                = -78.62361950040257 #TEST
-refocdft_singlet_spin = -78.366031243 #TEST
-refocdft_triplet_spin = -78.455204997 #TEST
+refdft                = -78.53136946411685#TEST
+refocdft_singlet_spin = -78.261631126 #TEST
+refocdft_triplet_spin = -78.363363976 #TEST
 
 molecule {
 0 1
@@ -18,8 +16,8 @@ C   0.000000   0.000000  -0.668188
 }
 
 set {
-  basis def2-TZVP
-  df_basis_scf cc-pVTZ-JKFIT
+  basis def2-svp
+  df_basis_scf def2-svp-jkfit
   guess sad
   scf_type df
   dft_spherical_points 302
