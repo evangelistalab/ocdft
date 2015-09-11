@@ -256,8 +256,6 @@ rFpq->zero();
     rFpq->scale(0.5);
     rFpq->diagonalize(rUa_,Repsilon_a_);
 
-    rCa0->print();
-    Repsilon_a_->print();
     rUb_->copy(rUa_);
     rCa_->gemm(false,false,1.0,rCa0,rUa_,0.0);
     rCb_->gemm(false,false,1.0,rCb0,rUb_,0.0);
