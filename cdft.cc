@@ -111,7 +111,9 @@ int read_options(std::string name, Options& options)
 
         /*- Select the maximum number of iterations in an OCDFT computation -*/
         options.add_int("OCDFT_MAX_ITER",1000000);
-
+	
+	/*- Would you like to perform an NOCI calculation as well? -*/
+	options.add_bool("DO_NOCI_AND_OCDFT", false);
 
         /*- TODOPRAKASH: add description -*/
         options.add("OCC_FROZEN", new ArrayType());
@@ -458,8 +460,10 @@ void OCDFT(Options& options)
         outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f %11.4f",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength);
     }
     outfile->Printf("\n    ----------------------------------------------------\n");
-     scf::NOCI_Hamiltonian noci_H(options,dets);
-    noci_H.compute_energy(energies);
+    if ( options["DO_NOCI_AND_OCDFT"].has_changed() ) {
+    	scf::NOCI_Hamiltonian noci_H(options,dets);
+    	noci_H.compute_energy(energies);
+    }
     // Set this early because the callback mechanism uses it.
     Process::environment.wavefunction().reset();
 }

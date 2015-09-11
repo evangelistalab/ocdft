@@ -1,33 +1,44 @@
-#
+#! OCDFT CPH algorithm test, B3LYP computation on ethene
+
 sys.path.insert(0, './..')
-import cdft 
+import cdft
 
-molecule h2o {
-N	0.0000	0.0000	1.4000
-N	0.0000	0.0000	-1.4000
-  symmetry c1
+refdft                = -78.62361950040257 #TEST
+refocdft_singlet_spin = -78.366031243 #TEST
+refocdft_triplet_spin = -78.455204997 #TEST
+
+molecule {
+0 1
+H   0.000000   0.923274   1.238289
+H   0.000000  -0.923274   1.238289
+H   0.000000   0.923274  -1.238289
+H   0.000000  -0.923274  -1.238289
+C   0.000000   0.000000   0.668188
+C   0.000000   0.000000  -0.668188
 }
-
 
 set {
-  basis cc-pvdz 
-  df_scf_guess false
-  scf_type pk
+  basis def2-TZVP
+  df_basis_scf cc-pVTZ-JKFIT
+  guess sad
+  scf_type df
+  dft_spherical_points 302
+  dft_radial_points 75
   reference uks
-  e_convergence 10
-  d_convergence 4
-  maxiter 100
+  maxiter 200
+  e_convergence 11 
+  d_convergence 6
 }
 
-
 set cdft {
-  AOCC_FROZEN [1,0,0,0,0,0,0,0]
-  AVIR_FROZEN [2,0,0,0,0,0,0,0]
+  roots_per_irrep [0,0,0,0,0,1,0,0]
+  cdft_exc_method chp
 }
 
 set dft_functional B3LYP
 
-energy('noci')
+energy('ocdft')
 
-
-
+compare_values(refdft, get_variable("DFT ENERGY"),8, "DFT energy") #TEST
+compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST
+compare_values(refocdft_triplet_spin, get_variable("OCDFT TRIPLET ENERGY"),8, "OCDFT triplet energy") #TEST

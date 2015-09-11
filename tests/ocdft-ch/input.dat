@@ -1,5 +1,6 @@
 #! OCDFT CPH algorithm test, B3LYP computation on ethene
 
+
 import cdft
 
 refdft                = -78.62361950040257 #TEST
