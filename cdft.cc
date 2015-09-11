@@ -115,6 +115,10 @@ int read_options(std::string name, Options& options)
 	/*- Would you like to perform an NOCI calculation as well? -*/
 	options.add_bool("DO_NOCI_AND_OCDFT", false);
 
+        /*- Would you like to perform an NOCI calculation as well? -*/
+        options.add_bool("DO_NOCI_AND_OCDFT", false);
+
+
         /*- TODOPRAKASH: add description -*/
         options.add("OCC_FROZEN", new ArrayType());
         options.add("VIR_FROZEN", new ArrayType());
@@ -288,7 +292,7 @@ void NOCI(Options& options)
             int irrep = h_p.first;
             int fmo   = h_p.second;
             std::pair<int,int> swap_occ (irrep,fmo);
-
+            int vrt = vir_frozen[irrep];
             for (int state_a=1; state_a <= vir_frozen[irrep];++state_a){
                 int state_b=0;
                 boost::shared_ptr<Wavefunction> new_scf = boost::shared_ptr<Wavefunction>(new scf::NOCI(options,psio,state_a,swap_occ,state_b,
@@ -300,7 +304,7 @@ void NOCI(Options& options)
                 Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();
                 energies.push_back(new_energy);
-                dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi())));
+                dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi(), fmo, state_a, state_b,vrt )));
             }
             //   }//occup
         } //irrep
@@ -310,9 +314,7 @@ void NOCI(Options& options)
             int fmo   = h_p.second;
             std::pair<int,int> swap_occ (irrep,fmo);
 
-            //for (int h = 0; h < nirrep; ++h){
-            //   for (int i=1; i<= occ_frozen[h]; ++i){
-
+            int vrt = vir_frozen[irrep];
             for (int state_b=1; state_b <= vir_frozen[irrep];++state_b){
                 int state_a=0;
                 boost::shared_ptr<Wavefunction> new_scf = boost::shared_ptr<Wavefunction>(new scf::NOCI(options,psio,state_a,swap_occ,state_b,
@@ -324,7 +326,7 @@ void NOCI(Options& options)
                 Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();
                 energies.push_back(new_energy);
-                dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi())));
+                dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi(),fmo, state_a, state_b,vrt )) );
             }
             //   }//occup
         } //irrep
@@ -460,10 +462,10 @@ void OCDFT(Options& options)
         outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f %11.4f",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength);
     }
     outfile->Printf("\n    ----------------------------------------------------\n");
-    if ( options["DO_NOCI_AND_OCDFT"].has_changed() ) {
-    	scf::NOCI_Hamiltonian noci_H(options,dets);
-    	noci_H.compute_energy(energies);
-    }
+     if ( options["DO_NOCI_AND_OCDFT"].has_changed() ) {
+     scf::NOCI_Hamiltonian noci_H(options,dets);
+    noci_H.compute_energy(energies);
+}
     // Set this early because the callback mechanism uses it.
     Process::environment.wavefunction().reset();
 }
