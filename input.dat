@@ -3,31 +3,31 @@ sys.path.insert(0, './..')
 import cdft 
 
 molecule h2o {
-N	0.0000	0.0000	1.4000
-N	0.0000	0.0000	-1.4000
-  symmetry c1
+C       0.0000  0.0000  0.0000
+O       0.0000  0.0000  1.1282  
+symmetry c1
 }
 
 
 set {
-  basis cc-pvdz 
+  basis cc-pvdz
   df_scf_guess false
   scf_type pk
-  reference uks
-  e_convergence 10
-  d_convergence 4
+  e_convergence 4 
+  d_convergence 1
   maxiter 100
 }
 
 
+
+set reference uhf
+
 set cdft {
   AOCC_FROZEN [1,0,0,0,0,0,0,0]
+ cdft_exc_type core
   AVIR_FROZEN [2,0,0,0,0,0,0,0]
 }
 
-set dft_functional B3LYP
 
 energy('noci')
-
-
 
