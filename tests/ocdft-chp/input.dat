@@ -1,5 +1,6 @@
 #! OCDFT CPH algorithm test, B3LYP computation on ethene
 
+#sys.path.insert(0, '/Users/wderri2')
 import cdft
 
 refdft                = -78.62361950040257 #TEST

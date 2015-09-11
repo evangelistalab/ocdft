@@ -111,7 +111,9 @@ int read_options(std::string name, Options& options)
 
         /*- Select the maximum number of iterations in an OCDFT computation -*/
         options.add_int("OCDFT_MAX_ITER",1000000);
-
+	
+	/*- Would you like to perform an NOCI calculation as well? -*/
+	options.add_bool("DO_NOCI_AND_OCDFT", false);
 
         /*- Would you like to perform an NOCI calculation as well? -*/
         options.add_bool("DO_NOCI_AND_OCDFT", false);
