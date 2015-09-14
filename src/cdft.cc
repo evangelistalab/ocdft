@@ -193,7 +193,7 @@ void NOCI(Options& options)
     }
     std::vector<SharedDeterminant> dets;
     // Store the irrep, multiplicity, total energy, excitation energy, oscillator strength
-    std::vector<boost::tuple<int,int,double,double,double>> state_info;
+    std::vector<boost::tuple<int,int,double,double,double,double,double,double>> state_info;
     if (reference == "RHF") {
         throw InputException("NOCI based on a RHF reference is not implemented ", "REFERENCE to UHF", __FILE__, __LINE__);
     }else if (reference == "UHF") {
@@ -268,7 +268,7 @@ void NOCI(Options& options)
         }
 
 
-        state_info.push_back(boost::make_tuple(0,1,gs_energy,0.0,0.0));
+        state_info.push_back(boost::make_tuple(0,1,gs_energy,0.0,0.0,0.0,0.0,0.0));
 
         SharedMatrix Ca_gs_;
         SharedMatrix Cb_gs_;
@@ -345,7 +345,7 @@ void OCDFT(Options& options)
     std::vector<double> energies;
       std::vector<SharedDeterminant> dets;
     // Store the irrep, multiplicity, total energy, excitation energy, oscillator strength
-    std::vector<boost::tuple<int,int,double,double,double>> state_info;
+    std::vector<boost::tuple<int,int,double,double,double,double,double,double>> state_info;
 
     if (reference == "RKS") {
         throw InputException("Constrained RKS is not implemented ", "REFERENCE to UKS", __FILE__, __LINE__);
@@ -357,7 +357,7 @@ void OCDFT(Options& options)
 
         energies.push_back(gs_energy);
          dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
-        state_info.push_back(boost::make_tuple(0,1,gs_energy,0.0,0.0));
+        state_info.push_back(boost::make_tuple(0,1,gs_energy,0.0,0.0,0.0,0.0,0.0));
 
         // Print a molden file
         if ( options["MOLDEN_WRITE"].has_changed() ) {
@@ -387,7 +387,10 @@ void OCDFT(Options& options)
                 scf::UOCDFT* uocdft_scf = dynamic_cast<scf::UOCDFT*>(new_scf.get());
                 double singlet_exc_energy_s_plus = uocdft_scf->singlet_exc_energy_s_plus();
                 double oscillator_strength_s_plus = uocdft_scf->oscillator_strength_s_plus();
-                state_info.push_back(boost::make_tuple(state,1,new_energy,singlet_exc_energy_s_plus,oscillator_strength_s_plus));
+		double oscillator_strength_s_plus_x = uocdft_scf->oscillator_strength_s_plus_x();
+		double oscillator_strength_s_plus_y = uocdft_scf->oscillator_strength_s_plus_y();
+		double oscillator_strength_s_plus_z = uocdft_scf->oscillator_strength_s_plus_z();
+                state_info.push_back(boost::make_tuple(state,1,new_energy,singlet_exc_energy_s_plus,oscillator_strength_s_plus,oscillator_strength_s_plus_x,oscillator_strength_s_plus_y,oscillator_strength_s_plus_z));
 
                 // Print a molden file
                 if ( options["MOLDEN_WRITE"].has_changed() ) {
@@ -428,8 +431,10 @@ void OCDFT(Options& options)
                     scf::UOCDFT* uocdft_scf = dynamic_cast<scf::UOCDFT*>(new_scf.get());
                     double singlet_exc_energy_s_plus = uocdft_scf->singlet_exc_energy_s_plus();
                     double oscillator_strength_s_plus = uocdft_scf->oscillator_strength_s_plus();
-                    state_info.push_back(boost::make_tuple(0,1,new_energy,singlet_exc_energy_s_plus,oscillator_strength_s_plus));
-
+                    double oscillator_strength_s_plus_x = uocdft_scf->oscillator_strength_s_plus_x();
+                    double oscillator_strength_s_plus_y = uocdft_scf->oscillator_strength_s_plus_y();
+                    double oscillator_strength_s_plus_z = uocdft_scf->oscillator_strength_s_plus_z();
+                    state_info.push_back(boost::make_tuple(state,1,new_energy,singlet_exc_energy_s_plus,oscillator_strength_s_plus,oscillator_strength_s_plus_x,oscillator_strength_s_plus_y,oscillator_strength_s_plus_z));
                     // Print a molden file
                     if ( options.get_bool("MOLDEN_WRITE") ) {
                         boost::shared_ptr<MoldenWriter> molden(new MoldenWriter(new_scf));
@@ -453,15 +458,18 @@ void OCDFT(Options& options)
 
     outfile->Printf("\n       ==> OCDFT Excited State Information <==\n");
 
-    outfile->Printf("\n    ----------------------------------------------------");
-    outfile->Printf("\n      State       Energy (Eh)    Omega (eV)   Osc. Str.");
-    outfile->Printf("\n    ----------------------------------------------------");
+    outfile->Printf("\n    ----------------------------------------------------------------------------------------------------------");
+    outfile->Printf("\n      State       Energy (Eh)    Omega (eV)   Osc. Str.     Osc. Str. (x)  Osc. Str. (y)  Osc. Str. (z) ");
+    outfile->Printf("\n    ----------------------------------------------------------------------------------------------------------");
     for (size_t n = 0; n < state_info.size(); ++n){
         double singlet_exc_en = state_info[n].get<3>();
         double osc_strength = state_info[n].get<4>();
-        outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f %16.12f",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength);
+	double osc_strength_x = state_info[n].get<5>();
+        double osc_strength_y = state_info[n].get<6>();
+	double osc_strength_z = state_info[n].get<7>();
+        outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f   %12.8f   %12.8f   %12.8f   %12.8f",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength,osc_strength_x,osc_strength_y,osc_strength_z);
     }
-    outfile->Printf("\n    ----------------------------------------------------\n");
+    outfile->Printf("\n    -----------------------------------------------------------------------------------------------------------\n");
      if ( options["DO_NOCI_AND_OCDFT"].has_changed() ) {
      scf::NOCI_Hamiltonian noci_H(options,dets);
      noci_H.compute_energy(energies);

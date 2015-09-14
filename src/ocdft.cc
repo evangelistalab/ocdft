@@ -43,6 +43,9 @@ UOCDFT::UOCDFT(Options &options, boost::shared_ptr<PSIO> psio)
   singlet_exc_energy_ci(0.0),
   triplet_exc_energy_ci(0.0),
   oscillator_strength_s_plus_(0.0),
+  oscillator_strength_s_plus_x_(0.0),
+  oscillator_strength_s_plus_y_(0.0),
+  oscillator_strength_s_plus_z_(0.0),
   oscillator_strength_ci(0.0)
 {
     init();
@@ -63,6 +66,9 @@ UOCDFT::UOCDFT(Options &options, boost::shared_ptr<PSIO> psio, boost::shared_ptr
   singlet_exc_energy_ci(0.0),
   triplet_exc_energy_ci(0.0),
   oscillator_strength_s_plus_(0.0),
+  oscillator_strength_s_plus_x_(0.0),
+  oscillator_strength_s_plus_y_(0.0),
+  oscillator_strength_s_plus_z_(0.0),
   oscillator_strength_ci(0.0)
 {
     init();
@@ -83,6 +89,9 @@ UOCDFT::UOCDFT(Options &options, boost::shared_ptr<PSIO> psio, boost::shared_ptr
   singlet_exc_energy_ci(0.0),
   triplet_exc_energy_ci(0.0),
   oscillator_strength_s_plus_(0.0),
+  oscillator_strength_s_plus_x_(0.0),
+  oscillator_strength_s_plus_y_(0.0),
+  oscillator_strength_s_plus_z_(0.0),
   oscillator_strength_ci(0.0)
 {
     do_excitation = true;
@@ -2157,7 +2166,9 @@ double UOCDFT::compute_S_plus_triplet_correction()
     double dz = Process::environment.globals["OCDFT TRANSITION DIPOLE Z"] / pc_dipmom_au2debye;
 
     oscillator_strength_s_plus_ = 2./3. * singlet_exc_energy_s_plus_ * (dx * dx + dy * dy + dz * dz);
-
+    oscillator_strength_s_plus_x_ = 2./3. * singlet_exc_energy_s_plus_ * (dx * dx);
+    oscillator_strength_s_plus_y_ = 2./3. * singlet_exc_energy_s_plus_ * (dy * dy);
+    oscillator_strength_s_plus_z_ = 2./3. * singlet_exc_energy_s_plus_ * (dz * dz);
     outfile->Printf( "\n  Transition Dipole Moment = (%f,%f,%f)",dx,dy,dz);
 
 

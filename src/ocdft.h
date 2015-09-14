@@ -21,6 +21,9 @@ public:
 
     double singlet_exc_energy_s_plus() {return singlet_exc_energy_s_plus_;}
     double oscillator_strength_s_plus() {return oscillator_strength_s_plus_;}
+    double oscillator_strength_s_plus_x() {return oscillator_strength_s_plus_x_;}
+    double oscillator_strength_s_plus_y() {return oscillator_strength_s_plus_y_;}
+    double oscillator_strength_s_plus_z() {return oscillator_strength_s_plus_z_;}
 
 protected:
     /// The fragment constraint matrices in the SO basis
@@ -59,6 +62,9 @@ protected:
     double singlet_exc_energy_ci;
     double triplet_exc_energy_ci;
     double oscillator_strength_s_plus_;
+    double oscillator_strength_s_plus_x_;
+    double oscillator_strength_s_plus_y_;
+    double oscillator_strength_s_plus_z_;
     double oscillator_strength_ci;
 
     // Information about the excited states
