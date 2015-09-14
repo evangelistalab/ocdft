@@ -26,6 +26,7 @@ set {
 set cdft {
   OCC_FROZEN [2]
   VIR_FROZEN [2]
+  ref_mix True
 }
 
 energy('fasnocis')

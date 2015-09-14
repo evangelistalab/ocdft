@@ -16,14 +16,14 @@ set {
   basis cc-pvdz
   df_scf_guess false
   scf_type pk
-  e_convergence 10
+  #e_convergence 10
   d_convergence 1
   maxiter 100
 }
 
 set reference uhf
 set cdft {
-  OCC_FROZEN [1,0,0,0,0,0,0,0]
+  OCC_FROZEN [2,0,0,0,0,0,0,0]
   VIR_FROZEN [2,0,0,0,0,0,0,0]
 }
 
