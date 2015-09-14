@@ -105,25 +105,37 @@ double NOCI_Hamiltonian::compute_energy(std::vector<double> energies)
 
     outfile->Printf("\n  Diagonalizing the NOCI Hamiltonian\n");
 
+    // Build H' =  S^(-1/2) H S^(-1/2)
+    SharedMatrix Shalf = S_->clone();
+    Shalf->power(-0.5);
+    H_->transform(Shalf);
+
+    // Diagonalize H': H'C' = C'e
+    SharedMatrix evecs_temp_ = SharedMatrix(new Matrix("Eigenvectors",ndets,ndets));
     evecs_ = SharedMatrix(new Matrix("Eigenvectors",ndets,ndets));
     evals_ = SharedVector(new Vector("Eigenvalues",ndets));
+    H_->diagonalize(evecs_temp_,evals_);
 
-    H_->diagonalize(evecs_,evals_);
+    Shalf->copy(S_);
+    Shalf->power(0.5);
 
-   outfile->Printf("\n Ground state energy: %20.12f \n", energies[0]);
-   outfile->Printf("\n Hartree_2_ev  %20.12f \n", pc_hartree2ev);
+    // Build the eigenvectors C = S^(1/2) C'
+    evecs_->gemm(false,false,1.0,Shalf,evecs_temp_,0.0);
+
+    outfile->Printf("\n Ground state energy: %20.12f \n", energies[0]);
+    outfile->Printf("\n Hartree_2_ev  %20.12f \n", pc_hartree2ev);
 
     outfile->Printf("\n  ==> NOCI Excited State Information <==\n");
     outfile->Printf("\n  ------------------------------------------------------------------");
     outfile->Printf("\n    State        S          Energy (Eh)    Omega (eV)    Osc. Str.");
     outfile->Printf("\n  ------------------------------------------------------------------");
     for (size_t n = 0; n < ndets; ++n){
-       double ex_energy;
-       if(options_.get_bool("REF_MIX")){
-         ex_energy = pc_hartree2ev * (evals_->get(n) - evals_->get(0));
+        double ex_energy;
+        if(options_.get_bool("REF_MIX")){
+            ex_energy = pc_hartree2ev * (evals_->get(n) - evals_->get(0));
         }
         else{
-         ex_energy = pc_hartree2ev * (evals_->get(n) - energies[0]);
+            ex_energy = pc_hartree2ev * (evals_->get(n) - energies[0]);
         }
         double osc_strength = 0.0;
         double s2 = 0.0;
@@ -437,7 +449,7 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
             hamiltonian = Stilde * (one_body + two_body);
         }
     }
-   else if(num_alpha_nonc == 2 and num_beta_nonc == 0){
+    else if(num_alpha_nonc == 2 and num_beta_nonc == 0){
         overlap = 0.0;
         // Build the W^BA alpha density matrix
         size_t i = alpha_nonc[0].first;
@@ -450,8 +462,8 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         if (use_fast_jk_){
             build_D_i_JK_c1(ACa,BCa,j);
 
-            double DaJDa = D_BA_ii_a->vector_dot(Jso_libfock_); 
-            Kso_libfock_->transpose_this();            
+            double DaJDa = D_BA_ii_a->vector_dot(Jso_libfock_);
+            Kso_libfock_->transpose_this();
             double DaKDa = -D_BA_ii_a->vector_dot(Kso_libfock_);
 
             double two_body = DaJDa + DaKDa;
@@ -462,8 +474,8 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
             K(D_BA_jj_a);
             TempMatrix->transpose_this();
             double DaKDa = -D_BA_ii_a->vector_dot(TempMatrix);
-//            J(D_BA_ij_a);
-//            double DaKDa = -D_BA_ji_a->vector_dot(TempMatrix);
+            //            J(D_BA_ij_a);
+            //            double DaKDa = -D_BA_ji_a->vector_dot(TempMatrix);
             double two_body = DaJDa + DaKDa;
             hamiltonian = Stilde * two_body;
         }
@@ -646,9 +658,9 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
         double** V_h = V->pointer(h);
         double** T_h = TempMatrix->pointer(h);
         for (int i = 0; i < rows; ++i){
-                for (int j = 0; j < cols; ++j){
-                        T_h[i][j] = V_h[i][j];
-                }
+            for (int j = 0; j < cols; ++j){
+                T_h[i][j] = V_h[i][j];
+            }
         }
     }
     TempMatrix2->gemm(false,false,1.0,A,TempMatrix,0.0);
@@ -663,9 +675,9 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
         double** U_h = U->pointer(h);
         double** T_h = TempMatrix->pointer(h);
         for (int i = 0; i < rows; ++i){
-                for (int j = 0; j < cols; ++j){
-                        T_h[i][j] = U_h[i][j];
-                }
+            for (int j = 0; j < cols; ++j){
+                T_h[i][j] = U_h[i][j];
+            }
         }
     }
     TempMatrix2->gemm(false,false,1.0,B,TempMatrix,0.0);
