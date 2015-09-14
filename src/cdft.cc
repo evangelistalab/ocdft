@@ -106,6 +106,8 @@ int read_options(std::string name, Options& options)
 
         options.add_bool("REF_MIX", false);
 
+        options.add_bool("DIAG_DFT_E", false);
+
         options.add("AOCC_FROZEN", new ArrayType());
         options.add("AVIR_FROZEN", new ArrayType());
 
@@ -356,7 +358,7 @@ void OCDFT(Options& options)
         double gs_energy = ref_scf->compute_energy();
 
         energies.push_back(gs_energy);
-         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
+        dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
         state_info.push_back(boost::make_tuple(0,1,gs_energy,0.0,0.0,0.0,0.0,0.0));
 
         // Print a molden file
@@ -381,6 +383,7 @@ void OCDFT(Options& options)
                 Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();
                 energies.push_back(new_energy);
+                if (options.get_bool("DIAG_DFT_E")){energies.push_back(new_energy);}
                 dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi())));
                  dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Cb(),new_scf->Ca(),new_scf->nbetapi(),new_scf->nalphapi())));
 
