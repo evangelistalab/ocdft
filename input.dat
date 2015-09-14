@@ -1,0 +1,31 @@
+sys.path.insert(0, './..')
+import cdft 
+
+molecule h2o {
+N	0.0000	0.0000	1.4000
+N	0.0000	0.0000	-1.4000
+  symmetry c1
+}
+
+
+set {
+  basis cc-pvdz 
+  df_scf_guess false
+  scf_type pk
+  reference uhf
+# e_convergence 10
+  d_convergence 1
+  maxiter 100
+}
+
+
+set cdft {
+  AOCC_FROZEN [2]
+  AVIR_FROZEN [2]
+}
+
+
+energy('noci')
+
+
+

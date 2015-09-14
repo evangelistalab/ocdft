@@ -88,6 +88,13 @@ double NOCI_Hamiltonian::compute_energy(std::vector<double> energies)
         }
     }
 
+
+    if(options_.get_bool("DIAG_DFT_E")){
+        for (size_t i = 0; i < ndets; ++i){
+            H_->set(i,i,energies[i]);
+       } 
+    }
+
     if (ndets <= 10){
         S_->print();
         H_->print();
