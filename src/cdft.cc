@@ -22,8 +22,7 @@
 
 #include "fasnocis.h"
 
-
-INIT_PLUGIN
+//INIT_PLUGIN
 
 using namespace boost;
 
@@ -59,8 +58,8 @@ int read_options(std::string name, Options& options)
         options.add_double("CDFT_SUHF_LAMBDA",0.0);
         /*- Charge constraints -*/
         options.add_double("LEVEL_SHIFT",0.0);
-	/*- Restrict Core -*/
-	options.add_double("REW", 0.0);
+        /*- Restrict Core -*/
+        options.add_double("REW", 0.0);
         /*- Apply a fixed Lagrange multiplier -*/
         options.add_bool("OPTIMIZE_VC", true);
         /*- Value of the Lagrange multiplier -*/
@@ -104,7 +103,7 @@ int read_options(std::string name, Options& options)
 
         options.add_bool("USE_FAST_JK", false);
 
-        options.add_bool("REF_MIX", false);
+        options.add_bool("REF_MIX", true);
 
         options.add_bool("DIAG_DFT_E", false);
 
@@ -114,8 +113,8 @@ int read_options(std::string name, Options& options)
         /*- Select the maximum number of iterations in an OCDFT computation -*/
         options.add_int("OCDFT_MAX_ITER",1000000);
 	
-	/*- Would you like to perform an NOCI calculation as well? -*/
-	options.add_bool("DO_NOCI_AND_OCDFT", false);
+        /*- Would you like to perform an NOCI calculation as well? -*/
+        options.add_bool("DO_NOCI_AND_OCDFT", false);
 
         /*- Would you like to perform an NOCI calculation as well? -*/
         options.add_bool("DO_NOCI_AND_OCDFT", false);
@@ -133,8 +132,7 @@ int read_options(std::string name, Options& options)
     return true;
 }
 
-extern "C"
-PsiReturnType cdft(Options& options)
+extern "C" PsiReturnType cdft(Options& options)
 {
     if (options.get_str("METHOD") == "CDFT"){
         outfile->Printf("\n  ==> Constrained DFT <==\n");

@@ -46,6 +46,8 @@ protected:
 
     /// Compute the matrix element between determinants A and B assuming C1 symmetry
     std::vector<double> matrix_element_c1(SharedDeterminant A, SharedDeterminant B);
+    /// Compute the matrix elements of a vector of one-body operators between determinants A and B assuming C1 symmetry
+    std::vector<double> matrix_element_one_body_c1(SharedDeterminant A, SharedDeterminant B, std::vector<SharedMatrix> Ops);
     /// Compute the corresponding orbitals between determinant A and B
     boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double>
     corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimension dima, Dimension dimb);
@@ -58,7 +60,11 @@ protected:
     bool use_fast_jk_ = false;
 
     /// Matrix factory
+    boost::shared_ptr<Molecule> molecule_;
+    /// Matrix factory
     boost::shared_ptr<MatrixFactory> factory_;
+    /// The integral factory
+    boost::shared_ptr<IntegralFactory> integral_;
     /// Number of symmetry adapted AOs per irrep
     Dimension nsopi_;
     /// The one-electron integrals

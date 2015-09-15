@@ -10,6 +10,9 @@ from molutil import *
 import p4util
 from p4xcpt import *
 
+plugdir = os.path.split(os.path.abspath(__file__))[0]
+sofile = plugdir + "/cdft.so"
+
 def run_cdft(name, **kwargs):
     r"""Function encoding sequence of PSI module and plugin calls so that
     CDFT can be called via :py:func:`~driver.energy`.
@@ -22,7 +25,7 @@ def run_cdft(name, **kwargs):
 
     # Run CDFT
     psi4.set_local_option('CDFT','METHOD','CDFT')
-    returnvalue = psi4.plugin('cdft.so')
+    returnvalue = psi4.plugin(sofile)
 
     return returnvalue
 
@@ -39,7 +42,7 @@ def run_noci(name, **kwargs):
 
     # Run CDFT
     psi4.set_local_option('CDFT','METHOD','NOCI')
-    returnvalue = psi4.plugin('cdft.so')
+    returnvalue = psi4.plugin(sofile)
 
     return returnvalue
 
@@ -58,7 +61,7 @@ def run_ocdft(name, **kwargs):
 
     # Run OCDFT
     psi4.set_local_option('CDFT','METHOD','OCDFT')
-    returnvalue = psi4.plugin('cdft.so')
+    returnvalue = psi4.plugin(sofile)
 
     return returnvalue
 
@@ -74,7 +77,7 @@ def run_fasnocis(name, **kwargs):
 
     # Run OCDFT
     psi4.set_local_option('CDFT','METHOD','FASNOCIS')
-    returnvalue = psi4.plugin('cdft.so')
+    returnvalue = psi4.plugin(sofile)
 
     return returnvalue
 

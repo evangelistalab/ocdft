@@ -26,7 +26,7 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     outfile->Printf("  Number of determinants: %zu\n",dets_.size());
 
     boost::shared_ptr<Wavefunction> wfn = Process::environment.wavefunction();
-    boost::shared_ptr<Molecule> mol = Process::environment.molecule();
+    molecule_ = Process::environment.molecule();
 
     use_fast_jk_ = options.get_bool("USE_FAST_JK");
 
@@ -38,6 +38,7 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     }
 
     factory_ = wfn->matrix_factory();
+    integral_ = wfn->integral();
     nsopi_ = wfn->nsopi();
     Sso_ = wfn->S()->clone();
     Hso_ = wfn->H()->clone();
@@ -49,7 +50,7 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     jk_->set_do_K(true);
     jk_->set_do_wK(false);
     jk_->initialize();
-    nuclearrep_ = mol->nuclear_repulsion_energy();
+    nuclearrep_ = molecule_->nuclear_repulsion_energy();
     nso   = wfn->nso();
 
     TempMatrix = factory_->create_shared_matrix("TempMatrix");
@@ -129,32 +130,69 @@ double NOCI_Hamiltonian::compute_energy(std::vector<double> energies)
     // Build the eigenvectors C = S^(1/2) C'
     evecs_->gemm(false,false,1.0,Shalf,evecs_temp_,0.0);
 
+    /// Transition dipole moments
+    // The matrix factory can create matrices of the correct dimensions...
+    OperatorSymmetry msymm(1, molecule_, integral_, factory_);
+    // Create a vector of matrices with the proper symmetry
+    std::vector<SharedMatrix> dipole = msymm.create_matrices("SO Dipole");
+
+    boost::shared_ptr<OneBodySOInt> ints(integral_->so_dipole());
+    ints->compute(dipole);
+
+    std::vector<SharedMatrix> DipMom;
+    for (auto& str : {"X","Y","Z"}){
+        DipMom.push_back(SharedMatrix(new Matrix(str,ndets,ndets)));
+    }
+    for (size_t i = 0; i < ndets; ++i){
+        for (size_t j = 0; j < ndets; ++j){
+            std::vector<double> dip_mom = matrix_element_one_body_c1(dets_[i],dets_[j],dipole);
+            for (auto n : {0,1,2}){
+                DipMom[n]->set(i,j,dip_mom[n]);
+            }
+        }
+    }
+
     outfile->Printf("\n Ground state energy: %20.12f \n", energies[0]);
     outfile->Printf("\n Hartree_2_ev  %20.12f \n", pc_hartree2ev);
 
     outfile->Printf("\n  ==> NOCI Excited State Information <==\n");
-    outfile->Printf("\n  ------------------------------------------------------------------");
-    outfile->Printf("\n    State        S          Energy (Eh)    Omega (eV)    Osc. Str.");
-    outfile->Printf("\n  ------------------------------------------------------------------");
+    outfile->Printf("\n  ----------------------------------------------------------------------------------------------------");
+    outfile->Printf("\n    State        S          Energy (Eh)    Omega (eV)   Osc. Str.     mu_x        mu_y        mu_z");
+    outfile->Printf("\n  ----------------------------------------------------------------------------------------------------");
     for (size_t n = 0; n < ndets; ++n){
-        double ex_energy;
+        double ex_energy = 0.0;
         if(options_.get_bool("REF_MIX")){
             ex_energy = pc_hartree2ev * (evals_->get(n) - evals_->get(0));
         }
         else{
             ex_energy = pc_hartree2ev * (evals_->get(n) - energies[0]);
         }
-        double osc_strength = 0.0;
         double s2 = 0.0;
+
         for (size_t i = 0; i < ndets; ++i){
             for (size_t j = 0; j < ndets; ++j){
                 s2 += evecs_->get(i,n) * S2_->get(i,j) * evecs_->get(j,n);
             }
         }
         double s = 0.5 * (std::sqrt(1.0 + 4.0 * s2) - 1.0)+ 1.0e-6;
-        outfile->Printf("\n   @NOCI %-4d %6.3f %20.12f %11.4f   %11.4e",n,s,evals_->get(n),ex_energy,osc_strength);
+
+        std::vector<double> values;
+        for (SharedMatrix Op : {DipMom[0],DipMom[1],DipMom[2]}){
+            double value = 0.0;
+            for (size_t i = 0; i < ndets; ++i){
+                for (size_t j = 0; j < ndets; ++j){
+                    value += evecs_->get(i,n) * Op->get(i,j) * evecs_->get(j,0);
+                }
+            }
+            values.push_back(value);
+        }
+        double osc_strength = (2./3.) * ex_energy * (values[1] * values[1] + values[2] * values[2] + values[3] * values[3]) / pc_hartree2ev;
+
+        outfile->Printf("\n   @NOCI %-4d %6.3f %20.12f %11.4f %11.4e %11.4e %11.4e %11.4e",
+                        n,s,evals_->get(n),ex_energy,
+                        osc_strength,values[1],values[2],values[3]);
     }
-    outfile->Printf("\n  ----------------------------------------------------\n");
+outfile->Printf("\n  ----------------------------------------------------------------------------------------------------\n\n");
     evecs_->print();
     return 0.0;
 }
@@ -547,6 +585,104 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
         s2 = Stilde * (SBAaa->get(i,i) * SBAbb->get(j,j) - SBAab->get(i,j) * SBAba->get(j,i));
     }
     return {overlap,hamiltonian,s2};
+}
+
+std::vector<double> NOCI_Hamiltonian::matrix_element_one_body_c1(SharedDeterminant A, SharedDeterminant B, std::vector<SharedMatrix> Ops)
+{
+    std::vector<double> results;
+    nirrep_ = 1;
+    // Number of alpha occupied orbitals
+    size_t nocc_a = A->nalphapi()[0];
+    // Number of beta occupied orbitals
+    size_t nocc_b = A->nbetapi()[0];
+
+    // I. Form the corresponding alpha and beta orbitals
+    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
+    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> cbeta  = corresponding_orbitals(A->Cb(),B->Cb(),A->nbetapi(),B->nbetapi());
+    SharedMatrix ACa = calpha.get<0>();
+    SharedMatrix BCa = calpha.get<1>();
+    SharedMatrix ACb = cbeta.get<0>();
+    SharedMatrix BCb = cbeta.get<1>();
+    double detUValpha = calpha.get<3>();
+    double detUVbeta = cbeta.get<3>();
+    SharedVector s_a = calpha.get<2>();
+    SharedVector s_b = cbeta.get<2>();
+
+    // Compute the number of noncoincidences
+    double noncoincidence_threshold = 1.0e-9;
+
+    double Sta = 1.0;
+    std::vector<std::pair<size_t,double>> alpha_nonc;
+    for (size_t p = 0; p < nocc_a; ++p){
+        double s_p = s_a->get(p);
+        if(std::fabs(s_p) >= noncoincidence_threshold){
+            Sta *= s_p;
+        }else{
+            alpha_nonc.push_back(std::make_pair(p,s_p));
+        }
+    }
+
+    double Stb = 1.0;
+    std::vector<std::pair<size_t,double>> beta_nonc;
+    for (size_t p = 0; p < nocc_b; ++p){
+        double s_p = s_b->get(0,p);
+        if(std::fabs(s_p) >= noncoincidence_threshold){
+            Stb *= s_p;
+        }else{
+            beta_nonc.push_back(std::make_pair(p,s_p));
+        }
+    }
+
+#if DEBUG_NOCI
+    outfile->Printf("\n  Corresponding orbitals:\n");
+    outfile->Printf("\n  Alpha: ");
+    for (auto& kv : alpha_nonc){
+        outfile->Printf(" MO = %zu, s = %e",kv.first,kv.second);
+    }
+    outfile->Printf("\n  Beta: ");
+    for (auto& kv : beta_nonc){
+        outfile->Printf(" MO = %zu, s = %e",kv.first,kv.second);
+    }
+#endif
+
+    double Stilde = Sta * Stb * detUValpha * detUVbeta;
+
+    size_t num_alpha_nonc = alpha_nonc.size();
+    size_t num_beta_nonc = beta_nonc.size();
+
+#if DEBUG_NOCI
+    outfile->Printf("\n  Stilde = %.6f\n",Stilde);
+    outfile->Printf("\n  Noncoincidences: %da + %db \n",
+                    num_alpha_nonc,num_beta_nonc);
+#endif
+
+    for (SharedMatrix Op : Ops){
+        if(num_alpha_nonc == 0 and num_beta_nonc == 0){
+            // Build the W^BA alpha density matrix
+            SharedMatrix W_BA_a = build_W_c1(ACa,BCa,s_a,nocc_a);
+            SharedMatrix W_BA_b = build_W_c1(ACb,BCb,s_b,nocc_b);
+
+            // Contract h with W^BA
+            double WH_a = W_BA_a->vector_dot(Op);
+            double WH_b  = W_BA_b->vector_dot(Op);
+            results.push_back(Stilde * (WH_a + WH_b));
+        }
+        else if(num_alpha_nonc == 1 and num_beta_nonc == 0){
+            // Build the W^BA alpha density matrix
+            size_t i = alpha_nonc[0].first;
+            SharedMatrix D_BA_i_a = build_D_i_c1(ACa,BCa,i,i);
+            results.push_back(Stilde * D_BA_i_a->vector_dot(Op));
+        }
+        else if(num_alpha_nonc == 0 and num_beta_nonc == 1){
+            // Build the W^BA alpha density matrix
+            size_t i = beta_nonc[0].first;
+            SharedMatrix D_BA_i_b = build_D_i_c1(ACb,BCb,i,i);
+            results.push_back(Stilde * D_BA_i_b->vector_dot(Op));
+        }else{
+            results.push_back(0.0);
+        }
+    }
+    return results;
 }
 
 SharedMatrix NOCI_Hamiltonian::build_W_c1(SharedMatrix CA, SharedMatrix CB, SharedVector s, size_t nocc)
