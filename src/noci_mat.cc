@@ -89,11 +89,18 @@ double NOCI_Hamiltonian::compute_energy(std::vector<double> energies)
         }
     }
 
+    // If we do not want the reference to mix, decouple it from the rest
+    if(options_.get_bool("REF_MIX") == false){
+        for (size_t i = 1; i < ndets; ++i){
+            H_->set(0,i,0.0);
+            H_->set(i,0,0.0);
+        }
+    }
 
     if(options_.get_bool("DIAG_DFT_E")){
         for (size_t i = 0; i < ndets; ++i){
             H_->set(i,i,energies[i]);
-       } 
+        }
     }
 
     if (ndets <= 10){
@@ -161,12 +168,7 @@ double NOCI_Hamiltonian::compute_energy(std::vector<double> energies)
     outfile->Printf("\n  ----------------------------------------------------------------------------------------------------");
     for (size_t n = 0; n < ndets; ++n){
         double ex_energy = 0.0;
-        if(options_.get_bool("REF_MIX")){
-            ex_energy = pc_hartree2ev * (evals_->get(n) - evals_->get(0));
-        }
-        else{
-            ex_energy = pc_hartree2ev * (evals_->get(n) - energies[0]);
-        }
+        ex_energy = pc_hartree2ev * (evals_->get(n) - evals_->get(0));
         double s2 = 0.0;
 
         for (size_t i = 0; i < ndets; ++i){
@@ -188,11 +190,14 @@ double NOCI_Hamiltonian::compute_energy(std::vector<double> energies)
         }
         double osc_strength = (2./3.) * ex_energy * (values[1] * values[1] + values[2] * values[2] + values[3] * values[3]) / pc_hartree2ev;
 
+        double mu_x = std::fabs(values[1]) > 1.0e-12 ? values[1] : 0.0;
+        double mu_y = std::fabs(values[2]) > 1.0e-12 ? values[2] : 0.0;
+        double mu_z = std::fabs(values[3]) > 1.0e-12 ? values[3] : 0.0;
         outfile->Printf("\n   @NOCI %-4d %6.3f %20.12f %11.4f %11.4e %11.4e %11.4e %11.4e",
                         n,s,evals_->get(n),ex_energy,
-                        osc_strength,values[1],values[2],values[3]);
+                        osc_strength,mu_x,mu_y,mu_z);
     }
-outfile->Printf("\n  ----------------------------------------------------------------------------------------------------\n\n");
+    outfile->Printf("\n  ----------------------------------------------------------------------------------------------------\n\n");
     evecs_->print();
     return 0.0;
 }

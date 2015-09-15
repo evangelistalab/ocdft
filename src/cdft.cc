@@ -206,9 +206,7 @@ void NOCI(Options& options)
         energies.push_back(gs_energy);
 
         // Push the ground state determinant
-       if (options.get_bool("REF_MIX")){
         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
-       }
         // I am going to ask user to give me
         //  OCC_ACTIVE based on each irrep
         //  VIR_ACTIVE based on each irrep
@@ -500,9 +498,10 @@ void FASNOCIS(Options& options)
         Process::environment.set_wavefunction(ref_scf);
         double gs_energy = ref_scf->compute_energy();
         energies.push_back(gs_energy);
-         if (options.get_bool("REF_MIX")){
+
+        // Push the ground state determinant
         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
-        }
+
         Process::environment.globals["HF NOCI energy"] = gs_energy;
         // Print a molden file
         if ( options["MOLDEN_WRITE"].has_changed() ) {
