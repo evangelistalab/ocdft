@@ -48,6 +48,14 @@ protected:
     bool do_save_holes;
     /// For multiple excited state project out previous particles
     bool do_save_particles;
+    ///// Are we to do MOM?
+    //bool MOM_enabled_;
+    ///// Are we to do excited-state MOM?
+    //bool MOM_excited_;
+    ///// MOM started?
+    //bool MOM_started_;
+    ///// MOM performed?
+    //bool MOM_performed_;
     /// Ground state energy
     double ground_state_energy;
     /// Ground state symmetry
@@ -105,6 +113,10 @@ protected:
     SharedMatrix Ub_o_;
     /// The eigenvectors of PvFPv
     SharedMatrix Ub_v_;
+    ///// Old C Alpha matrix (if needed for MOM)
+    //SharedMatrix Ca_old_;
+    ///// Old C Beta matrix (if needed for MOM)
+    //SharedMatrix Cb_old_;
     /// The eigenvalues of PoFPo
     SharedVector lambda_b_o_;
     /// The eigenvalues of PvFPv
@@ -182,6 +194,13 @@ protected:
     /// Form the Fock matrix for the spectator orbitals
     void diagonalize_F_spectator_unrelaxed();
     void sort_ee_mos();
+
+
+    /// Maximum overlap method for prevention of oscillation/excited state SCF
+    //void HF::MOM();
+    /// Start the MOM algorithm (requires one iteration worth of setup)
+    //void HF::MOM_start();
+
 
     /// Analyze excitations
     void analyze_excitations();

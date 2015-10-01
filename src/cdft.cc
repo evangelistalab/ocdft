@@ -76,6 +76,8 @@ int read_options(std::string name, Options& options)
         options.add_bool("TRIPLET_CORRECTION", true);
         /*- Perform a correction of the triplet excitation energies using the S+ formalism -*/
         options.add_bool("CDFT_SPIN_ADAPT_SP", true);
+	/*- Perform a correction of the triplet excitation energies using the S+ formalism -*/
+        options.add_int("MOM_START", 0);
         /*- Perform a correction of the triplet excitation energies using a CI formalism -*/
         options.add_bool("CDFT_SPIN_ADAPT_CI", false);
         /*- Break the symmetry of the HOMO/LUMO pair (works only in C1 symmetry) -*/

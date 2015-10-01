@@ -13,6 +13,7 @@
 #include <libdisp/dispersion.h>
 #include <liboptions/liboptions.h>
 #include <libciomr/libciomr.h>
+#include <libscf_solver/hf.h>
 #include <libqt/qt.h>
 #include <libiwl/iwl.hpp>
 
@@ -111,6 +112,10 @@ void UOCDFT::init()
     saved_naholepi_ = Dimension(nirrep_,"Saved number of holes per irrep");
     saved_napartpi_ = Dimension(nirrep_,"Saved number of particles per irrep");
     zero_dim_ = Dimension(nirrep_);
+    
+    MOM_enabled_ = (KS::options_["MOM_START"].has_changed());
+    MOM_started_ = false;
+    MOM_performed_ = false;
 
 
     // Allocate vectors
@@ -435,10 +440,11 @@ void UOCDFT::form_C()
         }
     }else{
         // Excited state: use a special form_C
-        form_C_ee();
-    }
+	         form_C_ee();
+        }
     // Check the orthogonality of the MOs
     orthogonality_check(Ca_, S_);
+    // Use Maximum Overlap Method?
 }
 
 void UOCDFT::form_C_ee()
@@ -568,7 +574,7 @@ void UOCDFT::compute_particles()
 
 void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
 {
-    // Find the hole/particle pair to follow
+    //Find the hole/particle pair to follow
     boost::tuple<double,int,int> hole;
     boost::tuple<double,int,int> particle;
     std::vector<boost::tuple<double,int,int,double,int,int,double> > sorted_hp_pairs;
@@ -576,145 +582,154 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     // If we are doing core excitation just take the negative of the hole energy
     bool do_core_excitation = false;
     if(KS::options_.get_str("CDFT_EXC_TYPE") == "CORE"){
-        do_core_excitation = true;
+    do_core_excitation = true;
     }
 
     // Compute the symmetry adapted hole/particle pairs
     for (int occ_h = 0; occ_h < nirrep_; ++occ_h){
-        int nocc = gs_nalphapi_[occ_h];
-        for (int i = 0; i < nocc; ++i){
-            double e_h = lambda_o->get(occ_h,i);
-            for (int vir_h = 0; vir_h < nirrep_; ++vir_h){
-                int nvir = gs_navirpi_[vir_h];
-                for (int a = 0; a < nvir; ++a){
-                    double e_p = lambda_v->get(vir_h,a);
-                    double e_hp = do_core_excitation ? (e_p + e_h) : (e_p - e_h);
-                    int symm = occ_h ^ vir_h ^ ground_state_symmetry_;
-                    if(not do_symmetry or (symm == excited_state_symmetry_)){ // Test for symmetry
-                        // Make sure we are not adding excitations to holes/particles that have been projected out
-			    if(KS::options_.get_double("REW") > 0.0){ // Perform Restricted Excitation Window Calculation
-				double rew_cutoff = KS::options_.get_double("REW");
-                        	if (std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and std::fabs(e_h) < rew_cutoff ){
-                            		sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
-    				}
-			     }
-                            else{
-				if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6){ // Use Full Excitation Space
-                            		sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));  // N.B. shifted wrt to full indexing
-                            }
-				}
-                    }
-                }
-            }
-        }
+    int nocc = gs_nalphapi_[occ_h];
+    for (int i = 0; i < nocc; ++i){
+    double e_h = lambda_o->get(occ_h,i);
+    for (int vir_h = 0; vir_h < nirrep_; ++vir_h){
+	int nvir = gs_navirpi_[vir_h];
+	for (int a = 0; a < nvir; ++a){
+	    double e_p = lambda_v->get(vir_h,a);
+	    double e_hp = do_core_excitation ? (e_p + e_h) : (e_p - e_h);
+	    int symm = occ_h ^ vir_h ^ ground_state_symmetry_;
+	    if(not do_symmetry or (symm == excited_state_symmetry_)){ // Test for symmetry
+		// Make sure we are not adding excitations to holes/particles that have been projected out
+		    if(KS::options_.get_double("REW") > 0.0){ // Perform Restricted Excitation Window Calculation
+			double rew_cutoff = KS::options_.get_double("REW");
+			if (std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and std::fabs(e_h) < rew_cutoff ){
+				sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
+			}
+		     }
+		    else{
+			if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6){ // Use Full Excitation Space
+				sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));  // N.B. shifted wrt to full indexing
+		    }
+			}
+	    }
+	}
+    }
+    }
     }
 
-    // Sort the hole/particle pairs according to the energy
-    std::sort(sorted_hp_pairs.begin(),sorted_hp_pairs.end());
-
+    // If we are using MOM, let MOM sort the orbitals via overlap criteria
+    if(MOM_started_){
+        HF::MOM();
+    }
+    // Otherwise, just sort the hole/particle pairs according to the energy
+    else{
+        std::sort(sorted_hp_pairs.begin(),sorted_hp_pairs.end());
+    }
     CharacterTable ct = KS::molecule_->point_group()->char_table();
     if(iteration_ == 0){
-        outfile->Printf( "\n  Ground state symmetry: %s\n",ct.gamma(ground_state_symmetry_).symbol());
-        outfile->Printf( "  Excited state symmetry: %s\n",ct.gamma(excited_state_symmetry_).symbol());
-        outfile->Printf( "\n  Lowest energy excitations:\n");
-        outfile->Printf( "  --------------------------------------\n");
-        outfile->Printf( "    N   Occupied     Virtual     E(eV)  \n");
-        outfile->Printf( "  --------------------------------------\n");
-        int maxstates = std::min(10,static_cast<int>(sorted_hp_pairs.size()));
-        for (int n = 0; n < maxstates; ++n){
-            double energy_hp = sorted_hp_pairs[n].get<6>() - sorted_hp_pairs[n].get<3>();
-            outfile->Printf("   %2d   %4d%-3s  -> %4d%-3s   %9.3f\n",n + 1,
-                    sorted_hp_pairs[n].get<2>() + 1,
-                    ct.gamma(sorted_hp_pairs[n].get<1>()).symbol(),
-                    gs_nalphapi_[sorted_hp_pairs[n].get<4>()] + sorted_hp_pairs[n].get<5>() + 1,
-                    ct.gamma(sorted_hp_pairs[n].get<4>()).symbol(),
-                    energy_hp * pc_hartree2ev);
-        }
-        outfile->Printf( "  --------------------------------------\n");
+    outfile->Printf( "\n  Ground state symmetry: %s\n",ct.gamma(ground_state_symmetry_).symbol());
+    outfile->Printf( "  Excited state symmetry: %s\n",ct.gamma(excited_state_symmetry_).symbol());
+    outfile->Printf( "\n  Lowest energy excitations:\n");
+    outfile->Printf( "  --------------------------------------\n");
+    outfile->Printf( "    N   Occupied     Virtual     E(eV)  \n");
+    outfile->Printf( "  --------------------------------------\n");
+    int maxstates = std::min(10,static_cast<int>(sorted_hp_pairs.size()));
+    for (int n = 0; n < maxstates; ++n){
+    double energy_hp = sorted_hp_pairs[n].get<6>() - sorted_hp_pairs[n].get<3>();
+    outfile->Printf("   %2d   %4d%-3s  -> %4d%-3s   %9.3f\n",n + 1,
+	    sorted_hp_pairs[n].get<2>() + 1,
+	    ct.gamma(sorted_hp_pairs[n].get<1>()).symbol(),
+	    gs_nalphapi_[sorted_hp_pairs[n].get<4>()] + sorted_hp_pairs[n].get<5>() + 1,
+	    ct.gamma(sorted_hp_pairs[n].get<4>()).symbol(),
+	    energy_hp * pc_hartree2ev);
+    }
+    outfile->Printf( "  --------------------------------------\n");
 
-        int select_pair = 0;
-        // Select the excitation pair using the energetic ordering
-        if(KS::options_["CDFT_EXC_SELECT"].has_changed()){
-            int input_select = KS::options_["CDFT_EXC_SELECT"][excited_state_symmetry_].to_integer();
-            if (input_select > 0){
-                select_pair = input_select - 1;
-                outfile->Printf( "\n  Following excitation #%d: ",input_select);
-            }
-        }
-        // Select the excitation pair using the symmetry of the hole
-        if(KS::options_["CDFT_EXC_HOLE_SYMMETRY"].has_changed()){
-            int input_select = KS::options_["CDFT_EXC_HOLE_SYMMETRY"][excited_state_symmetry_].to_integer();
-            if (input_select > 0){
-                int maxstates = static_cast<int>(sorted_hp_pairs.size());
-                for (int n = 0; n < maxstates; ++n){
-                    if(sorted_hp_pairs[n].get<1>() == input_select - 1){
-                        select_pair = n;
-                        break;
-                    }
-                }
-                outfile->Printf( "\n  Following excitation #%d:\n",select_pair + 1);
-            }
-        }
-        aholes.clear();
-        aparts.clear();
+    int select_pair = 0;
+    // Select the excitation pair using the energetic ordering
+    if(KS::options_["CDFT_EXC_SELECT"].has_changed()){
+    int input_select = KS::options_["CDFT_EXC_SELECT"][excited_state_symmetry_].to_integer();
+    if (input_select > 0){
+	select_pair = input_select - 1;
+	outfile->Printf( "\n  Following excitation #%d: ",input_select);
+    }
+    }
+    // Select the excitation pair using the symmetry of the hole
+    if(KS::options_["CDFT_EXC_HOLE_SYMMETRY"].has_changed()){
+    int input_select = KS::options_["CDFT_EXC_HOLE_SYMMETRY"][excited_state_symmetry_].to_integer();
+    if (input_select > 0){
+	int maxstates = static_cast<int>(sorted_hp_pairs.size());
+	for (int n = 0; n < maxstates; ++n){
+	    if(sorted_hp_pairs[n].get<1>() == input_select - 1){
+		select_pair = n;
+		break;
+	    }
+	}
+	outfile->Printf( "\n  Following excitation #%d:\n",select_pair + 1);
+    }
+    }
+    aholes.clear();
+    aparts.clear();
 
-        int ahole_h = sorted_hp_pairs[select_pair].get<1>();
-        int ahole_mo = sorted_hp_pairs[select_pair].get<2>();
-        double ahole_energy = sorted_hp_pairs[select_pair].get<3>();
-        boost::tuple<int,int,double> ahole = boost::make_tuple(ahole_h,ahole_mo,ahole_energy);
-        aholes.push_back(ahole);
+    int ahole_h = sorted_hp_pairs[select_pair].get<1>();
+    int ahole_mo = sorted_hp_pairs[select_pair].get<2>();
+    double ahole_energy = sorted_hp_pairs[select_pair].get<3>();
+    boost::tuple<int,int,double> ahole = boost::make_tuple(ahole_h,ahole_mo,ahole_energy);
+    aholes.push_back(ahole);
 
-        int apart_h = sorted_hp_pairs[select_pair].get<4>();
-        int apart_mo = sorted_hp_pairs[select_pair].get<5>();
-        double apart_energy = sorted_hp_pairs[select_pair].get<6>();
-        boost::tuple<int,int,double> apart = boost::make_tuple(apart_h,apart_mo,apart_energy);
-        aparts.push_back(apart);
+    int apart_h = sorted_hp_pairs[select_pair].get<4>();
+    int apart_mo = sorted_hp_pairs[select_pair].get<5>();
+    double apart_energy = sorted_hp_pairs[select_pair].get<6>();
+    boost::tuple<int,int,double> apart = boost::make_tuple(apart_h,apart_mo,apart_energy);
+    aparts.push_back(apart);
     }else{
-        if(not (KS::options_["CDFT_EXC_SELECT"].has_changed() or
-                KS::options_["CDFT_EXC_HOLE_SYMMETRY"].has_changed())){
-            aholes.clear();
-            aparts.clear();
+    if(not (KS::options_["CDFT_EXC_SELECT"].has_changed() or
+	KS::options_["CDFT_EXC_HOLE_SYMMETRY"].has_changed())){
+    aholes.clear();
+    aparts.clear();
 
-            int ahole_h = sorted_hp_pairs[0].get<1>();
-            int ahole_mo = sorted_hp_pairs[0].get<2>();
-            double ahole_energy = sorted_hp_pairs[0].get<3>();
-            boost::tuple<int,int,double> ahole = boost::make_tuple(ahole_h,ahole_mo,ahole_energy);
-            aholes.push_back(ahole);
+    int ahole_h = sorted_hp_pairs[0].get<1>();
+    int ahole_mo = sorted_hp_pairs[0].get<2>();
+    double ahole_energy = sorted_hp_pairs[0].get<3>();
+    boost::tuple<int,int,double> ahole = boost::make_tuple(ahole_h,ahole_mo,ahole_energy);
+    aholes.push_back(ahole);
 
-            int apart_h = sorted_hp_pairs[0].get<4>();
-            int apart_mo = sorted_hp_pairs[0].get<5>();
-            double apart_energy = sorted_hp_pairs[0].get<6>();
-            boost::tuple<int,int,double> apart = boost::make_tuple(apart_h,apart_mo,apart_energy);
-            aparts.push_back(apart);
-        }
+    int apart_h = sorted_hp_pairs[0].get<4>();
+    int apart_mo = sorted_hp_pairs[0].get<5>();
+    double apart_energy = sorted_hp_pairs[0].get<6>();
+    boost::tuple<int,int,double> apart = boost::make_tuple(apart_h,apart_mo,apart_energy);
+    aparts.push_back(apart);
+    }
     }
     outfile->Flush();
 
     for (int h = 0; h < nirrep_; ++h){
-        naholepi_[h] = 0;
-        napartpi_[h] = 0;
+    naholepi_[h] = 0;
+    napartpi_[h] = 0;
     }
 
     // Compute the number of hole and/or particle orbitals to compute
     outfile->Printf("\n  HOLES:     ");
     size_t naholes = aholes.size();
     for (size_t n = 0; n < naholes; ++n){
-        naholepi_[aholes[n].get<0>()] += 1;
-        outfile->Printf("%4d%-3s (%+.6f)",
-                aholes[n].get<1>() + 1,
-                ct.gamma(aholes[n].get<0>()).symbol(),
-                aholes[n].get<2>());
+    naholepi_[aholes[n].get<0>()] += 1;
+    outfile->Printf("%4d%-3s (%+.6f)",
+	aholes[n].get<1>() + 1,
+	ct.gamma(aholes[n].get<0>()).symbol(),
+	aholes[n].get<2>());
     }
     outfile->Printf("\n  PARTICLES: ");
     size_t naparts = aparts.size();
     for (size_t n = 0; n < naparts; ++n){
-        napartpi_[aparts[n].get<0>()] += 1;
-        outfile->Printf("%4d%-3s (%+.6f)",
-                gs_nalphapi_[aparts[n].get<0>()] + aparts[n].get<1>() + 1,
-                ct.gamma(aparts[n].get<0>()).symbol(),
-                aparts[n].get<2>());
+    napartpi_[aparts[n].get<0>()] += 1;
+    outfile->Printf("%4d%-3s (%+.6f)",
+	gs_nalphapi_[aparts[n].get<0>()] + aparts[n].get<1>() + 1,
+	ct.gamma(aparts[n].get<0>()).symbol(),
+	aparts[n].get<2>());
     }
     outfile->Printf("\n\n");
+    // Check if we are using MOM
+    if(KS::options_["MOM_START"].has_changed()){
+    HF::MOM_start();
+    }
 }
 
 void UOCDFT::compute_hole_particle_mos()
