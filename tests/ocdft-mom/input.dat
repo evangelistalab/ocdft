@@ -1,0 +1,41 @@
+# 3rd A' Core excited root will only converge with help of Maximum overlap.
+memory 500 mb
+
+import cdft
+
+refdft                = -342.896085487 #TEST
+refocdft_singlet_spin = -337.953774731 #TEST
+refocdft_triplet_spin = -337.950733817 #TEST
+
+molecule {
+    P           -0.062568212220    -0.028893206094     0.000000000000
+    H            0.890385009270    -0.244143288215     1.030488735642
+    H            0.890385009270    -0.244143288215    -1.030488735642
+    H            0.142155915224     1.376269360925     0.000000000000
+}
+
+set {
+  basis def2-svp
+  df_basis_scf def2-svp-jkfit
+  guess sad
+  scf_type df
+  reference uks
+  maxiter 200
+  e_convergence 8
+  d_convergence 6
+}
+
+set cdft {
+  CDFT_EXC_TYPE core
+  mom_start 5
+  ROOTS_PER_IRREP [3,0]
+  CDFT_SPIN_ADAPT_CI false
+  cdft_exc_method chp
+}
+
+set dft_functional PBE0
+energy('ocdft')
+
+compare_values(refdft, get_variable("DFT ENERGY"),8, "DFT energy") #TEST
+compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST
+compare_values(refocdft_triplet_spin, get_variable("OCDFT TRIPLET ENERGY"),8, "OCDFT triplet energy") #TEST
