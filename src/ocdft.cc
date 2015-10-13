@@ -1192,6 +1192,7 @@ void UOCDFT::form_C_beta()
 
 double UOCDFT::compute_E()
 {
+    Ca_->print();
     // E_CDFT = 2.0 D*H + D*J - \alpha D*K + E_xc - Nc * Vc
     double one_electron_E = Da_->vector_dot(H_);
     one_electron_E += Db_->vector_dot(H_);
@@ -1542,15 +1543,29 @@ void UOCDFT::compute_transition_moments()
     // For a single noncoincidence the matrix element of <A|mu|B> = tilde{S}_AB * <phi^A_i|mu|phi^B_i>.
     // There is no contribution from the beta orbitals.
 
+    SharedMatrix trDa_c1 = SharedMatrix(new Matrix("Transition Density Matrix (alpha, C1 symmetry)", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    SharedMatrix SO2AO_c1 = SharedMatrix(new Matrix("SO2AO (C1 symmetry)", KS::basisset_->nbf(), KS::basisset_->nbf()));
+
     SharedMatrix trDa = SharedMatrix(new Matrix("Transition Density Matrix (alpha)",nsopi_,nsopi_,i_AB_h));
     SharedMatrix trDb = SharedMatrix(new Matrix("Transition Density Matrix (beta)",nsopi_,nsopi_));
     trDb->zero();
     double** ca = ACa->pointer(i_A_h);
     double** cb = BCa->pointer(i_B_h);
     double** da = trDa->pointer(i_AB_h);
+    double** da_c1 = trDa_c1->pointer();
+
+    size_t offset_A = 0;
+    size_t offset_B = 0;
+    for (int h = 0; h < i_A_h; ++h){
+        offset_A += nsopi_[h];
+    }
+    for (int h = 0; h < i_B_h; ++h){
+        offset_B += nsopi_[h];
+    }
     for (int mu = 0; mu < nsopi_[i_A_h]; ++mu){
         for (int nu = 0; nu < nsopi_[i_B_h]; ++nu){
             da[nu][mu] = Stilde * ca[mu][i_A_mo] * cb[nu][i_B_mo];
+            da_c1[offset_B + nu][offset_A + mu] = Stilde * ca[mu][i_A_mo] * cb[nu][i_B_mo];
         }
     }
 
@@ -1562,7 +1577,21 @@ void UOCDFT::compute_transition_moments()
     double de[3];
     boost::shared_ptr<PetiteList> pet(new PetiteList(KS::basisset_, integral_));
     SharedMatrix SO2AO_ = pet->sotoao();
-    trDa_ao->remove_symmetry(trDa,SO2AO_);
+
+    double** so2ao_c1 = SO2AO_c1->pointer();
+    for (int h = 0, offset = 0; h < nirrep_; ++h){
+        double** so2ao = SO2AO_->pointer(h);
+        for (int mu = 0; mu < nsopi_[h]; ++mu){
+            for (int nu = 0; nu < KS::basisset_->nbf(); ++nu){
+                so2ao_c1[offset + mu][nu] = so2ao[mu][nu];
+            }
+        }
+        offset += nsopi_[h];
+    }
+
+    trDa_ao->transform(trDa_c1,SO2AO_c1);
+
+//    trDa_ao->remove_symmetry(trDa,SO2AO_);
     S_ao->remove_symmetry(S_,SO2AO_);
     S_half_ao->copy(S_ao);
     S_half_ao->power(0.5);
