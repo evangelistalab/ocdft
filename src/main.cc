@@ -111,7 +111,7 @@ int read_options(std::string name, Options& options)
         options.add_str("CDFT_EXC_METHOD","CHP","CP CH CHP CHP-F CHP-FB CIS");
         /*- An array of dimension equal to then number of irreps that allows to select a given hole/particle excitation -*/
         options.add("CDFT_EXC_SELECT", new ArrayType());
-        /*- An array of dimension equal to then number of irreps that allows to select an excitation with given symmetry-*/
+        /*- An array of dimension equal to the number of irreps that allows to select an excitation with given symmetry-*/
         options.add("CDFT_EXC_HOLE_SYMMETRY", new ArrayType());
         /*- Select the type of excited state to target -*/
         options.add_str("CDFT_EXC_TYPE","VALENCE","VALENCE CORE IP EA");
@@ -119,6 +119,11 @@ int read_options(std::string name, Options& options)
         options.add_str("CDFT_PROJECT_OUT","H","H P HP");
         /*- Select the type of excited state to target -*/
         options.add_int("CDFT_NUM_PROJECT_OUT",1);
+
+        /*- The number of holes per irrep-*/
+        options.add("OCDFT_HOLES_PER_IRREP", new ArrayType());
+        /*- The number of particles per irrep-*/
+        options.add("OCDFT_PARTS_PER_IRREP", new ArrayType());
 
         options.add_bool("USE_FAST_JK", false);
 
