@@ -7,6 +7,7 @@
 #include <libpsio/psio.hpp>
 #include <libciomr/libciomr.h>
 #include <libscf_solver/hf.h>
+#include <libscf_solver/ks.h>
 
 #include <libmints/wavefunction.h>
 #include <libmints/writer.h>
@@ -22,7 +23,7 @@
 
 #include "fasnocis.h"
 
-//INIT_PLUGIN
+INIT_PLUGIN
 
 using namespace boost;
 
@@ -60,6 +61,17 @@ int read_options(std::string name, Options& options)
         options.add_double("LEVEL_SHIFT",0.0);
         /*- Restrict Core -*/
         options.add_double("REW", 0.0);
+        /*- Choose Specific Hole Orbital -*/
+        options.add_double("TARGET_HOLE", 0.0);
+        /*- Choose Specific Particle Orbital -*/
+        options.add_double("TARGET_PARTICLE", 0.0);
+        options.add_int("NUMBER_OF_SOLUTE_ATOMS", 0);
+        /*- Specify atoms that are to be considered Solute or Adsorbants for solution phase and adsorbed calculations-*/
+        options.add("SOLUTE_ADSORBANT", new ArrayType());
+        /*- Obtain Desired Hole AO Subspace from user -*/
+        options.add("H_SUBSPACE",new ArrayType());
+        /*- Obtain Desired Particle AO Subspace from user -*/
+        options.add("P_SUBSPACE",new ArrayType());
         /*- Apply a fixed Lagrange multiplier -*/
         options.add_bool("OPTIMIZE_VC", true);
         /*- Value of the Lagrange multiplier -*/
@@ -74,14 +86,19 @@ int read_options(std::string name, Options& options)
         options.add("ROOTS_PER_IRREP", new ArrayType());
         /*- Perform a correction of the triplet excitation energies -*/
         options.add_bool("TRIPLET_CORRECTION", true);
+        options.add_bool("VALENCE_TO_CORE", false);
         /*- Perform a correction of the triplet excitation energies using the S+ formalism -*/
         options.add_bool("CDFT_SPIN_ADAPT_SP", true);
-	/*- Perform a correction of the triplet excitation energies using the S+ formalism -*/
+	/*- Perform a correction of the triplet excitation energi -*/
         options.add_int("MOM_START", 0);
+	/*- Use Damping for SCF Density in Excited States -*/
+        options.add_double("DAMPING_PERCENTAGE", 0.0);
+        /*- Use Damping for SCF Density in Excited States -*/
+        options.add_double("PFON_TEMP", 0.0);
         /*- Perform a correction of the triplet excitation energies using a CI formalism -*/
         options.add_bool("CDFT_SPIN_ADAPT_CI", false);
         /*- Break the symmetry of the HOMO/LUMO pair (works only in C1 symmetry) -*/
-        options.add("CDFT_BREAK_SYMMETRY", new ArrayType());
+        options.add("CDFT_BREAK_SYMMETRY", new ArrayType()); 
         /*- Select the excited state method.  The valid options are:
         ``CP`` (constrained particle) which finds the optimal particle orbital
         while relaxing the other orbitals;
@@ -353,8 +370,22 @@ void OCDFT(Options& options)
         // Run a ground state computation first
         ref_scf = boost::shared_ptr<Wavefunction>(new scf::UOCDFT(options, psio));
         Process::environment.set_wavefunction(ref_scf);
+        // Store atoms that are considered apart of the solute or adsorbant
+        std::vector<int> solab_atoms;
+        for (int i = 0; i < options.get("SOLUTE_ADSORBANT").size(); i++){
+            solab_atoms.push_back(options.get("SOLUTE_ADSORBANT")[i].to_integer());
+        }
+        //outfile->Printf("\n ------------------------");
+        //outfile->Printf("\n Solute or Adsobant Atoms");
+        //outfile->Printf("\n ------------------------");
+	//for (int i = 0; i < solab_atoms.size(); i++){
+	//    outfile->Printf("\n Atom %d", solab_atoms[i]);
+        //}
+        //outfile->Printf("\n ------------------------ \n");
         double gs_energy = ref_scf->compute_energy();
-
+        SharedMatrix Ca_solab =	ref_scf->Ca();
+        SharedMatrix Cb_solab = ref_scf->Cb();
+        //Ca_solab->print();
         energies.push_back(gs_energy);
         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
         state_info.push_back(boost::make_tuple(0,1,gs_energy,0.0,0.0,0.0,0.0,0.0));
@@ -456,7 +487,6 @@ void OCDFT(Options& options)
     }else {
         throw InputException("Unknown reference " + reference, "REFERENCE", __FILE__, __LINE__);
     }
-
     outfile->Printf("\n       ==> OCDFT Excited State Information <==\n");
 
     outfile->Printf("\n    ----------------------------------------------------------------------------------------------------------");

@@ -159,7 +159,11 @@ protected:
     SharedMatrix TempMatrix2;
     /// A temporary vector
     SharedVector TempVector;
-
+    SharedVector AcceptedVirtuals;
+    /// Ground State MO Coefficients
+    SharedMatrix gs_Ca;
+    /// Ground State Ca Coefficients
+    SharedMatrix Ca_gs_;
     /// The old alpha density matrix
     SharedMatrix Dolda_;
     /// The old beta density matrix
@@ -194,7 +198,10 @@ protected:
     /// Form the Fock matrix for the spectator orbitals
     void diagonalize_F_spectator_unrelaxed();
     void sort_ee_mos();
-
+    /// Accept subspace of particle orbitals
+    std::vector<int> particle_subspace(SharedMatrix Ca);
+    /// Accept subspace of hole orbitals
+    std::vector<boost::tuple<double,int>> hole_subspace(SharedMatrix Ca);
 
     /// Maximum overlap method for prevention of oscillation/excited state SCF
     //void HF::MOM();
@@ -220,10 +227,13 @@ protected:
     void form_C_beta();
     /// Checks if the orbital defined by the matrix are orthogonal with respect to the metric S
     void orthogonality_check(SharedMatrix C, SharedMatrix S);
+    /// Performs varying fractional occupation for convergence
+    void pFON();
 
     std::pair<double,double> matrix_element(SharedDeterminant A, SharedDeterminant B);
 
     // Overloaded UKS function
+    //virtual void pFON();
     virtual void save_density_and_energy();
     virtual void form_F();
     virtual void form_C();
