@@ -728,7 +728,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
 				}
                         }
 			else{
-				if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and use_vir){ // Use Full Excitation Space                               
+				if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and use_occ){ // Use Full Excitation Space                               
 					sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));  // N.B. shifted wrt to full indexing  
                         	}
                                                   
@@ -1524,7 +1524,7 @@ void UOCDFT::form_C_beta()
 
 double UOCDFT::compute_E()
 {
-    Ca_->print();
+
     // E_CDFT = 2.0 D*H + D*J - \alpha D*K + E_xc - Nc * Vc
     double one_electron_E = Da_->vector_dot(H_);
     one_electron_E += Db_->vector_dot(H_);
