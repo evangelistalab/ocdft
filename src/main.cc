@@ -70,6 +70,10 @@ int read_options(std::string name, Options& options)
         options.add("SOLUTE_ADSORBANT", new ArrayType());
         /*- Obtain Desired Hole AO Subspace from user -*/
         options.add("H_SUBSPACE",new ArrayType());
+        /*- Threshold for square MO coefficients of hole subspace-*/
+        options.add_double("HOLE_THRESHOLD", 0.4);
+        /*- Threshold for square MO coefficients of particle subspace-*/
+        options.add_double("PARTICLE_THRESHOLD", 0.1);
         /*- Obtain Desired Particle AO Subspace from user -*/
         options.add("P_SUBSPACE",new ArrayType());
         /*- Apply a fixed Lagrange multiplier -*/

@@ -602,8 +602,10 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     std::vector<boost::tuple<double,int,int,double,int,int,double> > sorted_hp_pairs;
     std::vector<int> accepted_virts;
     std::vector<boost::tuple<double,int>> accepted_holes;
-    if (KS::options_["H_SUBSPACE"].size() > 0 and KS::options_["P_SUBSPACE"].size() > 0){
+    if (KS::options_["P_SUBSPACE"].size() > 0){
     	accepted_virts = particle_subspace(dets[0]->Ca());
+    }
+    if (KS::options_["H_SUBSPACE"].size() > 0){
     	accepted_holes = hole_subspace(dets[0]->Ca());
     }
     // If we are doing core excitation just take the negative of the hole energy
@@ -686,7 +688,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
 	    int symm = occ_h ^ vir_h ^ ground_state_symmetry_;
             bool use_vir = true;
             bool use_occ = true;
-	    if (KS::options_["H_SUBSPACE"].size() > 0 and KS::options_["P_SUBSPACE"].size() > 0){ 
+	    if (KS::options_["P_SUBSPACE"].size() > 0){ 
 		    //bool use_vir = true;
 		    int vir_size = accepted_virts.size();
 		    int vir_num = 0;
@@ -699,6 +701,8 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
 			}
 		    vir_num++;
 		    }while(vir_num <= vir_size);
+             }
+             if (KS::options_["H_SUBSPACE"].size() > 0){
 
 		    //bool use_occ = true;
 		    int occ_num = 0;
@@ -986,7 +990,7 @@ std::vector<boost::tuple<double,int>> UOCDFT::hole_subspace(SharedMatrix Ca)
                     }
                     print_count++;
                 }
-                if(kappa > 0.4){
+                if(kappa > KS::options_.get_double("HOLE_THRESHOLD")){
                 	accepted_holes.push_back(boost::make_tuple(kappa,mu));
                 }
             }
@@ -1094,7 +1098,7 @@ std::vector<int> UOCDFT::particle_subspace(SharedMatrix Ca)
                  }
                  print_count++;
         }
-        if(std::abs(kappa) > 0.1){
+        if(std::abs(kappa) > KS::options_.get_double("PARTICLE_THRESHOLD")){
 		accepted_virts.push_back(mu-nocc);
         } 
     }
