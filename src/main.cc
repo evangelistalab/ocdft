@@ -70,11 +70,22 @@ int read_options(std::string name, Options& options)
         options.add("SOLUTE_ADSORBANT", new ArrayType());
         /*- Obtain Desired Hole AO Subspace from user -*/
         options.add("H_SUBSPACE",new ArrayType());
+        /**
+        *    Valid options include:
+ 	*
+ 	*    ["C"] - all carbon atoms
+ 	*    ["C","N"] - all carbon and nitrogen atoms
+ 	*    ["C1"] - carbon atom #1
+ 	*    ["C1-3"] - carbon atoms #1, #2, #3
+ 	*    ["C(2p)"] - the 2p subset of all carbon atoms
+ 	*    ["C(1s,2s)"] - the 1s/2s subsets of all carbon atoms
+ 	*    ["C1-3(2s)"] - the 2s subsets of carbon atoms #1, #2, #3 
+        **/
         /*- Threshold for square MO coefficients of hole subspace-*/
-        options.add_double("HOLE_THRESHOLD", 0.4);
+        options.add_double("HOLE_THRESHOLD", 0.2);
         /*- Threshold for square MO coefficients of particle subspace-*/
         options.add_double("PARTICLE_THRESHOLD", 0.1);
-        /*- Obtain Desired Particle AO Subspace from user -*/
+        /*- Obtain Desired Particle AO Subspace from user (See Valid options for H_SUBSPACE for more details)-*/
         options.add("P_SUBSPACE",new ArrayType());
         /*- Apply a fixed Lagrange multiplier -*/
         options.add_bool("OPTIMIZE_VC", true);
