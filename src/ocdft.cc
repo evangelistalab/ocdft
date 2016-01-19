@@ -663,7 +663,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
 	    //    accepted_holes.push_back(boost::make_tuple(kappa,mu));
 	    //}
     }
-    if(KS::options_.get_str("CDFT_EXC_TYPE") == "CORE"){
+    if(KS::options_.get_str("CDFT_EXC_TYPE") == "CORE" and KS::options_["H_SUBSPACE"].size() > 0){
     	std::sort(accepted_holes.rbegin(),accepted_holes.rend());
     }
     if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
@@ -720,13 +720,13 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
 
 		if(not do_symmetry or (symm == excited_state_symmetry_)){ // Test for symmetry
 		// Make sure we are not adding excitations to holes/particles that have been projected out
-		    //if(KS::options_.get_double("REW") > 0.0){ // Perform Restricted Excitation Window Calculation
-		    //    double rew_cutoff = KS::options_.get_double("REW");
-		    //    if (std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and std::fabs(e_h) < rew_cutoff){
-		    //    	sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
-                    //}
-                    //}
-                        if(KS::options_.get_str("CDFT_EXC_TYPE") == "CORE" and KS::options_["H_SUBSPACE"].size() > 0){
+		    if(KS::options_.get_double("REW") > 0.0){ // Perform Restricted Excitation Window Calculation
+		        double rew_cutoff = KS::options_.get_double("REW");
+		        if (std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and std::fabs(e_h) < rew_cutoff){
+		        	sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
+                    }
+                    }
+                        else if(KS::options_.get_str("CDFT_EXC_TYPE") == "CORE" and KS::options_["H_SUBSPACE"].size() > 0){
 				if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and i==accepted_holes[0].get<1>()){
 					sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
 				}
@@ -796,7 +796,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     }
     aholes.clear();
     aparts.clear();
-    accepted_virts.clear();
+    //accepted_virts.clear();
 
     int ahole_h = sorted_hp_pairs[select_pair].get<1>();
     int ahole_mo = sorted_hp_pairs[select_pair].get<2>();

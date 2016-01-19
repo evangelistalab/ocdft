@@ -16,7 +16,6 @@ H   0.000000   0.923274  -1.238289
 H   0.000000  -0.923274  -1.238289
 C   0.000000   0.000000   0.668188
 C   0.000000   0.000000  -0.668188
-symmetry c1
 }
 
 set {
@@ -39,14 +38,7 @@ set cdft {
 
 set dft_functional B3LYP
 
-energy('b3lyp')
-jk = JK.build_JK()
-jk.initialize()
-jk.compute()
-J = np.asarray(jk.J())
-K = np.asarray(jk.K())
-print(J)
-print(K)
-#compare_values(refdft, get_variable("DFT ENERGY"),8, "DFT energy") #TEST
-#compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST
-#compare_values(refocdft_triplet_spin, get_variable("OCDFT TRIPLET ENERGY"),8, "OCDFT triplet energy") #TEST
+energy('ocdft')
+compare_values(refdft, get_variable("DFT ENERGY"),8, "DFT energy") #TEST
+compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST
+compare_values(refocdft_triplet_spin, get_variable("OCDFT TRIPLET ENERGY"),8, "OCDFT triplet energy") #TEST
