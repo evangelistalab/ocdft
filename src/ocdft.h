@@ -85,6 +85,8 @@ protected:
     SharedMatrix Ch_;
     /// The particle orbitals coefficients
     SharedMatrix Cp_;
+    /// Natural Transition Orbitals 
+    SharedMatrix NTOs_;
     /// The holes
     SharedMatrix saved_Ch_;
     /// The particles

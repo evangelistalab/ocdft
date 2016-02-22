@@ -14,6 +14,7 @@
 #include <libscf_solver/hf.h>
 #include <libqt/qt.h>
 #include <libiwl/iwl.hpp>
+#include <algorithm>
 
 #include "ocdft.h"
 #include "aosubspace.h"
@@ -135,6 +136,7 @@ void UOCDFT::init()
     TempMatrix2 = factory_->create_shared_matrix("Temp2");
     Dolda_ = factory_->create_shared_matrix("Dold alpha");
     Doldb_ = factory_->create_shared_matrix("Dold beta");
+    NTOs_ =  factory_->create_shared_matrix("Natural Transition Orbitals");
     save_H_ = true;
 }
 
@@ -717,7 +719,6 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
 		    occ_num++;
 		    }while(occ_num <= occ_size);
             }
-
 		if(not do_symmetry or (symm == excited_state_symmetry_)){ // Test for symmetry
 		// Make sure we are not adding excitations to holes/particles that have been projected out
 		    if(KS::options_.get_double("REW") > 0.0){ // Perform Restricted Excitation Window Calculation
@@ -736,8 +737,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
 					sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));  // N.B. shifted wrt to full indexing  
                         	}
                                                   
-		    	}
-		    
+		    	}		    
 	    }
 	}
     }
@@ -941,10 +941,25 @@ void UOCDFT::compute_hole_particle_mos()
 
 std::vector<boost::tuple<double,int>> UOCDFT::hole_subspace(SharedMatrix Ca)
 {
+	    // Allocate Necessary Vectors and Matrices.
             boost::shared_ptr<Wavefunction> wfn = Process::environment.wavefunction();
             std::vector<boost::tuple<double,int>> accepted_holes;
+	    std::vector<double> m_sub_diag;
 	    std::vector<std::string> subspace_str;
             std::vector<int> selected_holes;
+            SharedMatrix S_ao = SharedMatrix(new Matrix("AO Overlap matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
+            SharedMatrix S_inv_half_ao = SharedMatrix(new Matrix("Inverse square root of the AO Overlap matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
+            SharedMatrix X_sub = SharedMatrix(new Matrix("Subset of Inverse Square Root Matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
+            SharedMatrix M_sub = SharedMatrix(new Matrix("Projected Subset Overlap Matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
+	    SharedMatrix Sub_cont = SharedMatrix(new Matrix("Transformaed Subset Overlap Matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
+	    boost::shared_ptr<PetiteList> pet(new PetiteList(KS::basisset_, integral_));
+	    // Transform overlap Matrix to AO basis
+            SharedMatrix SO2AO_ = pet->sotoao();
+            S_ao->remove_symmetry(S_,SO2AO_);
+            S_inv_half_ao->copy(S_ao);
+	    // Build S^-1/2 Matrix
+            S_inv_half_ao->power(-0.5);
+            // Only grab hole subspace information if subspace atoms have been requested
             if (KS::options_["H_SUBSPACE"].size() > 0){
                 for (int entry = 0; entry < (int)KS::options_["H_SUBSPACE"].size(); ++entry){
                     std::string s = KS::options_["H_SUBSPACE"][entry].to_string();
@@ -960,8 +975,9 @@ std::vector<boost::tuple<double,int>> UOCDFT::hole_subspace(SharedMatrix Ca)
 
             // Get the subspaces
             selected_holes = aosub.subspace();
-            }
+   	    } 
             int nocc = gs_nalphapi_[0];
+	    // Only print subspace information on initial iteration
             if(iteration_==0){
                 outfile->Printf("\n    Overlap of Occupied Orbitals with Atomic Orbital Subspace              ");
                 outfile->Printf("\n    ----------------------------------------------------------");
@@ -969,45 +985,75 @@ std::vector<boost::tuple<double,int>> UOCDFT::hole_subspace(SharedMatrix Ca)
             }
 
             int num_funcs = selected_holes.size();
-            //outfile->Printf("\n\n    %d Functions: \n \n", num_funcs);
             int print_count = 1;
-            for (int mu = 0; mu < nocc; ++mu){
-                double kappa = 0.0;
+	    // Build X matrix for orthonormal transformation of the basis, essentially the S^-1/2 matrix for the given subset
+            for (int mu = 0; mu < KS::basisset_->nbf(); ++mu){
+                double x_sub_element = 0.0;
                 for (int nu = 0; nu < num_funcs; ++nu){
-                        kappa += (Ca->get(selected_holes[nu],mu)*Ca->get(selected_holes[nu],mu));
-                }
+		    x_sub_element = S_inv_half_ao->get(mu,selected_holes[nu]);
+		    X_sub->set(mu,selected_holes[nu],x_sub_element);
+		}
+	    }
+	    TempMatrix->zero();
+	    TempMatrix2->zero();
+	    // Compute projection C^T S X X^T S C
+	    TempMatrix->gemm(false,true,1.0,X_sub,X_sub,0.0); 
+	    TempMatrix2->gemm(false,false,1.0,S_ao,TempMatrix,0.0);
+	    M_sub->gemm(false,false,1.0,TempMatrix2,S_ao,0.0);
+	    M_sub->transform(dets[0]->Ca());
+	    // Grab the diagonal elements of the subset projection matrix
+	    for(int i = 0; i < KS::basisset_->nbf(); i++){
+	        for(int j = 0; j < KS::basisset_->nbf(); j++){
+		    if(i==j){
+	                m_sub_diag.push_back(M_sub->get(i,j)); 
+		    }
+	        }
+	    }
+	    // Print each molecular orbital's overlap with the subset and store the values above the specified threshold.
+	    for(int i = 0; i < nocc; i++){  
                 if(iteration_ == 0){
                     if(print_count == 4){ 
-                        auto temp_string = boost::str(boost::format("     %2dA       %-5f") % (mu+1) % kappa);
+                        auto temp_string = boost::str(boost::format("     %2dA       %-5f") % (i+1) % m_sub_diag[i]);
                         outfile->Printf("%s",temp_string.c_str());
                         outfile->Printf("\n");
                         print_count = 0;
                     }
                     else{
-                       auto temp_string = boost::str(boost::format("     %2dA       %-5f") % (mu+1) % kappa);
+                       auto temp_string = boost::str(boost::format("     %2dA       %-5f") % (i+1) % m_sub_diag[i]);
                        //outfile->Printf("  %d-A      %f  ",mu+1,kappa);
                        outfile->Printf("%s",temp_string.c_str());
                     }
                     print_count++;
                 }
-                if(kappa > KS::options_.get_double("HOLE_THRESHOLD")){
-                	accepted_holes.push_back(boost::make_tuple(kappa,mu));
+                if(m_sub_diag[i] > KS::options_.get_double("HOLE_THRESHOLD")){
+                	accepted_holes.push_back(boost::make_tuple(m_sub_diag[i],i));
                 }
             }
+	    //}
     return accepted_holes;
 }
 
 std::vector<int> UOCDFT::particle_subspace(SharedMatrix Ca)
 {
-    /// This scheme is based on the original Q-Chem implementation 
-    /// for TDDFT/CIS outlined in the following paper:
-    /// Besley, N.A., Chem. Phys. Lett. 390 (2004) 124-129
     // Find the AO subset
     if(iteration_==0){
 	    outfile->Printf("\n  ==> Hole/Particle Atomic Orbital Subspace Localization Routine <== \n");
     }
     boost::shared_ptr<Wavefunction> wfn = Process::environment.wavefunction();
     std::vector<int> subspace; 
+    std::vector<double> m_sub_diag;
+    std::vector<int> selected_particles;
+    SharedMatrix S_ao = SharedMatrix(new Matrix("AO Overlap matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    SharedMatrix S_inv_half_ao = SharedMatrix(new Matrix("Inverse square root of the AO Overlap matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    SharedMatrix X_sub = SharedMatrix(new Matrix("Subset of Inverse Square Root Matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    SharedMatrix M_sub = SharedMatrix(new Matrix("Projected Subset Overlap Matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    SharedMatrix Sub_cont = SharedMatrix(new Matrix("Transformaed Subset Overlap Matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    boost::shared_ptr<PetiteList> pet(new PetiteList(KS::basisset_, integral_));
+    SharedMatrix SO2AO_ = pet->sotoao();
+    S_ao->remove_symmetry(S_,SO2AO_);
+    S_inv_half_ao->copy(S_ao);
+    S_inv_half_ao->power(-0.5);
+
     std::vector<std::string> subspace_str;
     if (KS::options_["P_SUBSPACE"].size() > 0){
         for (int entry = 0; entry < (int)KS::options_["P_SUBSPACE"].size(); ++entry){
@@ -1025,89 +1071,62 @@ std::vector<int> UOCDFT::particle_subspace(SharedMatrix Ca)
     aosub.find_subspace(iteration_);
  
     // Get the subspaces
-    subspace = aosub.subspace();
-    //std::vector<int> solute_atoms;
-    //std::vector<int> solute_funcs;
+    selected_particles = aosub.subspace();
     std::vector<int> accepted_virts;
-    /// Read in the solute atoms from the user-specified array and store
-    //int num_sol = KS::options_.get_int("NUMBER_OF_SOLUTE_ATOMS");
-    //for (int zz = 0; zz < num_sol; ++zz){
-    //        solute_atoms.push_back(KS::options_["SOLUTE_ADSORBANT"][zz].to_integer());
-    //}
+
     int nocc = gs_nalphapi_[0];
     if(iteration_==0){
         outfile->Printf("\n    Overlap of Virtual Orbitals with Atomic Orbital Subspace              ");
         outfile->Printf("\n    --------------------------------------------------------");
         outfile->Printf("\n\n    %d Virtual MOs: \n \n", KS::basisset_->nbf() - nocc);
     }
-    //outfile->Printf("occ = %d\n", nocc);
-    /// Figure out which atom each basis function is centered on, if it is
-    /// centered on a solute atom, then store that function in solute_funcs
-    //for (int sol = 0; sol < num_sol; sol++){
-    //	for (int mu = 0; mu < KS::basisset_->nbf(); ++mu){
-    //    	int center_new = KS::KS::basisset_->function_to_center(mu); 
-    //    	if(solute_atoms[sol] == center_new){
-    //    		solute_funcs.push_back(mu);
-    //    	}	
-    //    }
-    //}
-    /// Using the stored solute basis functions, compute the sum of the 
-    /// squares of the virtual orbitals with the solute basis functions
-    TempMatrix->zero();
-    double sum=0.0;
-    for (int mu = 0; mu < KS::basisset_->nbf(); ++mu){
-        for (int nu = 0; nu < KS::basisset_->nbf(); ++nu){
-        	sum += (Ca->get(nu,mu)*Ca->get(mu,nu));
-        }
-    }
-    for (int mu = 0; mu < KS::basisset_->nbf(); ++mu){
-        double norm = 0.0;
-        for (int nu = 0; nu < KS::basisset_->nbf(); ++nu){
-		norm = (Ca->get(nu,mu)*Ca->get(mu,nu))/sum;
-		TempMatrix->set(mu,nu,norm);
-        }
-    }
-    int num_funcs = subspace.size();
-    double running_sum =0.0;
-    for (int mu = nocc; mu < KS::basisset_->nbf(); ++mu){
-        for (int nu = 0; nu < num_funcs; ++nu){
-		running_sum += (Ca->get(mu,subspace[nu])*Ca->get(subspace[nu],mu));
-        }
-    }
-    int print_count = 1;
-    for (int mu = nocc; mu < KS::basisset_->nbf(); ++mu){	
-        double kappa = 0.0;
-        for (int nu = 0; nu < num_funcs; ++nu){
-                kappa += (Ca->get(subspace[nu],mu)*Ca->get(subspace[nu],mu)); 
-		//kappa += TempMatrix->get(subspace[nu],mu);
-        }
-	/// Store the virtual orbitals that have greater that 0.2 overlap with
-        /// the subspace basis functions
-	/// TODO->Make this value a user input.
-        if(iteration_ == 0){
-		if(print_count == 4){
-                        auto temp_string = boost::str(boost::format("      %2dA      %-5f") % (mu+1) % std::abs(kappa));
-                        outfile->Printf("%s",temp_string.c_str());
-			outfile->Printf("\n");
-                        print_count = 0;
-                    }
-                    else{
-                       auto temp_string = boost::str(boost::format("      %2dA      %-5f") % (mu+1) % std::abs(kappa));
-                       //outfile->Printf("  %d-A      %f  ",mu+1,kappa);
-                       outfile->Printf("%s",temp_string.c_str());
-                 }
-                 print_count++;
-        }
-        if(std::abs(kappa) > KS::options_.get_double("PARTICLE_THRESHOLD")){
-		accepted_virts.push_back(mu-nocc);
-        } 
-    }
-   // int num_accepted = accepted_virts.size();
-   // for (int i = 0; i < num_accepted; i++){
-   // 	AcceptedVirtuals->set(i,accepted_virts[i]);
-   //     //outfile->Printf("\n Accepted orbital %d \n", accepted_virts[i]);
-   // }
 
+    int num_funcs = selected_particles.size();
+    int print_count = 1;
+
+    for (int mu = 0; mu < KS::basisset_->nbf(); ++mu){
+	double x_sub_element = 0.0;
+	for (int nu = 0; nu < num_funcs; ++nu){
+	    x_sub_element = S_inv_half_ao->get(mu,selected_particles[nu]);
+	    X_sub->set(mu,selected_particles[nu],x_sub_element);
+	}
+    }
+
+    TempMatrix->zero();
+    TempMatrix2->zero();
+    TempMatrix->gemm(false,true,1.0,X_sub,X_sub,0.0); 
+    TempMatrix2->gemm(false,false,1.0,S_ao,TempMatrix,0.0);
+    M_sub->gemm(false,false,1.0,TempMatrix2,S_ao,0.0);
+    M_sub->transform(dets[0]->Ca());
+
+    for(int i = 0; i < KS::basisset_->nbf(); i++){
+	for(int j = 0; j < KS::basisset_->nbf(); j++){
+	    if(i==j){
+		m_sub_diag.push_back(M_sub->get(i,j));
+	    }
+	}
+    }
+    for(int i = nocc; i < KS::basisset_->nbf(); i++){
+    // END NEW CODE
+	if(iteration_ == 0){
+	    if(print_count == 4){                        
+		auto temp_string = boost::str(boost::format("     %2dA       %-5f") % (i+1) % m_sub_diag[i]);
+		outfile->Printf("%s",temp_string.c_str());
+		outfile->Printf("\n");
+		print_count = 0;
+	    }
+	    else{
+		auto temp_string = boost::str(boost::format("     %2dA       %-5f") % (i+1) % m_sub_diag[i]);
+	       //outfile->Printf("  %d-A      %f  ",mu+1,kappa);
+	       outfile->Printf("%s",temp_string.c_str());
+	    }
+	    print_count++;
+	}
+	if(m_sub_diag[i] > KS::options_.get_double("PARTICLE_THRESHOLD")){
+		accepted_virts.push_back(i-nocc);
+	}
+    }
+    
     return accepted_virts;
 }
 
@@ -2052,7 +2071,31 @@ void UOCDFT::compute_transition_moments()
     oe->set_Db_so(trDb);
     outfile->Printf( "  ==> Transition dipole moment computed with OCDFT <==\n\n");
     oe->compute();
+    
+    // SVD To obtain NTOs
+    boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UtrdV = trDa->svd_temps();
+    SharedMatrix U = UtrdV.get<0>();
+    SharedVector sigma = UtrdV.get<1>();
+    SharedMatrix V = UtrdV.get<2>();
+    trDa->svd(U,sigma,V);
+    //sigma->print();
+    //U->print();
+    //V->print();
 
+    double nto_participation_ratio = 0.0;
+    double square_of_sums = 0.0;
+    double sum_of_squares = 0.0;
+
+    for (int i = 0; i < KS::basisset_->nbf(); i++){ 
+        sum_of_squares += sigma->get(i)*sigma->get(i);
+	square_of_sums += sigma->get(i);
+    }
+
+    nto_participation_ratio = square_of_sums*square_of_sums/(sum_of_squares);
+    //outfile->Printf( " PRnto = %f \n\n", nto_participation_ratio);
+//    Dt_->copy(Da_);
+//    Dt_->add(Db_);
+   
     std::vector<SharedMatrix> dipole_ints;
     dipole_ints.push_back(SharedMatrix(new Matrix("AO Dipole X", KS::basisset_->nbf(), KS::basisset_->nbf())));
     dipole_ints.push_back(SharedMatrix(new Matrix("AO Dipole Y", KS::basisset_->nbf(), KS::basisset_->nbf())));
@@ -2065,7 +2108,8 @@ void UOCDFT::compute_transition_moments()
     de[0] = trDa_ao->vector_dot(dipole_ints[0]);
     de[1] = trDa_ao->vector_dot(dipole_ints[1]);
     de[2] = trDa_ao->vector_dot(dipole_ints[2]);
-
+    
+    double full_abs_dipole = std::sqrt(de[0] * de[0] + de[1] * de[1] + de[2] * de[2]);
     outfile->Printf("\n  Dipole moments from AO integrals: %.4f %.4f %.4f",de[0],de[1],de[2]);
 
     // Form a map that lists all functions on a given atom and with a given ang. momentum
@@ -2104,7 +2148,9 @@ void UOCDFT::compute_transition_moments()
         keys.push_back(kv.first);
     }
     std::sort(keys.begin(),keys.end());
-
+    
+    std::vector<boost::tuple<std::string,std::string,std::string,std::string,double,double,double,double,double,double>> all_atomic_trans;
+    std::vector<std::pair<double,std::string>> restricted_sums;
 //    for (auto& key : keys){
 //        outfile->Printf("\n Atom = %d, AM = %d ->",key.first,key.second);
 //        for (auto& p : atom_am_to_f[key]){
@@ -2124,10 +2170,6 @@ void UOCDFT::compute_transition_moments()
         	sum_kappa += (ca[mu][nu]*ca[mu][nu]);                
 	}
     }
-    outfile->Printf("\n  ==> Mulliken Population Analysis of the Transition Dipole Moment <==\n");
-    outfile->Printf("\n   ===============================================================");
-    outfile->Printf("\n    Initial     Final     mu(x)      mu(y)      mu(z)       |mu|");
-    outfile->Printf("\n   ---------------------------------------------------------------");
     SharedMatrix trDa_ao_atom = SharedMatrix(new Matrix("AO Density", KS::basisset_->nbf(), KS::basisset_->nbf()));
     for (auto& i : keys){
         for (auto& f : keys){
@@ -2143,26 +2185,91 @@ void UOCDFT::compute_transition_moments()
             de[0] = trDa_ao_atom->vector_dot(dipole_ints[0]);
             de[1] = trDa_ao_atom->vector_dot(dipole_ints[1]);
             de[2] = trDa_ao_atom->vector_dot(dipole_ints[2]);
+	    boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UtrdaV = trDa_ao_atom->svd_temps();
+	    SharedMatrix U_atom = UtrdaV.get<0>();
+	    SharedVector sigma_atom = UtrdaV.get<1>();
+	    SharedMatrix V_atom = UtrdaV.get<2>();
+	    trDa_ao_atom->svd(U_atom,sigma_atom,V_atom);
+	    double sum_of_squares_atom = 0.0;
+	    double square_of_sums_atom = 0.0;
+	    double charge_transfer_number = 0.0;
+	    for (int i = 0; i < KS::basisset_->nbf(); i++){
+        	sum_of_squares_atom += sigma_atom->get(i)*sigma_atom->get(i);
+                square_of_sums_atom += sigma_atom->get(i);
+    	    }
+	    double participation_percentage = (sum_of_squares_atom/sum_of_squares)*100.0;
+	    charge_transfer_number = (square_of_sums_atom*square_of_sums_atom);
             double abs_dipole = std::sqrt(de[0] * de[0] + de[1] * de[1] + de[2] * de[2]);
-            if (abs_dipole >= 1.0e-4){
-                std::string outstr = boost::str(boost::format("  %3d %2s %1s  %3d %2s %1s  %9f  %9f  %9f  %9f") %
+	    double dipole_percent = abs_dipole/(full_abs_dipole)*100.0;
+            if (participation_percentage >= 0.1 or abs_dipole >= 1.0e-4){
+                std::string outstr = boost::str(boost::format("  %3d %2s %1s  %3d %2s %1s  %9f  %9f  %9f  %9f %9.2f%% %9f") %
                             (i.first + 1) %
                             KS::molecule_->symbol(i.first).c_str() %
                             l_to_symbol[i.second].c_str() %
                             (f.first + 1) %
                             KS::molecule_->symbol(f.first).c_str() %
                             l_to_symbol[f.second].c_str() %
-                            de[0] % de[1] % de[2] % abs_dipole);
-                sorted_contributions.push_back(std::make_pair(abs_dipole,outstr));
+                            de[0] % de[1] % de[2] % abs_dipole % participation_percentage % charge_transfer_number);
+                sorted_contributions.push_back(std::make_pair(participation_percentage,outstr));
+		all_atomic_trans.push_back(boost::make_tuple(KS::molecule_->symbol(i.first).c_str(),l_to_symbol[i.second].c_str(), KS::molecule_->symbol(f.first).c_str(), l_to_symbol[f.second].c_str(), abs_dipole, participation_percentage, de[0], de[1], de[2],dipole_percent));
             }
         }
     }
-
+    outfile->Printf("\n    ==> Restricted Sum from Atomic Population Analysis of NTO contributions <==\n");
+    outfile->Printf("\n   ==================================================================================="); 
+    outfile->Printf("\n   Atomic Transition     PR%%       |mu|%%       |mu|     mu(x)      mu(y)      mu(z)  ");
+    outfile->Printf("\n   ===================================================================================");
+    std::vector<std::string> duplicates; 
+    int atomic_trans = all_atomic_trans.size();
+    double total_abs_dipole_all = 0.0;
+    for (int i = 0; i < atomic_trans; ++i){
+	total_abs_dipole_all += all_atomic_trans[i].get<4>();
+    }
+    for (int i = 0; i < atomic_trans; ++i){
+        double total_dipole = 0.0;
+        double total_pr = 0.0;
+        double total_ct = 0.0;
+        double total_mux = 0.0;
+	double total_muy = 0.0;
+	double total_muz = 0.0;
+	double total_dipole_percent = 0.0;
+        std::string istring = boost::str(boost::format("%s %s %s %s") % all_atomic_trans[i].get<0>().c_str() % all_atomic_trans[i].get<1>().c_str() % all_atomic_trans[i].get<2>().c_str() % all_atomic_trans[i].get<3>().c_str());
+	if(std::find(duplicates.begin(), duplicates.end(), istring.c_str()) != duplicates.end()){
+	    //outfile->Printf("\n%s is a duplicate!\n", istring.c_str());
+	}
+	else{
+        for (int j = 0; j < atomic_trans; ++j){
+		    std::string jstring = boost::str(boost::format("%s %s %s %s") % all_atomic_trans[j].get<0>().c_str() % all_atomic_trans[j].get<1>().c_str() % all_atomic_trans[j].get<2>().c_str() % all_atomic_trans[j].get<3>().c_str());
+		    if(istring==jstring){
+			//outfile->Printf("\n%s = %s\n", istring.c_str(), jstring.c_str()); //DEBUG statement, may be useful if anything looks weird with the promotion numbers.
+			total_dipole += all_atomic_trans[j].get<4>(); 
+			total_pr += all_atomic_trans[j].get<5>();
+			total_mux += all_atomic_trans[j].get<6>();
+			total_muy += all_atomic_trans[j].get<7>();
+			total_muz += all_atomic_trans[j].get<8>();
+			//total_dipole_percent += all_atomic_trans[j].get<9>();
+		    }
+	    }
+	duplicates.push_back(istring.c_str());
+	total_dipole_percent = (total_dipole/total_abs_dipole_all)*100.0;
+	std::string trans_str = boost::str(boost::format("    %2s %1s ---> %2s %1s  %9.2f%%  %9.2f  %9f  %9f  %9f  %9f") % all_atomic_trans[i].get<0>().c_str() % all_atomic_trans[i].get<1>().c_str() % all_atomic_trans[i].get<2>().c_str() % all_atomic_trans[i].get<3>().c_str() % total_pr % total_dipole_percent % total_dipole % total_mux % total_muy % total_muz);
+	restricted_sums.push_back(std::make_pair(total_pr,trans_str.c_str()));
+    }	
+    }
+    std::sort(restricted_sums.rbegin(),restricted_sums.rend());    
+    for (auto& kv : restricted_sums){
+        outfile->Printf("\n%s",kv.second.c_str());
+    }
+    outfile->Printf("\n   ===================================================================================\n\n");
+    outfile->Printf("\n         ==> Mulliken Population Analysis of the Transition Dipole Moment <==\n");
+    outfile->Printf("\n   =================================================================================");
+    outfile->Printf("\n    Initial     Final     mu(x)      mu(y)      mu(z)       |mu|     PRnto     CT");
+    outfile->Printf("\n   ---------------------------------------------------------------------------------");
     std::sort(sorted_contributions.rbegin(),sorted_contributions.rend());
     for (auto& kv : sorted_contributions){
         outfile->Printf("\n%s",kv.second.c_str());
     }
-    outfile->Printf("\n  ===============================================================\n\n");
+    outfile->Printf("\n  ==================================================================================\n\n");
 
 
     sorted_contributions.clear();
@@ -2171,6 +2278,7 @@ void UOCDFT::compute_transition_moments()
         dipole_ints[i]->transform(S_inv_half_ao);
     }
 
+    
     de[0] = trDa_ao->vector_dot(dipole_ints[0]);
     de[1] = trDa_ao->vector_dot(dipole_ints[1]);
     de[2] = trDa_ao->vector_dot(dipole_ints[2]);
@@ -2215,7 +2323,7 @@ void UOCDFT::compute_transition_moments()
     for (auto& kv : sorted_contributions){
         outfile->Printf("\n%s",kv.second.c_str());
     }
-    outfile->Printf("\n  ===============================================================\n\n");
+    //outfile->Printf("\n  ===============================================================\n\n");
 }
 
 //void UCKS::save_fock()

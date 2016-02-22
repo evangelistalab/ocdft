@@ -1,31 +1,40 @@
-sys.path.insert(0, './..')
-import cdft 
+# K-Edge Calculation on CO at the pbe/def2-qzvp level of theory with x2c
 
-molecule h2o {
-N	0.0000	0.0000	1.4000
-N	0.0000	0.0000	-1.4000
-  symmetry c1
+memory 40 gb
+import cdft
+
+molecule {
+0 1
+O        0.0000000000      0.0000000000      0.0000000000                 
+H        0.7711850000      0.5967980000      0.0000000000                 
+H       -0.7711850000      0.5967980000      0.0000000000   
+    symmetry c1
 }
-
 
 set {
-  basis cc-pvdz 
-  df_scf_guess false
-  scf_type pk
-  reference uhf
-# e_convergence 10
-  d_convergence 1
-  maxiter 100
+  basis cc-pvdz
+  scf_type df
+  df_basis_scf cc-pvdz-jkfit
+  guess sad
+  reference uks
+  maxiter 200
+  e_convergence 6
+  d_convergence 4
 }
-
 
 set cdft {
-  AOCC_FROZEN [2]
-  AVIR_FROZEN [2]
+  cdft_exc_type valence
+  nroots 1
+  #pFON_temp 50.0
+  #mom_start 10
+  #damping_percentage 20.0
+  #h_subspace = [O(p)]
+  #p_subspace = [O(p)]
+  cdft_spin_adapt_ci false
+  cdft_exc_method chp
+  cdft_num_project_out 1
+  cdft_project_out HP
 }
 
-
-energy('noci')
-
-
-
+set dft_functional b3lyp
+energy('ocdft')
