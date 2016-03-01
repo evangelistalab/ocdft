@@ -383,9 +383,7 @@ void NOCI(Options& options)
 void OCDFT(SharedWavefunction ref_wfn, Options& options)
 {
     boost::shared_ptr<PSIO> psio = PSIO::shared_object();
-    boost::shared_ptr<Wavefunction> ref_scf_;
-    //SharedWavefunction ref_scf;
-    //SharedWavefunction ref_wfn;
+
     std::string reference = options.get_str("REFERENCE");
     std::vector<double> energies;
     std::vector<SharedDeterminant> dets;
@@ -397,16 +395,9 @@ void OCDFT(SharedWavefunction ref_wfn, Options& options)
     }else if (reference == "UKS") {
         // Run a ground state computation first
         SharedWavefunction ref_scf = SharedWavefunction(new scf::UOCDFT(ref_wfn, options, psio));
-	//SharedWavefunction ref_scf = ref_wfn;
-        outfile->Printf("\n Built Wavefunction Pointer");
-        //Process::environment.set_wavefunction(ref_scf);
-        // Store atoms that are considered apart of the solute or adsorbant
-
         double gs_energy = ref_scf->compute_energy();
-	outfile->Printf("\n Computing Energy Twice");
         SharedMatrix Ca_solab =	ref_scf->Ca();
         SharedMatrix Cb_solab = ref_scf->Cb();
-        //Ca_solab->print();
         energies.push_back(gs_energy);
         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
         state_info.push_back(boost::make_tuple(0,1,gs_energy,0.0,0.0,0.0,0.0,0.0));

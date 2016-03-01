@@ -23,13 +23,17 @@ def run_cdft(name, **kwargs):
     lowername = name.lower()
     kwargs = p4util.kwargs_lower(kwargs)
 
-    ref_wfn = kwargs.get('ref_wfn', None)
+    scf_molecule = kwargs.get('molecule', psi4.get_active_molecule())
+    ref_wfn = psi4.new_wavefunction(scf_molecule, psi4.get_global_option('BASIS'))
+
     if ref_wfn is None:
-        ref_wfn = scf_helper(name, **kwargs)
+        #ref_wfn = scf_helper(name, **kwargs)
+	psi4.set_local_option('CDFT','METHOD','CDFT')
+        returnvalue = psi4.plugin(sofile,ref_wfn)
 
     # Run CDFT
-    psi4.set_local_option('CDFT','METHOD','CDFT')
-    returnvalue = psi4.plugin(sofile,ref_wfn)
+    #psi4.set_local_option('CDFT','METHOD','CDFT')
+    #returnvalue = psi4.plugin(sofile,ref_wfn)
 
     return returnvalue
 
@@ -44,7 +48,9 @@ def run_noci(name, **kwargs):
     lowername = name.lower()
     kwargs = p4util.kwargs_lower(kwargs)
 
-    ref_wfn = kwargs.get('ref_wfn', None)
+    scf_molecule = kwargs.get('molecule', psi4.get_active_molecule())
+    ref_wfn = psi4.new_wavefunction(scf_molecule, psi4.get_global_option('BASIS'))
+
     if ref_wfn is None:
         ref_wfn = scf_helper(name, **kwargs)
 
@@ -66,8 +72,10 @@ def run_ocdft(name, **kwargs):
     """
     lowername = name.lower()
     kwargs = p4util.kwargs_lower(kwargs)
-    
-    ref_wfn = kwargs.get('ref_wfn', None)
+
+    scf_molecule = kwargs.get('molecule', psi4.get_active_molecule())
+    ref_wfn = psi4.new_wavefunction(scf_molecule, psi4.get_global_option('BASIS'))
+
     if ref_wfn is None:
         ref_wfn = scf_helper(name, **kwargs)
 
@@ -87,7 +95,10 @@ def run_fasnocis(name, **kwargs):
     lowername = name.lower()
     kwargs = p4util.kwargs_lower(kwargs)
 
-    ref_wfn = kwargs.get('ref_wfn', None)
+    scf_molecule = kwargs.get('molecule', psi4.get_active_molecule())
+    ref_wfn = psi4.new_wavefunction(scf_molecule, psi4.get_global_option('BASIS'))
+
+
     if ref_wfn is None:
         ref_wfn = scf_helper(name, **kwargs)
 
