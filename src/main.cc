@@ -29,10 +29,10 @@ using namespace boost;
 
 namespace psi{ namespace cdft {
 
-void CDFT(Options& options);
+void CDFT(SharedWavefunction ref_wfn, Options& options);
 void OCDFT(SharedWavefunction ref_wfn, Options& options);
-void FASNOCIS(Options& options);
-void NOCI(Options& options);
+void FASNOCIS(SharedWavefunction ref_wfn, Options& options);
+void NOCI(SharedWavefunction ref_wfn,Options& options);
 
 extern "C"
 int read_options(std::string name, Options& options)
@@ -175,16 +175,16 @@ extern "C" SharedWavefunction cdft(SharedWavefunction ref_wfn, Options& options)
 {
     if (options.get_str("METHOD") == "CDFT"){
         outfile->Printf("\n  ==> Constrained DFT <==\n");
-        CDFT(options);
+        CDFT(ref_wfn, options);
     }else if (options.get_str("METHOD") == "OCDFT"){
         outfile->Printf("\n  ==> Orthogonality Constrained DFT <==\n");
         OCDFT(ref_wfn, options);
     }else if (options.get_str("METHOD") == "FASNOCIS"){
         outfile->Printf("\n  ==> Frozen-active-space NOCI Singles <==\n");
-        FASNOCIS(options);
+        FASNOCIS(ref_wfn, options);
     }else if (options.get_str("METHOD") == "NOCI"){
         outfile->Printf("\n  ==> NON-Orthogonality CI <==\n");
-        NOCI(options);
+        NOCI(ref_wfn, options);
     }
 
     // Set some environment variables
@@ -194,7 +194,7 @@ extern "C" SharedWavefunction cdft(SharedWavefunction ref_wfn, Options& options)
     return ref_wfn;
 }
 
-void CDFT(Options& options)
+void CDFT(SharedWavefunction ref_wfn, Options& options)
 {
     std::string reference = options.get_str("REFERENCE");
 
@@ -203,9 +203,9 @@ void CDFT(Options& options)
     }else if (reference == "UKS") {
         // Run a ground state computation first
         boost::shared_ptr<PSIO> psio = PSIO::shared_object();
-	SharedWavefunction ref_scf;
-        boost::shared_ptr<Wavefunction> ref_scf_(new scf::UCKS(ref_scf, options, psio));
-	ref_scf = ref_scf_;
+
+        SharedWavefunction ref_scf = SharedWavefunction(new scf::UCKS(ref_wfn, options, psio));
+
         double gs_energy = ref_scf->compute_energy();
 
         // If requested, write a molden file
@@ -221,10 +221,9 @@ void CDFT(Options& options)
 }
 
 
-void NOCI(Options& options)
+void NOCI(SharedWavefunction ref_wfn, Options& options)
 {
     boost::shared_ptr<PSIO> psio = PSIO::shared_object();
-    boost::shared_ptr<Wavefunction> ref_scf_;
     std::string reference = options.get_str("REFERENCE");
     std::vector<double> energies;
     bool valence = true;
@@ -239,9 +238,7 @@ void NOCI(Options& options)
     }else if (reference == "UHF") {
         // Run a ground state computation first
         outfile->Printf(" PV this is first done.\n");
-        SharedWavefunction ref_scf;
-        ref_scf_ = boost::shared_ptr<Wavefunction>(new scf::NOCI(ref_scf,options, psio));
-        ref_scf = ref_scf_;
+        SharedWavefunction ref_scf = SharedWavefunction(new scf::NOCI(ref_wfn,options, psio));
         double gs_energy = ref_scf->compute_energy();
         outfile->Printf("\n  %11.4f",gs_energy);
         energies.push_back(gs_energy);
@@ -523,11 +520,9 @@ void OCDFT(SharedWavefunction ref_wfn, Options& options)
 }
 
 
-void FASNOCIS(Options& options)
+void FASNOCIS(SharedWavefunction ref_wfn, Options& options)
 {
     boost::shared_ptr<PSIO> psio = PSIO::shared_object();
-    SharedWavefunction ref_scf;
-    boost::shared_ptr<Wavefunction> ref_scf_;
     std::string reference = options.get_str("REFERENCE");
     std::vector<double> energies;
     std::vector<SharedDeterminant> dets;
@@ -539,9 +534,8 @@ void FASNOCIS(Options& options)
         throw InputException("Constrained RKS is not implemented ", "REFERENCE to UKS", __FILE__, __LINE__);
     }else if (reference == "UHF") {
         // Run a ground state computation first
-        ref_scf_ = boost::shared_ptr<Wavefunction>(new scf::FASNOCIS(ref_scf,options, psio));
-	ref_scf = ref_scf_; 
-        //Process::environment.set_wavefunction(ref_scf);
+        SharedWavefunction ref_scf = SharedWavefunction(new scf::FASNOCIS(ref_wfn,options, psio));
+
         double gs_energy = ref_scf->compute_energy();
         energies.push_back(gs_energy);
 
