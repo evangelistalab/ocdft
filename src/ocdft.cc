@@ -155,6 +155,10 @@ void UOCDFT::init_excitation(SharedWavefunction ref_scf)
     do_opt_spectators = true;
 
     std::string exc_method = KS::options_.get_str("CDFT_EXC_METHOD");
+    std::string exc_type = KS::options_.get_str("CDFT_EXC_TYPE");
+    std::string nroots = KS::options_.get_str("NROOTS");
+    std::string roots_per_hole = KS::options_.get_str("CDFT_NUM_PROJECT_OUT");
+    std::string exc_project = KS::options_.get_str("CDFT_PROJECT_OUT");
     if(exc_method == "CHP-F"){
         throw InputException("Frozen CHP algorithm has not been implemented", "REFERENCE to UKS", __FILE__, __LINE__);
         //do_opt_spectators = false;
@@ -163,11 +167,17 @@ void UOCDFT::init_excitation(SharedWavefunction ref_scf)
     }else if(exc_method == "CP"){
         do_holes = false;
     }
-
+   
+    outfile->Printf("\n  ==> OCDFT Algorithm Details <==");
+    outfile->Printf("\n  Excited State Type: %s", exc_type.c_str());
+    outfile->Printf("\n  Total Number of Roots: %s", nroots.c_str());
+    outfile->Printf("\n  Number of Roots Per Hole: %s", roots_per_hole.c_str());
+    outfile->Printf("\n  Excited State Algorithm: ", exc_method.c_str());
+    
 
 
     // Save the reference state MOs and occupation numbers
-    outfile->Printf("  Saving the reference orbitals for an excited state computation\n");
+    //outfile->Printf("  Saving the reference orbitals for an excited state computation\n");
     UOCDFT* ucks_ptr = dynamic_cast<UOCDFT*>(ref_scf.get());
     //Ca_gs_ =  SharedMatrix(new Matrix("Ca_gs_",nsopi_,nmopi_));
     //Ca_gs_ = dets[0]->Ca(); 
@@ -215,17 +225,17 @@ void UOCDFT::init_excitation(SharedWavefunction ref_scf)
     do_project_out_holes = false;
     do_project_out_particles = false;
     if (project_out == "H"){
-        outfile->Printf("\n  Projecting out only holes.\n");
+        outfile->Printf("\n  Projection Algorithm: H (Hole Projection)");
         do_project_out_holes = true;
         do_save_holes = true;
         // Project out all the holes
         project_naholepi_ = saved_naholepi_;
     }else if (project_out == "P"){
-        outfile->Printf("\n  Projecting out only particles.\n");
+	outfile->Printf("\n  Projection Algorithm: P (Particle Projection)");
         do_project_out_particles = true;
         do_save_particles = true;
     }else if (project_out == "HP"){
-        outfile->Printf("\n  Projecting out holes and particles.\n");
+	outfile->Printf("\n  Projection Algorithm: HP (Hole/Particle Projection)");
         if (nirrep_ != 1){
             outfile->Printf("\n  The HP algorithm is only implemented for C1 symmetry.\n");
             outfile->Flush();
@@ -235,15 +245,15 @@ void UOCDFT::init_excitation(SharedWavefunction ref_scf)
         do_project_out_particles = true;
         do_save_particles = true;
         do_save_holes = true;
-        outfile->Printf("\n  STATE = %d",state_);
+        outfile->Printf("\n\n  STATE %d of %s",state_, nroots.c_str());
         // Check if we computed enough hole/particles
         if (state_ > 0){
             project_naholepi_[0] = (state_-1)/ KS::options_.get_int("CDFT_NUM_PROJECT_OUT"); // TODO generalize to symmetry
             if (state_ % KS::options_.get_int("CDFT_NUM_PROJECT_OUT") == 1){
                 // Compute a new particle and save it, project out the holes but don't save it
-                outfile->Printf("\n  Save the first hole in the series.  Compute a new particle and save it.");
+                //outfile->Printf("\n  Save the first hole in the series.  Compute a new particle and save it.");
 //                saved_naholepi_[0] = (state_-1)/ KS::options_.get_int("CDFT_NUM_PROJECT_OUT");
-                outfile->Printf("\n  Saved holes %d",saved_naholepi_[0]);
+                //outfile->Printf("\n  Saved holes %d",saved_naholepi_[0]);
                 do_project_out_holes = true;
                 do_save_particles = true;
                 do_save_holes = true;
@@ -260,16 +270,16 @@ void UOCDFT::init_excitation(SharedWavefunction ref_scf)
                 do_save_particles = true;
                 do_save_holes = false;
                 do_project_out_holes = true;
-                outfile->Printf("\n  Compute a new particle and save it, project out the holes but don't save it.  Saved holes %d",saved_naholepi_[0]);
+                //outfile->Printf("\n  Compute a new particle and save it, project out the holes but don't save it.  Saved holes %d",saved_naholepi_[0]);
             }
         }
     }
     outfile->Printf("\n  ");
-    saved_naholepi_.print();
+    //saved_naholepi_.print();
     outfile->Printf("\n  ");
-    saved_napartpi_.print();
+    //saved_napartpi_.print();
     outfile->Printf("\n  ");
-    project_naholepi_.print();
+    //project_naholepi_.print();
 }
 
 UOCDFT::~UOCDFT()
@@ -618,56 +628,6 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     bool do_core_excitation = false;
     if(KS::options_.get_str("CDFT_EXC_TYPE") == "CORE"){
     	do_core_excitation = true;
-        //accepted_holes = hole_subspace(dets[0]->Ca());
-	    //if (KS::options_["H_SUBSPACE"].size() > 0){
-	    //    for (int entry = 0; entry < (int)KS::options_["H_SUBSPACE"].size(); ++entry){
-	    //        std::string s = KS::options_["H_SUBSPACE"][entry].to_string();
-	    //        subspace_str.push_back(s);
-	    //    }
-	    //// Create an AOSubspace object
-	    //aosubspace::AOSubspace aosub(subspace_str,wfn->molecule(),wfn->basisset());
-	    //if(iteration_==0){
-	    //        outfile->Printf("\n\n   => Hole Orbital Subspace <=\n");
-            //}
-	    //// Compute the subspaces
-	    //aosub.find_subspace(iteration_);
-
-	    //// Get the subspaces
-	    //selected_holes = aosub.subspace();
-            //}
-            //int nocc = gs_nalphapi_[0];
-	    //if(iteration_==0){
-	    //    outfile->Printf("\n    Overlap of Occupied Orbitals with Atomic Orbital Subspace              ");
-	    //    outfile->Printf("\n    ----------------------------------------------------------");
-	    //    outfile->Printf("\n\n    %d Occupied MOs: \n \n", nocc);
-	    //}
-
-	    //int num_funcs = selected_holes.size();
-            //int print_count = 1;
-	    //for (int mu = 0; mu < nocc; ++mu){
-	    //    double kappa = 0.0;
-	    //    for (int nu = 0; nu < num_funcs; ++nu){
-	    //    	kappa += (dets[0]->Ca()->get(selected_holes[nu],mu)*dets[0]->Ca()->get(selected_holes[nu],mu));
-	    //    }
-	    //    /// Store the virtual orbitals that have greater that 0.2 overlap with
-	    //    /// the subspace basis functions
-	    //    /// TODO->Make this value a user input.
-	    //    // vec_str.push_back(boost::str(boost::format(" %.1f%% %d%s")  % (occ_mo.first*100.0)  % occ_mo.second % ct.gamma(h).symbol()));
-
-	    //    if(iteration_ == 0){
-	    //        if(print_count == 4){
-	    //    	outfile->Printf("\n");
-	    //    	print_count = 0;
-  	    //        }
-	    //        else{
-	    //           auto temp_string = boost::str(boost::format("     %2dA       %-5f") % (mu+1) % kappa);
-	    //           //outfile->Printf("  %d-A      %f  ",mu+1,kappa);
-	    //           outfile->Printf("%s",temp_string.c_str());
-	    //        }
-	    //        print_count++;
-	    //    }
-	    //    accepted_holes.push_back(boost::make_tuple(kappa,mu));
-	    //}
     }
     if(KS::options_.get_str("CDFT_EXC_TYPE") == "CORE" and KS::options_["H_SUBSPACE"].size() > 0){
     	std::sort(accepted_holes.rbegin(),accepted_holes.rend());
@@ -681,15 +641,9 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     for (int i = 0; i < nocc; ++i){
     double e_h = lambda_o->get(occ_h,i);
     for (int vir_h = 0; vir_h < nirrep_; ++vir_h){
-	int nvir = gs_navirpi_[vir_h];
-	if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
-          nvir = nocc;
-	}	
+	int nvir = gs_navirpi_[vir_h];	
 	for (int a = 0; a < nvir; ++a){
 	    double e_p = lambda_v->get(vir_h,a);
-	    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
-          	e_p = lambda_o->get(vir_h,a);
-       	    }
 	    double e_hp = do_core_excitation ? (e_p + e_h) : (e_p - e_h);
 	    int symm = occ_h ^ vir_h ^ ground_state_symmetry_;
             bool use_vir = true;
@@ -709,8 +663,6 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
 		    }while(vir_num <= vir_size);
              }
              if (KS::options_["H_SUBSPACE"].size() > 0){
-
-		    //bool use_occ = true;
 		    int occ_num = 0;
 		    int occ_size = accepted_holes.size();
 		    do
@@ -906,41 +858,7 @@ void UOCDFT::compute_hole_particle_mos()
         }
         poffset[apart_h] += 1;
     }
-//    std::vector<int> solute_atoms;
-//    std::vector<int> solute_funcs;
-//    for (int A = 0; A < KS::molecule_->natom(); A++) {
-//        outfile->Printf("\n Atom %d",A);
-//        int n_shell = KS::KS::basisset_->nshell_on_center(A);
-//        for (int Q = 0; Q < n_shell; Q++){
-//            const GaussianShell& shell = KS::KS::basisset_->shell(A,Q);
-//            int nfunction = shell.nfunction();
-//            int am = shell.am();
-//            int num_sol = KS::options_.get_int("NUMBER_OF_SOLUTE_ATOMS");
-//            for (int zz = 0; zz < num_sol; ++zz){
-//                solute_atoms.push_back(KS::options_["SOLUTE_ADSORBANT"][zz].to_integer())
-//;
-//
-//                if ((A + 1) == KS::options_["SOLUTE_ADSORBANT"][zz].to_integer()){
-//                        outfile->Printf("\n [NEW]Adding basis function to adsorbate set");
-//                        solute_funcs.push_back(nfunction);
-//                }
-//            }
-//            outfile->Printf("\n[NEW]label for atom: %s%d\n", KS::molecule_->symbol(A).c_str(),(A + 1));
-//	}
-//    }
-//    int num_funcs = solute_funcs.size();
-//    outfile->Printf("\n There are %d Solute basis functions \n", num_funcs);
-//    double sum_kappa = 0.0;
-//    double kappa = 0.0;
-//    int nocc = gs_nalphapi_[0];
-//    for (int mu = 0; mu < KS::basisset_->nbf(); ++mu){
-//        for (int nu = 0; nu < KS::basisset_->nbf(); ++nu){
-//                sum_kappa += (Ca_->get(mu,nu)*Ca_->get(mu,nu));        }
-//    }    for (int mu = 0; mu < num_funcs; ++mu){
-//        for (int nu = nocc; nu < KS::basisset_->nbf(); ++nu){
-//                kappa += (Cp_->get(solute_funcs[mu],nu)*Cp_->get(solute_funcs[mu],nu));   
-//        }    }
-//    outfile->Printf("\n  Kappa: %f \n", kappa);
+
 }
 
 std::vector<boost::tuple<double,int>> UOCDFT::hole_subspace(SharedWavefunction wfn, SharedMatrix Ca)
@@ -1109,7 +1027,6 @@ std::vector<int> UOCDFT::particle_subspace(SharedWavefunction wfn, SharedMatrix 
 	}
     }
     for(int i = nocc; i < KS::basisset_->nbf(); i++){
-    // END NEW CODE
 	if(iteration_ == 0){
 	    if(print_count == 4){                        
 		auto temp_string = boost::str(boost::format("     %2dA       %-5f") % (i+1) % m_sub_diag[i]);
@@ -1119,7 +1036,6 @@ std::vector<int> UOCDFT::particle_subspace(SharedWavefunction wfn, SharedMatrix 
 	    }
 	    else{
 		auto temp_string = boost::str(boost::format("     %2dA       %-5f") % (i+1) % m_sub_diag[i]);
-	       //outfile->Printf("  %d-A      %f  ",mu+1,kappa);
 	       outfile->Printf("%s",temp_string.c_str());
 	    }
 	    print_count++;
@@ -2117,8 +2033,6 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
     // Form a map that lists all functions on a given atom and with a given ang. momentum
     std::map<std::pair<int,int>,std::vector<int>> atom_am_to_f;
     int sum = 0;
-    std::vector<int> solute_atoms;
-    std::vector<int> solute_funcs;
     for (int A = 0; A < KS::molecule_->natom(); A++) {
         //outfile->Printf("\n Atom %d",A);
         int n_shell = KS::KS::basisset_->nshell_on_center(A);
@@ -2126,22 +2040,11 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
             const GaussianShell& shell = KS::KS::basisset_->shell(A,Q);
             int nfunction = shell.nfunction();
             int am = shell.am();
-            int num_sol = KS::options_.get_int("NUMBER_OF_SOLUTE_ATOMS");
-            for (int zz = 0; zz < num_sol; ++zz){
-                solute_atoms.push_back(KS::options_["SOLUTE_ADSORBANT"][zz].to_integer());   
- 
-                if ((A + 1) == KS::options_["SOLUTE_ADSORBANT"][zz].to_integer()){
-                        //outfile->Printf("\n Adding basis function to adsorbate set");
-			solute_funcs.push_back(nfunction);
-                }
-            }
-            //outfile->Printf("\nlabel for atom: %s%d\n", KS::molecule_->symbol(A).c_str(), (A + 1));
-            //outfile->Printf("\n   Shell %d: L = %d, N = %d (%d -> %d)",Q,am,nfunction,sum,sum + nfunction);
             std::pair<int,int> atom_am(A,am);
             for (int p = sum; p < sum + nfunction; ++p){
                 atom_am_to_f[atom_am].push_back(p);
             }
-            sum += nfunction;
+	    sum += nfunction;
         }
     }
 
@@ -2153,25 +2056,10 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
     
     std::vector<boost::tuple<std::string,std::string,std::string,std::string,double,double,double,double,double,double>> all_atomic_trans;
     std::vector<std::pair<double,std::string>> restricted_sums;
-//    for (auto& key : keys){
-//        outfile->Printf("\n Atom = %d, AM = %d ->",key.first,key.second);
-//        for (auto& p : atom_am_to_f[key]){
-//            outfile->Printf(" %d",p);
-//        }
-//    }
 
     std::vector<std::string> l_to_symbol{"s","p","d","f","g","h"};
 
     std::vector<std::pair<double,std::string>> sorted_contributions;
-    int num_funcs = solute_funcs.size();
-    outfile->Printf("\n There are %d Solute basis functions \n", num_funcs);
-    double sum_kappa = 0.0;
-    double kappa = 0.0;
-    for (int mu = 0; mu < KS::basisset_->nbf(); ++mu){
-    	for (int nu = 0; nu < KS::basisset_->nbf(); ++nu){
-        	sum_kappa += (ca[mu][nu]*ca[mu][nu]);                
-	}
-    }
     SharedMatrix trDa_ao_atom = SharedMatrix(new Matrix("AO Density", KS::basisset_->nbf(), KS::basisset_->nbf()));
     for (auto& i : keys){
         for (auto& f : keys){
@@ -2723,7 +2611,7 @@ double UOCDFT::compute_S_plus_triplet_correction()
     outfile->Printf( " %4d ]\n", nbetapi_[nirrep_-1]);
     int mo_h = sorted_pair[0].get<1>();
     outfile->Printf("\n  Final occupation numbers:\n");
-    // Update the occupation numbers
+    //Update the occupation numbers
     nalphapi_[mo_h] += 1;
     nbetapi_[mo_h]  -= 1;
     nalpha_ = 0;
@@ -2788,10 +2676,8 @@ double UOCDFT::compute_S_plus_triplet_correction()
     oscillator_strength_s_plus_x_ = 2./3. * singlet_exc_energy_s_plus_ * (dx * dx);
     oscillator_strength_s_plus_y_ = 2./3. * singlet_exc_energy_s_plus_ * (dy * dy);
     oscillator_strength_s_plus_z_ = 2./3. * singlet_exc_energy_s_plus_ * (dz * dz);
-    outfile->Printf( "\n  Transition Dipole Moment = (%f,%f,%f)",dx,dy,dz);
-
-
-    outfile->Printf("\n\n");
+    outfile->Printf( "\n  Transition Dipole Moment = (%f,%f,%f) \n ",dx,dy,dz);
+;
     compute_spin_contamination();
     outfile->Printf("\n");
 
