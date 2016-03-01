@@ -27,13 +27,11 @@ def run_cdft(name, **kwargs):
     ref_wfn = psi4.new_wavefunction(scf_molecule, psi4.get_global_option('BASIS'))
 
     if ref_wfn is None:
-        #ref_wfn = scf_helper(name, **kwargs)
-	psi4.set_local_option('CDFT','METHOD','CDFT')
-        returnvalue = psi4.plugin(sofile,ref_wfn)
+        ref_wfn = scf_helper(name, **kwargs)
 
     # Run CDFT
-    #psi4.set_local_option('CDFT','METHOD','CDFT')
-    #returnvalue = psi4.plugin(sofile,ref_wfn)
+    psi4.set_local_option('CDFT','METHOD','CDFT')
+    returnvalue = psi4.plugin(sofile,ref_wfn)
 
     return returnvalue
 

@@ -43,7 +43,10 @@ int read_options(std::string name, Options& options)
         ``OCDFT`` Constrained DFT;   Default is ``OCDFTHP``. -*/
         options.add_str("METHOD","OCDFT", "OCDFT CDFT FASNOCIS NOCI");
 
-        // Options for Constrained DFT (CDFT)
+        
+	////////////////////////////////////////
+	// Options for Constrained DFT (CDFT) //
+	///////////////////////////////////////
 
         /*- Charge constraints -*/
         options.add("CHARGE", new ArrayType());
@@ -59,42 +62,17 @@ int read_options(std::string name, Options& options)
         options.add_double("CDFT_SUHF_LAMBDA",0.0);
         /*- Charge constraints -*/
         options.add_double("LEVEL_SHIFT",0.0);
-        /*- Restrict Core -*/
-        options.add_double("REW", 0.0);
-        /*- Choose Specific Hole Orbital -*/
-        options.add_double("TARGET_HOLE", 0.0);
-        /*- Choose Specific Particle Orbital -*/
-        options.add_double("TARGET_PARTICLE", 0.0);
-        options.add_int("NUMBER_OF_SOLUTE_ATOMS", 0);
-        /*- Specify atoms that are to be considered Solute or Adsorbants for solution phase and adsorbed calculations-*/
-        options.add("SOLUTE_ADSORBANT", new ArrayType());
-        /*- Obtain Desired Hole AO Subspace from user -*/
-        options.add("H_SUBSPACE",new ArrayType());
-        /**
-        *    Valid options include:
- 	*
- 	*    ["C"] - all carbon atoms
- 	*    ["C","N"] - all carbon and nitrogen atoms
- 	*    ["C1"] - carbon atom #1
- 	*    ["C1-3"] - carbon atoms #1, #2, #3
- 	*    ["C(2p)"] - the 2p subset of all carbon atoms
- 	*    ["C(1s,2s)"] - the 1s/2s subsets of all carbon atoms
- 	*    ["C1-3(2s)"] - the 2s subsets of carbon atoms #1, #2, #3 
-        **/
-        /*- Threshold for square MO coefficients of hole subspace-*/
-        options.add_double("HOLE_THRESHOLD", 0.2);
-        /*- Threshold for square MO coefficients of particle subspace-*/
-        options.add_double("PARTICLE_THRESHOLD", 0.1);
-        /*- Obtain Desired Particle AO Subspace from user (See Valid options for H_SUBSPACE for more details)-*/
-        options.add("P_SUBSPACE",new ArrayType());
         /*- Apply a fixed Lagrange multiplier -*/
         options.add_bool("OPTIMIZE_VC", true);
         /*- Value of the Lagrange multiplier -*/
         options.add("VC", new ArrayType());
 
 
-        // Options for Orthogonality Constrained DFT (OCDFT)
+        //////////////////////////////////////////////////////
+        // Options for Orthogonality Constrained DFT (CDFT) //
+        //////////////////////////////////////////////////////
 
+	// Options for Specifying Excited States and Algorithms //
         /*- Number of excited states -*/
         options.add_int("NROOTS", 0);
         /*- Number of excited states per irrep, ROOTS_PER_IRREP has priority over NROOTS -*/
@@ -104,16 +82,10 @@ int read_options(std::string name, Options& options)
         options.add_bool("VALENCE_TO_CORE", false);
         /*- Perform a correction of the triplet excitation energies using the S+ formalism -*/
         options.add_bool("CDFT_SPIN_ADAPT_SP", true);
-	/*- Perform a correction of the triplet excitation energi -*/
-        options.add_int("MOM_START", 0);
-	/*- Use Damping for SCF Density in Excited States -*/
-        options.add_double("DAMPING_PERCENTAGE", 0.0);
-        /*- Use Damping for SCF Density in Excited States -*/
-        options.add_double("PFON_TEMP", 0.0);
         /*- Perform a correction of the triplet excitation energies using a CI formalism -*/
         options.add_bool("CDFT_SPIN_ADAPT_CI", false);
         /*- Break the symmetry of the HOMO/LUMO pair (works only in C1 symmetry) -*/
-        options.add("CDFT_BREAK_SYMMETRY", new ArrayType()); 
+        options.add("CDFT_BREAK_SYMMETRY", new ArrayType());
         /*- Select the excited state method.  The valid options are:
         ``CP`` (constrained particle) which finds the optimal particle orbital
         while relaxing the other orbitals;
@@ -134,11 +106,58 @@ int read_options(std::string name, Options& options)
         options.add_str("CDFT_PROJECT_OUT","H","H P HP");
         /*- Select the type of excited state to target -*/
         options.add_int("CDFT_NUM_PROJECT_OUT",1);
-
+        /*- Select the maximum number of iterations in an OCDFT computation -*/
+        options.add_int("OCDFT_MAX_ITER",1000000);
         /*- The number of holes per irrep-*/
         options.add("OCDFT_HOLES_PER_IRREP", new ArrayType());
         /*- The number of particles per irrep-*/
         options.add("OCDFT_PARTS_PER_IRREP", new ArrayType());
+
+	// Convergence Tools //
+	/*- Maximum Overlap Method for convergence, specifies starting iteration -*/
+        options.add_int("MOM_START", 0);
+	/*- Use Damping for SCF Density in Excited States -*/
+        options.add_double("DAMPING_PERCENTAGE", 0.0);
+        /*- Select "Temperature" for use in Scuseria partial Fractional Occupation Number Method (PFON) -*/
+        options.add_double("PFON_TEMP", 0.0);
+
+	// Selecting Specific Excitations (Expert)//
+	// CAUTION: This must be done with great care, the orbitals you select must be
+	// sufficiently decoupled from other orbitals in the system (ex. localized 1s orbs)
+        // attempting to target other orbitals (ex. degenerate pi* valence orbitals) may 
+        // result in convergence issues and/or variational collapse.
+        /*- Orbital Energy Cutoff for selecting hole orbital -*/
+        options.add_double("REW", 0.0);
+        /*- Obtain Desired Hole AO Subspace from user -*/
+        options.add("H_SUBSPACE",new ArrayType());
+        /*- Obtain Desired Particle AO Subspace from user -*/
+        options.add("P_SUBSPACE",new ArrayType());
+        /**
+        *    Valid options for P and H Subspace are of the following form:
+        *
+        *    ["C"] - all carbon atoms
+        *    ["C","N"] - all carbon and nitrogen atoms
+        *    ["C1"] - carbon atom #1
+        *    ["C1-3"] - carbon atoms #1, #2, #3
+        *    ["C(2p)"] - the 2p subset of all carbon atoms
+        *    ["C(1s,2s)"] - the 1s/2s subsets of all carbon atoms
+        *    ["C1-3(2s)"] - the 2s subsets of carbon atoms #1, #2, #3
+        **/
+        /*- Threshold for overlap of MOs with AO hole subspace-*/
+        options.add_double("HOLE_THRESHOLD", 0.2);
+        /*- Threshold for overlap of MOs with AO particle subspace-*/
+        options.add_double("PARTICLE_THRESHOLD", 0.1);
+        /*- Choose Specific Hole Orbital -*/
+        options.add_double("TARGET_HOLE", 0.0);
+        /*- Choose Specific Particle Orbital -*/
+        options.add_double("TARGET_PARTICLE", 0.0);
+        options.add_int("NUMBER_OF_SOLUTE_ATOMS", 0);
+        /*- Specify atoms that are to be considered Solute or Adsorbants for solution phase and adsorbed calculations-*/
+        options.add("SOLUTE_ADSORBANT", new ArrayType());
+
+        /////////////////////////////////////////////////////////////////
+        // Options for Non-Orthogonal Configuration Interaction (NOCI) //
+        /////////////////////////////////////////////////////////////////
 
         options.add_bool("USE_FAST_JK", false);
 
@@ -148,9 +167,6 @@ int read_options(std::string name, Options& options)
 
         options.add("AOCC_FROZEN", new ArrayType());
         options.add("AVIR_FROZEN", new ArrayType());
-
-        /*- Select the maximum number of iterations in an OCDFT computation -*/
-        options.add_int("OCDFT_MAX_ITER",1000000);
 	
         /*- Would you like to perform an NOCI calculation as well? -*/
         options.add_bool("DO_NOCI_AND_OCDFT", false);
