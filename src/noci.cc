@@ -15,17 +15,17 @@ using namespace psi;
 
 namespace psi{ namespace scf{
 
-NOCI::NOCI(Options &options, boost::shared_ptr<PSIO> psio): UHF(options, psio),do_noci(false),state_a_(0),state_b_(0)
+NOCI::NOCI(SharedWavefunction ref_scf, Options &options, boost::shared_ptr<PSIO> psio): UHF(ref_scf, options, psio),do_noci(false),state_a_(0),state_b_(0)
 {
     init();
 }
 
-NOCI::NOCI(Options &options, boost::shared_ptr<PSIO> psio, int state_a, std::pair<int,int> fmo, int state_b,
+NOCI::NOCI(SharedWavefunction ref_scf, Options &options, boost::shared_ptr<PSIO> psio, int state_a, std::pair<int,int> fmo, int state_b,
            std::vector<std::pair<int,int>>frozen_occ_a,std::vector<std::pair<int,int>>frozen_occ_b,
            std::vector<std::pair<int,int>>frozen_mos,
            std::vector<int>occ_frozen,std::vector<int>vir_frozen,
            SharedMatrix Ca_gs_, SharedMatrix Cb_gs_,bool valence_in)
-: UHF(options, psio),
+: UHF(ref_scf,options, psio),
   do_noci(true),do_alpha_states(state_a),
   state_a_(state_a),
   fmo_(fmo),

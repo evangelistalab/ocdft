@@ -29,8 +29,8 @@ using namespace psi;
 
 namespace psi{ namespace scf{
 
-UCKS::UCKS(Options &options, boost::shared_ptr<PSIO> psio)
-: UKS(options, psio),
+UCKS::UCKS(SharedWavefunction ref_scf, Options &options, boost::shared_ptr<PSIO> psio)
+: UKS(ref_scf,options, psio),
   optimize_Vc(false),
   gradW_threshold_(1.0e-9),
   nW_opt(0),

@@ -25,7 +25,7 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     outfile->Printf("\n  ==> Nonorthogonal CI (NOCI) <==\n\n");
     outfile->Printf("  Number of determinants: %zu\n",dets_.size());
 
-    boost::shared_ptr<Wavefunction> wfn = Process::environment.wavefunction();
+    SharedWavefunction wfn;
     molecule_ = Process::environment.molecule();
 
     use_fast_jk_ = options.get_bool("USE_FAST_JK");
@@ -42,7 +42,7 @@ NOCI_Hamiltonian::NOCI_Hamiltonian(Options &options, std::vector<SharedDetermina
     nsopi_ = wfn->nsopi();
     Sso_ = wfn->S()->clone();
     Hso_ = wfn->H()->clone();
-    jk_ = JK::build_JK();
+    jk_ = JK::build_JK(wfn->basisset(),options);
     // 8 GB Memory, 1 G doubles
     jk_->set_memory(1000000000L);
     jk_->set_cutoff(1.0E-12);

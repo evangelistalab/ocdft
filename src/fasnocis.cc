@@ -31,18 +31,18 @@ using namespace psi;
 
 namespace psi{ namespace scf{
 
-FASNOCIS::FASNOCIS(Options &options, boost::shared_ptr<PSIO> psio)
-    : UHF(options, psio), do_excitation(false)
+FASNOCIS::FASNOCIS(SharedWavefunction ref_scf, Options &options, boost::shared_ptr<PSIO> psio)
+    : UHF(ref_scf, options, psio), do_excitation(false)
 {
 }
 
 FASNOCIS::FASNOCIS(Options &options, boost::shared_ptr<PSIO> psio,
-                   boost::shared_ptr<Wavefunction> ref_scf,
+                   SharedWavefunction ref_scf,
                    std::vector<std::pair<size_t,size_t>> vec_frozen_mos,
                    std::vector<size_t> aocc,
                    std::vector<size_t> bocc,
                    Dimension nadoccpi)
-    : UHF(options,psio), ref_scf_(ref_scf), vec_frozen_mos_(vec_frozen_mos),
+    : UHF(ref_scf,options,psio), ref_scf_(ref_scf), vec_frozen_mos_(vec_frozen_mos),
       afocc_(aocc), bfocc_(bocc), nadoccpi_(nadoccpi), do_excitation(true)
 {
     Ft_ = factory_->create_shared_matrix("Total Fock matrix (SO basis)");

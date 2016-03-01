@@ -15,7 +15,7 @@ namespace scf{
 /// A class for unrestricted constrained Kohn-Sham theory
 class UCKS : public UKS {
 public:
-    explicit UCKS(Options &options, boost::shared_ptr<PSIO> psio);
+    explicit UCKS(SharedWavefunction ref_scf,Options &options, boost::shared_ptr<PSIO> psio);
     virtual ~UCKS();
 protected:
     /// The fragment constraint matrices in the SO basis

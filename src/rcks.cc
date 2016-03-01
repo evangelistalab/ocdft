@@ -13,8 +13,8 @@ using namespace psi;
 
 namespace psi{ namespace scf{
 
-RCKS::RCKS(Options& options, boost::shared_ptr<PSIO> psio)
-    : RKS(options, psio), Vc(0.0), optimize_Vc(false), gradW_threshold_(1.0e-9),nW_opt(0), old_gradW(0.0), BFGS_hessW(0.0)
+RCKS::RCKS(SharedWavefunction ref_scf, Options& options, boost::shared_ptr<PSIO> psio)
+    : RKS(ref_scf, options, psio), Vc(0.0), optimize_Vc(false), gradW_threshold_(1.0e-9),nW_opt(0), old_gradW(0.0), BFGS_hessW(0.0)
 {
     outfile->Printf("\n  ==> Constrained DFT (RCKS) <==\n\n");
 

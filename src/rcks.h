@@ -11,7 +11,7 @@ namespace scf{
 /// A class for restricted constrained Kohn-Sham theory
 class RCKS : public RKS {
 public:
-     RCKS(Options &options, boost::shared_ptr<PSIO> psio);
+     RCKS(SharedWavefunction ref_scf, Options &options, boost::shared_ptr<PSIO> psio);
      virtual ~RCKS();
      /// Compute the Lowdin charges
      virtual void Lowdin();

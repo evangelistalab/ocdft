@@ -31,8 +31,8 @@ using namespace psi;
 
 namespace psi{ namespace scf{
 
-UOCDFT::UOCDFT(Options &options, boost::shared_ptr<PSIO> psio)
-: UKS(options, psio),
+UOCDFT::UOCDFT(SharedWavefunction ref_scf, Options &options, boost::shared_ptr<PSIO> psio)
+: UKS(ref_scf,options, psio),
   do_excitation(false),
   do_symmetry(false),
   ground_state_energy(0.0),
@@ -52,12 +52,13 @@ UOCDFT::UOCDFT(Options &options, boost::shared_ptr<PSIO> psio)
     init();
     gs_Fa_ = Fa_;
     gs_Fb_ = Fb_;
+    wfn_ = ref_scf;
     //std::vector<int> accepted_virts;
     //Ca_gs_ = dets[0]->Ca();
 }
 
-UOCDFT::UOCDFT(Options &options, boost::shared_ptr<PSIO> psio, boost::shared_ptr<Wavefunction> ref_scf, int state)
-: UKS(options, psio),
+UOCDFT::UOCDFT(Options &options, boost::shared_ptr<PSIO> psio, SharedWavefunction ref_scf, int state)
+: UKS(ref_scf,options, psio),
   do_excitation(true),
   do_symmetry(false),
   ground_state_energy(0.0),
@@ -76,13 +77,14 @@ UOCDFT::UOCDFT(Options &options, boost::shared_ptr<PSIO> psio, boost::shared_ptr
 {
     init();
     init_excitation(ref_scf);
+    wfn_ = ref_scf;
     ground_state_energy = dets[0]->energy();
     //std::vector<int> accepted_virts;
     //Ca_gs_ = dets[0]->Ca();
 }
 
-UOCDFT::UOCDFT(Options &options, boost::shared_ptr<PSIO> psio, boost::shared_ptr<Wavefunction> ref_scf, int state,int symmetry)
-: UKS(options, psio),
+UOCDFT::UOCDFT( Options &options, boost::shared_ptr<PSIO> psio, SharedWavefunction ref_scf, int state,int symmetry)
+: UKS(ref_scf,options, psio),
   do_excitation(true),
   do_symmetry(true),
   ground_state_energy(0.0),
@@ -102,6 +104,7 @@ UOCDFT::UOCDFT(Options &options, boost::shared_ptr<PSIO> psio, boost::shared_ptr
     do_excitation = true;
     init();
     init_excitation(ref_scf);
+    wfn_ = ref_scf;
     ground_state_energy = dets[0]->energy();
     ground_state_symmetry_ = dets[0]->symmetry();
     //std::vector<int> accepted_virts;
@@ -140,7 +143,7 @@ void UOCDFT::init()
     save_H_ = true;
 }
 
-void UOCDFT::init_excitation(boost::shared_ptr<Wavefunction> ref_scf)
+void UOCDFT::init_excitation(SharedWavefunction ref_scf)
 {
     // Never recalculate the socc and docc arrays
     input_socc_ = true;
@@ -206,6 +209,7 @@ void UOCDFT::init_excitation(boost::shared_ptr<Wavefunction> ref_scf)
     QFQ_ = factory_->create_shared_matrix("QFQ");
     moFeffa_ = factory_->create_shared_matrix("MO alpha Feff");
     moFeffb_ = factory_->create_shared_matrix("MO beta Feff");
+    //SharedWavefunction wfn_ = ref_scf;
 
     std::string project_out = KS::options_.get_str("CDFT_PROJECT_OUT");
     do_project_out_holes = false;
@@ -605,10 +609,10 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     std::vector<int> accepted_virts;
     std::vector<boost::tuple<double,int>> accepted_holes;
     if (KS::options_["P_SUBSPACE"].size() > 0){
-    	accepted_virts = particle_subspace(dets[0]->Ca());
+    	accepted_virts = particle_subspace(wfn_, dets[0]->Ca());
     }
     if (KS::options_["H_SUBSPACE"].size() > 0){
-    	accepted_holes = hole_subspace(dets[0]->Ca());
+    	accepted_holes = hole_subspace(wfn_, dets[0]->Ca());
     }
     // If we are doing core excitation just take the negative of the hole energy
     bool do_core_excitation = false;
@@ -939,10 +943,9 @@ void UOCDFT::compute_hole_particle_mos()
 //    outfile->Printf("\n  Kappa: %f \n", kappa);
 }
 
-std::vector<boost::tuple<double,int>> UOCDFT::hole_subspace(SharedMatrix Ca)
+std::vector<boost::tuple<double,int>> UOCDFT::hole_subspace(SharedWavefunction wfn, SharedMatrix Ca)
 {
 	    // Allocate Necessary Vectors and Matrices.
-            boost::shared_ptr<Wavefunction> wfn = Process::environment.wavefunction();
             std::vector<boost::tuple<double,int>> accepted_holes;
 	    std::vector<double> m_sub_diag;
 	    std::vector<std::string> subspace_str;
@@ -1033,13 +1036,12 @@ std::vector<boost::tuple<double,int>> UOCDFT::hole_subspace(SharedMatrix Ca)
     return accepted_holes;
 }
 
-std::vector<int> UOCDFT::particle_subspace(SharedMatrix Ca)
+std::vector<int> UOCDFT::particle_subspace(SharedWavefunction wfn, SharedMatrix Ca)
 {
     // Find the AO subset
     if(iteration_==0){
 	    outfile->Printf("\n  ==> Hole/Particle Atomic Orbital Subspace Localization Routine <== \n");
     }
-    boost::shared_ptr<Wavefunction> wfn = Process::environment.wavefunction();
     std::vector<int> subspace; 
     std::vector<double> m_sub_diag;
     std::vector<int> selected_particles;
@@ -1774,8 +1776,8 @@ void UOCDFT::save_information()
         Process::environment.globals["DFT ENERGY"] = ground_state_energy;
 
         analyze_excitations();
-
-        compute_transition_moments();
+	
+        compute_transition_moments(wfn_);
 
         double mixlet_exc_energy = E_ - ground_state_energy;
         outfile->Printf("  Excited mixed state   : excitation energy = %9.6f Eh = %8.4f eV = %9.1f cm**-1 \n",
@@ -1881,7 +1883,7 @@ void UOCDFT::analyze_excitations()
     outfile->Printf("\n\n");
 }
 
-void UOCDFT::compute_transition_moments()
+void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
 {
     double overlap = 0.0;
     double hamiltonian = 0.0;
@@ -2064,7 +2066,7 @@ void UOCDFT::compute_transition_moments()
     S_inv_half_ao->power(-0.5);
 
     // Contract the dipole moment operators with the pseudo-density matrix
-    boost::shared_ptr<OEProp> oe(new OEProp());
+    boost::shared_ptr<OEProp> oe(new OEProp(ref_scf));
     oe->set_title("OCDFT TRANSITION");
     oe->add("TRANSITION_DIPOLE");
     oe->set_Da_so(trDa);
@@ -2546,7 +2548,7 @@ double UOCDFT::compute_triplet_correction()
     Cnca->print();
     Cncb->print();
 
-    boost::shared_ptr<JK> jk = JK::build_JK();
+    boost::shared_ptr<JK> jk = JK::build_JK(KS::basisset_, KS::options_);
     jk->initialize();
     std::vector<SharedMatrix>& C_left = jk->C_left();
     C_left.clear();

@@ -23,9 +23,13 @@ def run_cdft(name, **kwargs):
     lowername = name.lower()
     kwargs = p4util.kwargs_lower(kwargs)
 
+    ref_wfn = kwargs.get('ref_wfn', None)
+    if ref_wfn is None:
+        ref_wfn = scf_helper(name, **kwargs)
+
     # Run CDFT
     psi4.set_local_option('CDFT','METHOD','CDFT')
-    returnvalue = psi4.plugin(sofile)
+    returnvalue = psi4.plugin(sofile,ref_wfn)
 
     return returnvalue
 
@@ -40,9 +44,13 @@ def run_noci(name, **kwargs):
     lowername = name.lower()
     kwargs = p4util.kwargs_lower(kwargs)
 
+    ref_wfn = kwargs.get('ref_wfn', None)
+    if ref_wfn is None:
+        ref_wfn = scf_helper(name, **kwargs)
+
     # Run CDFT
     psi4.set_local_option('CDFT','METHOD','NOCI')
-    returnvalue = psi4.plugin(sofile)
+    returnvalue = psi4.plugin(sofile,ref_wfn)
 
     return returnvalue
 
@@ -58,10 +66,14 @@ def run_ocdft(name, **kwargs):
     """
     lowername = name.lower()
     kwargs = p4util.kwargs_lower(kwargs)
+    
+    ref_wfn = kwargs.get('ref_wfn', None)
+    if ref_wfn is None:
+        ref_wfn = scf_helper(name, **kwargs)
 
     # Run OCDFT
     psi4.set_local_option('CDFT','METHOD','OCDFT')
-    returnvalue = psi4.plugin(sofile)
+    returnvalue = psi4.plugin(sofile, ref_wfn)
 
     return returnvalue
 
@@ -75,9 +87,13 @@ def run_fasnocis(name, **kwargs):
     lowername = name.lower()
     kwargs = p4util.kwargs_lower(kwargs)
 
+    ref_wfn = kwargs.get('ref_wfn', None)
+    if ref_wfn is None:
+        ref_wfn = scf_helper(name, **kwargs)
+
     # Run OCDFT
     psi4.set_local_option('CDFT','METHOD','FASNOCIS')
-    returnvalue = psi4.plugin(sofile)
+    returnvalue = psi4.plugin(sofile,ref_wfn)
 
     return returnvalue
 

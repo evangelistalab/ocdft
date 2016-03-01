@@ -15,9 +15,9 @@ namespace scf{
 /// A class for unrestricted constrained Kohn-Sham theory
 class FASNOCIS : public UHF {
 public:
-    explicit FASNOCIS(Options &options, boost::shared_ptr<PSIO> psio);
+    explicit FASNOCIS(SharedWavefunction ref_scf, Options &options, boost::shared_ptr<PSIO> psio);
     explicit FASNOCIS(Options &options, boost::shared_ptr<PSIO> psio,
-                      boost::shared_ptr<Wavefunction> ref_scf,
+                      SharedWavefunction ref_scf,
                       std::vector<std::pair<size_t,size_t>> vec_frozen_mos,
                       std::vector<size_t> aocc,
                       std::vector<size_t> bocc, Dimension nadoccpi);

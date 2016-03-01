@@ -30,7 +30,7 @@ using namespace boost;
 namespace psi{ namespace cdft {
 
 void CDFT(Options& options);
-void OCDFT(Options& options);
+void OCDFT(SharedWavefunction ref_wfn, Options& options);
 void FASNOCIS(Options& options);
 void NOCI(Options& options);
 
@@ -171,14 +171,14 @@ int read_options(std::string name, Options& options)
     return true;
 }
 
-extern "C" PsiReturnType cdft(Options& options)
+extern "C" SharedWavefunction cdft(SharedWavefunction ref_wfn, Options& options)
 {
     if (options.get_str("METHOD") == "CDFT"){
         outfile->Printf("\n  ==> Constrained DFT <==\n");
         CDFT(options);
     }else if (options.get_str("METHOD") == "OCDFT"){
         outfile->Printf("\n  ==> Orthogonality Constrained DFT <==\n");
-        OCDFT(options);
+        OCDFT(ref_wfn, options);
     }else if (options.get_str("METHOD") == "FASNOCIS"){
         outfile->Printf("\n  ==> Frozen-active-space NOCI Singles <==\n");
         FASNOCIS(options);
@@ -191,7 +191,7 @@ extern "C" PsiReturnType cdft(Options& options)
     //    Process::environment.globals["SCF TOTAL ENERGY"] = energies.back();
     //    Process::environment.globals["CURRENT ENERGY"] = energies.back();
     //    Process::environment.globals["CURRENT REFERENCE ENERGY"] = energies[0];
-    return Success;
+    return ref_wfn;
 }
 
 void CDFT(Options& options)
@@ -203,14 +203,15 @@ void CDFT(Options& options)
     }else if (reference == "UKS") {
         // Run a ground state computation first
         boost::shared_ptr<PSIO> psio = PSIO::shared_object();
-        boost::shared_ptr<Wavefunction> ref_scf(new scf::UCKS(options, psio));
-        Process::environment.set_wavefunction(ref_scf);
+	SharedWavefunction ref_scf;
+        boost::shared_ptr<Wavefunction> ref_scf_(new scf::UCKS(ref_scf, options, psio));
+	ref_scf = ref_scf_;
         double gs_energy = ref_scf->compute_energy();
 
         // If requested, write a molden file
         if ( options["MOLDEN_WRITE"].has_changed() ) {
             boost::shared_ptr<MoldenWriter> molden(new MoldenWriter(ref_scf));
-            std::string filename = get_writer_file_prefix() + "." + to_string(0) + ".molden";
+            std::string filename = get_writer_file_prefix("OCDFT") + "." + to_string(0) + ".molden";
             psi::scf::HF* hf = (psi::scf::HF*)ref_scf.get();
             SharedVector occA = hf->occupation_a();
             SharedVector occB = hf->occupation_b();
@@ -223,7 +224,7 @@ void CDFT(Options& options)
 void NOCI(Options& options)
 {
     boost::shared_ptr<PSIO> psio = PSIO::shared_object();
-    boost::shared_ptr<Wavefunction> ref_scf;
+    boost::shared_ptr<Wavefunction> ref_scf_;
     std::string reference = options.get_str("REFERENCE");
     std::vector<double> energies;
     bool valence = true;
@@ -238,8 +239,9 @@ void NOCI(Options& options)
     }else if (reference == "UHF") {
         // Run a ground state computation first
         outfile->Printf(" PV this is first done.\n");
-        ref_scf = boost::shared_ptr<Wavefunction>(new scf::NOCI(options, psio));
-        Process::environment.set_wavefunction(ref_scf);
+        SharedWavefunction ref_scf;
+        ref_scf_ = boost::shared_ptr<Wavefunction>(new scf::NOCI(ref_scf,options, psio));
+        ref_scf = ref_scf_;
         double gs_energy = ref_scf->compute_energy();
         outfile->Printf("\n  %11.4f",gs_energy);
         energies.push_back(gs_energy);
@@ -250,7 +252,7 @@ void NOCI(Options& options)
         //  OCC_ACTIVE based on each irrep
         //  VIR_ACTIVE based on each irrep
 
-        int nirrep = Process::environment.wavefunction()->nirrep();
+        int nirrep = ref_scf->nirrep();
         std::vector<int> occ_frozen, vir_frozen;
         std::vector<boost::tuple<int,int,double>> occup_a;
 
@@ -332,13 +334,15 @@ void NOCI(Options& options)
             int vrt = vir_frozen[irrep];
             for (int state_a=1; state_a <= vir_frozen[irrep];++state_a){
                 int state_b=0;
-                boost::shared_ptr<Wavefunction> new_scf = boost::shared_ptr<Wavefunction>(new scf::NOCI(options,psio,state_a,swap_occ,state_b,
+		SharedWavefunction new_scf; 
+                boost::shared_ptr<Wavefunction> new_scf_ = boost::shared_ptr<Wavefunction>(new scf::NOCI(new_scf,options,psio,state_a,swap_occ,state_b,
                                                                                                         frozen_occ_a,frozen_occ_b,
                                                                                                         frozen_mos,
                                                                                                         occ_frozen,vir_frozen,
                                                                                                         Ca_gs_,Cb_gs_,valence));
-                Process::environment.wavefunction().reset();
-                Process::environment.set_wavefunction(new_scf);
+		new_scf = new_scf_;
+                //Process::environment.wavefunction().reset();
+                //Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();
                 energies.push_back(new_energy);
                 dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi(), fmo, state_a, state_b,vrt )));
@@ -354,13 +358,15 @@ void NOCI(Options& options)
             int vrt = vir_frozen[irrep];
             for (int state_b=1; state_b <= vir_frozen[irrep];++state_b){
                 int state_a=0;
-                boost::shared_ptr<Wavefunction> new_scf = boost::shared_ptr<Wavefunction>(new scf::NOCI(options,psio,state_a,swap_occ,state_b,
+		SharedWavefunction new_scf;
+                boost::shared_ptr<Wavefunction> new_scf_ = boost::shared_ptr<Wavefunction>(new scf::NOCI(new_scf, options,psio,state_a,swap_occ,state_b,
                                                                                                         frozen_occ_a,frozen_occ_b,
                                                                                                         frozen_mos,
                                                                                                         occ_frozen,vir_frozen,
                                                                                                         Ca_gs_,Cb_gs_,valence));
-                Process::environment.wavefunction().reset();
-                Process::environment.set_wavefunction(new_scf);
+		new_scf = new_scf_;
+                //Process::environment.wavefunction().reset();
+                //Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();
                 energies.push_back(new_energy);
                 dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi(),fmo, state_a, state_b,vrt )) );
@@ -374,13 +380,15 @@ void NOCI(Options& options)
 
 
 
-void OCDFT(Options& options)
+void OCDFT(SharedWavefunction ref_wfn, Options& options)
 {
     boost::shared_ptr<PSIO> psio = PSIO::shared_object();
-    boost::shared_ptr<Wavefunction> ref_scf;
+    boost::shared_ptr<Wavefunction> ref_scf_;
+    //SharedWavefunction ref_scf;
+    //SharedWavefunction ref_wfn;
     std::string reference = options.get_str("REFERENCE");
     std::vector<double> energies;
-      std::vector<SharedDeterminant> dets;
+    std::vector<SharedDeterminant> dets;
     // Store the irrep, multiplicity, total energy, excitation energy, oscillator strength
     std::vector<boost::tuple<int,int,double,double,double,double,double,double>> state_info;
 
@@ -388,21 +396,14 @@ void OCDFT(Options& options)
         throw InputException("Constrained RKS is not implemented ", "REFERENCE to UKS", __FILE__, __LINE__);
     }else if (reference == "UKS") {
         // Run a ground state computation first
-        ref_scf = boost::shared_ptr<Wavefunction>(new scf::UOCDFT(options, psio));
-        Process::environment.set_wavefunction(ref_scf);
+        SharedWavefunction ref_scf = SharedWavefunction(new scf::UOCDFT(ref_wfn, options, psio));
+	//SharedWavefunction ref_scf = ref_wfn;
+        outfile->Printf("\n Built Wavefunction Pointer");
+        //Process::environment.set_wavefunction(ref_scf);
         // Store atoms that are considered apart of the solute or adsorbant
-        std::vector<int> solab_atoms;
-        for (int i = 0; i < options.get("SOLUTE_ADSORBANT").size(); i++){
-            solab_atoms.push_back(options.get("SOLUTE_ADSORBANT")[i].to_integer());
-        }
-        //outfile->Printf("\n ------------------------");
-        //outfile->Printf("\n Solute or Adsobant Atoms");
-        //outfile->Printf("\n ------------------------");
-	//for (int i = 0; i < solab_atoms.size(); i++){
-	//    outfile->Printf("\n Atom %d", solab_atoms[i]);
-        //}
-        //outfile->Printf("\n ------------------------ \n");
+
         double gs_energy = ref_scf->compute_energy();
+	outfile->Printf("\n Computing Energy Twice");
         SharedMatrix Ca_solab =	ref_scf->Ca();
         SharedMatrix Cb_solab = ref_scf->Cb();
         //Ca_solab->print();
@@ -413,7 +414,7 @@ void OCDFT(Options& options)
         // Print a molden file
         if ( options["MOLDEN_WRITE"].has_changed() ) {
             boost::shared_ptr<MoldenWriter> molden(new MoldenWriter(ref_scf));
-            std::string filename = get_writer_file_prefix() + "." + to_string(0) + ".molden";
+            std::string filename = get_writer_file_prefix("OCDFT") + "." + to_string(0) + ".molden";
             psi::scf::HF* hf = (psi::scf::HF*)ref_scf.get();
             SharedVector occA = hf->occupation_a();
             SharedVector occB = hf->occupation_b();
@@ -427,9 +428,9 @@ void OCDFT(Options& options)
         if(options["NROOTS"].has_changed()){
             int nstates = options["NROOTS"].to_integer();
             for(int state = 1; state <= nstates; ++state){
-                boost::shared_ptr<Wavefunction> new_scf = boost::shared_ptr<Wavefunction>(new scf::UOCDFT(options,psio,ref_scf,state));
-                Process::environment.wavefunction().reset();
-                Process::environment.set_wavefunction(new_scf);
+                SharedWavefunction new_scf = SharedWavefunction(new scf::UOCDFT(options,psio,ref_scf,state));
+                //Process::environment.wavefunction().reset();
+                //Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();
                 energies.push_back(new_energy);
                 if (options.get_bool("DIAG_DFT_E")){energies.push_back(new_energy);}
@@ -447,7 +448,7 @@ void OCDFT(Options& options)
                 // Print a molden file
                 if ( options["MOLDEN_WRITE"].has_changed() ) {
                     boost::shared_ptr<MoldenWriter> molden(new MoldenWriter(new_scf));
-                    std::string filename = get_writer_file_prefix() + "." + to_string(state) + ".molden";
+                    std::string filename = get_writer_file_prefix("OCDFT") + "." + to_string(state) + ".molden";
                     psi::scf::HF* hf = (psi::scf::HF*)new_scf.get();
                     SharedVector occA = hf->occupation_a();
                     SharedVector occB = hf->occupation_b();
@@ -459,7 +460,7 @@ void OCDFT(Options& options)
         }
         // Compute a number of excited states of a given symmetry
         else if(options["ROOTS_PER_IRREP"].has_changed()){
-            int maxnirrep = Process::environment.wavefunction()->nirrep();
+            int maxnirrep = ref_scf->nirrep();
             int nirrep = options["ROOTS_PER_IRREP"].size();
             if (nirrep != maxnirrep){
                 throw InputException("The number of irreps specified in the option ROOTS_PER_IRREP does not match the number of irreps",
@@ -474,9 +475,9 @@ void OCDFT(Options& options)
                 int part_num = -1;
                 for (int state = 1; state <= nstates; ++state){
                     part_num += 1;
-                    boost::shared_ptr<Wavefunction> new_scf = boost::shared_ptr<Wavefunction>(new scf::UOCDFT(options,psio,ref_scf,state,h));
-                    Process::environment.wavefunction().reset();
-                    Process::environment.set_wavefunction(new_scf);
+                    SharedWavefunction new_scf = SharedWavefunction(new scf::UOCDFT(options,psio,ref_scf,state,h));
+                    //Process::environment.wavefunction().reset();
+                    //Process::environment.set_wavefunction(new_scf);
                     double new_energy = new_scf->compute_energy();
                     energies.push_back(new_energy);
 
@@ -490,7 +491,7 @@ void OCDFT(Options& options)
                     // Print a molden file
                     if ( options.get_bool("MOLDEN_WRITE") ) {
                         boost::shared_ptr<MoldenWriter> molden(new MoldenWriter(new_scf));
-                        std::string filename = get_writer_file_prefix() + "." + to_string(h) + "." + to_string(state) + ".molden";
+                        std::string filename = get_writer_file_prefix("OCDFT") + "." + to_string(h) + "." + to_string(state) + ".molden";
                         psi::scf::HF* hf = (psi::scf::HF*)new_scf.get();
                         SharedVector occA = hf->occupation_a();
                         SharedVector occB = hf->occupation_b();
@@ -526,7 +527,7 @@ void OCDFT(Options& options)
      noci_H.compute_energy(energies);
      }
      // Set this early because the callback mechanism uses it.
-     Process::environment.wavefunction().reset();
+     //Process::environment.wavefunction().reset();
 
 }
 
@@ -534,7 +535,8 @@ void OCDFT(Options& options)
 void FASNOCIS(Options& options)
 {
     boost::shared_ptr<PSIO> psio = PSIO::shared_object();
-    boost::shared_ptr<Wavefunction> ref_scf;
+    SharedWavefunction ref_scf;
+    boost::shared_ptr<Wavefunction> ref_scf_;
     std::string reference = options.get_str("REFERENCE");
     std::vector<double> energies;
     std::vector<SharedDeterminant> dets;
@@ -546,8 +548,9 @@ void FASNOCIS(Options& options)
         throw InputException("Constrained RKS is not implemented ", "REFERENCE to UKS", __FILE__, __LINE__);
     }else if (reference == "UHF") {
         // Run a ground state computation first
-        ref_scf = boost::shared_ptr<Wavefunction>(new scf::FASNOCIS(options, psio));
-        Process::environment.set_wavefunction(ref_scf);
+        ref_scf_ = boost::shared_ptr<Wavefunction>(new scf::FASNOCIS(ref_scf,options, psio));
+	ref_scf = ref_scf_; 
+        //Process::environment.set_wavefunction(ref_scf);
         double gs_energy = ref_scf->compute_energy();
         energies.push_back(gs_energy);
 
@@ -558,7 +561,7 @@ void FASNOCIS(Options& options)
         // Print a molden file
         if ( options["MOLDEN_WRITE"].has_changed() ) {
             boost::shared_ptr<MoldenWriter> molden(new MoldenWriter(ref_scf));
-            std::string filename = get_writer_file_prefix() + "." + to_string(0) + ".molden";
+            std::string filename = get_writer_file_prefix("OCDFT") + "." + to_string(0) + ".molden";
             psi::scf::HF* hf = (psi::scf::HF*)ref_scf.get();
             SharedVector occA = hf->occupation_a();
             SharedVector occB = hf->occupation_b();
@@ -569,7 +572,7 @@ void FASNOCIS(Options& options)
         Dimension nalphapi = ref_scf->nalphapi();
         Dimension nbetapi = ref_scf->nbetapi();
 
-        int nirrep = Process::environment.wavefunction()->nirrep();
+        int nirrep = ref_scf->nirrep();
         Dimension adoccpi(nirrep,"Number of doubly occupied active MOs per irrep");
         std::vector<int> occ_frozen, vir_frozen;
         size_t nofrz = 0;
@@ -666,7 +669,7 @@ void FASNOCIS(Options& options)
     }
 
     // Set this early because the callback mechanism uses it.
-    Process::environment.wavefunction().reset();
+    //Process::environment.wavefunction().reset();
 }
 
 }} // End namespaces
