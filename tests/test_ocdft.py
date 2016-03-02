@@ -38,12 +38,12 @@ options["NOCI"][0] = str(args.noci)
 
 
 
-ocdft_tests = ["noci-1","noci-ocdft-hf-core-ex-CO","noci-ocdft-hf-val-ex-CO","noci-val-ex-CO","ocdft-ch","ocdft-chp", "ocdft-cp", "ocdft-cis", "ocdft-chpfb", "ocdft-core", "ocdft-rew", "ocdft-mom"]
+ocdft_tests = ["noci-1","noci-ocdft-hf-core-ex-CO","noci-ocdft-hf-val-ex-CO","noci-val-ex-CO","ocdft-ch","ocdft-chp", "ocdft-cp", "ocdft-cis", "ocdft-chpfb", "ocdft-core", "ocdft-rew", "ocdft-cube"]
 
 if options["NOCI"][0] == 'True':
 	ocdft_tests = ["noci-1","noci-ocdft-hf-core-ex-CO","noci-ocdft-hf-val-ex-CO","noci-val-ex-CO"]
 if options["OCDFT"][0] == 'True':
-        ocdft_tests = ["ocdft-ch","ocdft-chp", "ocdft-cp", "ocdft-cis", "ocdft-chpfb", "ocdft-core",  "ocdft-mom"]
+        ocdft_tests = ["ocdft-ch","ocdft-chp", "ocdft-cp", "ocdft-cis", "ocdft-chpfb", "ocdft-core",  "ocdft-cube"]
 
 
 tests = ocdft_tests

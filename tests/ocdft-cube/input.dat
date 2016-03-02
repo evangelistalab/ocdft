@@ -1,0 +1,46 @@
+# K-Edge Calculation on CO at the pbe/def2-qzvp level of theory with x2c
+
+memory 40 gb
+import cdft
+
+molecule mol{
+0 1
+C           -0.000000000000     0.000000000000    -0.642713037152
+O            0.000000000000     0.000000000000     0.482188034714
+symmetry c1
+}
+
+set {
+  basis 3-21G
+  scf_type df
+  guess sad
+  reference uks
+  maxiter 200
+  e_convergence 7
+  d_convergence 6
+}
+
+set cdft {
+  cdft_exc_type valence
+  nroots 1
+  cube_hp true
+  cdft_exc_method chp
+}
+
+set dft_functional b3lyp
+energy("ocdft")
+
+for n in [1]:
+    ref_cube = open('hole_%d_18_A.ref' % n,'r').read()
+    this_cube = open('hole_%d_18_A.cube' % n,'r').read()
+    compare_cubes(ref_cube,this_cube,"Comparing hole orbitals %d" % n) #TEST
+
+for n in [1]:
+    ref_cube = open('particle_%d_1_A.ref' % n,'r').read()
+    this_cube = open('particle_%d_1_A.cube' % n,'r').read()
+    compare_cubes(ref_cube,this_cube,"Comparing particle orbitals %d" % n) #TEST
+
+#for s in ['Da','Db','Dt','Ds']:
+#    ref_cube = open('%s.cube.ref' % s,'r').read()
+#    this_cube = open('%s.cube' % s,'r').read()
+#    compare_cubes(ref_cube,this_cube,"Comparing %s" % s) #TEST

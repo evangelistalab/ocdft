@@ -147,13 +147,8 @@ int read_options(std::string name, Options& options)
         options.add_double("HOLE_THRESHOLD", 0.2);
         /*- Threshold for overlap of MOs with AO particle subspace-*/
         options.add_double("PARTICLE_THRESHOLD", 0.1);
-        /*- Choose Specific Hole Orbital -*/
-        options.add_double("TARGET_HOLE", 0.0);
-        /*- Choose Specific Particle Orbital -*/
-        options.add_double("TARGET_PARTICLE", 0.0);
-        options.add_int("NUMBER_OF_SOLUTE_ATOMS", 0);
-        /*- Specify atoms that are to be considered Solute or Adsorbants for solution phase and adsorbed calculations-*/
-        options.add("SOLUTE_ADSORBANT", new ArrayType());
+        options.add_double("ALPHA_CI", 1.0);
+	options.add_bool("CUBE_HP", false);
 
         /////////////////////////////////////////////////////////////////
         // Options for Non-Orthogonal Configuration Interaction (NOCI) //

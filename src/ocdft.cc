@@ -8,6 +8,7 @@
 #include <libfock/apps.h>
 #include <libfock/v.h>
 #include <libfock/jk.h>
+#include <libcubeprop/cubeprop.h>
 #include <libdisp/dispersion.h>
 #include <liboptions/liboptions.h>
 #include <libciomr/libciomr.h>
@@ -1692,7 +1693,51 @@ void UOCDFT::save_information()
         Process::environment.globals["DFT ENERGY"] = ground_state_energy;
 
         analyze_excitations();
-	
+        std::vector<boost::tuple<double, int, int> > info_a_; 
+        int nirrep = wfn_->nirrep();
+        Dimension nmopi = wfn_->nmopi();
+        // Gather orbital information
+        for (int h = 0; h < nirrep; h++) {
+            for (int i = 0; i < (int)nmopi[h]; i++) {
+                info_a_.push_back(boost::tuple<double,int,int>(wfn_->epsilon_a()->get(h,i),i,h));
+            }
+        }
+        std::sort(info_a_.begin(), info_a_.end(), std::less<boost::tuple<double,int,int> >()); // Sort as in wfn
+        std::vector<int> indsp0;
+	std::vector<int> indsh0;
+        int orb_tup_size = info_a_.size();
+
+        for (int ind = 0; ind < Ca_->colspi()[0]; ind++) {
+	    if(epsilon_a_->get(ind)==-100.0){
+            	indsp0.push_back(ind);
+	    }
+	    if(epsilon_a_->get(ind)==100.0){
+	        indsh0.push_back(ind); 
+	    }
+        }
+        std::vector<std::string> labelsp;
+	std::vector<std::string> labelsh;
+        CharacterTable ct = KS::basisset_->molecule()->point_group()->char_table();
+        for (size_t ind = 0; ind < indsp0.size(); ++ind){
+            int i = info_a_[indsp0[ind]].get<1>();
+            int h = info_a_[indsp0[ind]].get<2>();
+            labelsp.push_back(ct.gamma(h).symbol());
+        }
+        for (size_t ind = 0; ind < indsh0.size(); ++ind){
+            int i = info_a_[indsh0[ind]].get<1>();
+            int h = info_a_[indsh0[ind]].get<2>();
+            labelsh.push_back(ct.gamma(h).symbol());
+        }
+        CubeProperties cube = CubeProperties(wfn_);
+
+	std::string particle_str = boost::str(boost::format("particle_%d") % state_);
+	std::string hole_str = boost::str(boost::format("hole_%d") % state_);
+	if(KS::options_.get_bool("CUBE_HP")){
+        	cube.compute_orbitals(Ca_, indsp0,labelsp, particle_str);
+		cube.compute_orbitals(Ca_, indsh0,labelsh, hole_str);
+	}
+	//cube.compute_properties();
+	// grid_->print_header();
         compute_transition_moments(wfn_);
 
         double mixlet_exc_energy = E_ - ground_state_energy;
@@ -2295,8 +2340,9 @@ void UOCDFT::spin_adapt_mixed_excitation()
     SharedDeterminant D1 = SharedDeterminant(new Determinant(E_,Ca_,Cb_,nalphapi_,nbetapi_));
     SharedDeterminant D2 = SharedDeterminant(new Determinant(E_,Cb_,Ca_,nbetapi_,nalphapi_));
     std::pair<double,double> M12 = matrix_element(D1,D2);
-    double S12 = M12.first;
-    double H12 = M12.second;
+    double alpha = KS::options_.get_double("ALPHA_CI");
+    double S12 = alpha*M12.first;
+    double H12 = alpha*M12.second;
     double triplet_energy = (E_ - H12)/(1.0 - S12);
     double singlet_energy = (E_ + H12)/(1.0 + S12);
     double triplet_exc_energy = (E_ - H12)/(1.0 - S12) - ground_state_energy;
