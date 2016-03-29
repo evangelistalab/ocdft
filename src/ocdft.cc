@@ -275,6 +275,16 @@ void UOCDFT::init_excitation(SharedWavefunction ref_scf)
             }
         }
     }
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_== 1){
+        do_project_out_holes = true;
+        do_save_particles = true;
+        do_save_holes = false;
+    }
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
+        do_project_out_holes = true;
+        do_save_particles = true;
+        do_save_holes = true;
+    }
     outfile->Printf("\n  ");
     //saved_naholepi_.print();
     outfile->Printf("\n  ");
@@ -633,8 +643,11 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     if(KS::options_.get_str("CDFT_EXC_TYPE") == "CORE" and KS::options_["H_SUBSPACE"].size() > 0){
     	std::sort(accepted_holes.rbegin(),accepted_holes.rend());
     }
-    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
-    	do_core_excitation = false;
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1 and KS::options_.get_str("CDFT_EXC_TYPE") == "CORE"){
+        do_core_excitation = false;
+    }
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1 and KS::options_.get_str("CDFT_EXC_TYPE") == "VALENCE"){
+        do_core_excitation = true;
     }
     // Compute the symmetry adapted hole/particle pairs
     for (int occ_h = 0; occ_h < nirrep_; ++occ_h){
@@ -642,61 +655,78 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     for (int i = 0; i < nocc; ++i){
     double e_h = lambda_o->get(occ_h,i);
     for (int vir_h = 0; vir_h < nirrep_; ++vir_h){
-	int nvir = gs_navirpi_[vir_h];	
-	for (int a = 0; a < nvir; ++a){
-	    double e_p = lambda_v->get(vir_h,a);
-	    double e_hp = do_core_excitation ? (e_p + e_h) : (e_p - e_h);
-	    int symm = occ_h ^ vir_h ^ ground_state_symmetry_;
+        int nvir;
+        if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+                nvir = nocc;
+        }
+        else{
+              nvir = gs_navirpi_[vir_h];
+        }
+        for (int a = 0; a < nvir; ++a){
+            double e_p;
+            if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+                e_p = lambda_o->get(vir_h,a);
+            }
+            else{
+                e_p = lambda_v->get(vir_h,a);
+            }
+            double e_hp = do_core_excitation ? (e_p + e_h) : (e_p - e_h);
+            int symm = occ_h ^ vir_h ^ ground_state_symmetry_;
             bool use_vir = true;
             bool use_occ = true;
-	    if (KS::options_["P_SUBSPACE"].size() > 0){ 
-		    //bool use_vir = true;
-		    int vir_size = accepted_virts.size();
-		    int vir_num = 0;
-		    do
-		    {
-			use_vir = false;
-			if(a==accepted_virts[vir_num]){
-				use_vir = true;
-				break;
-			}
-		    vir_num++;
-		    }while(vir_num <= vir_size);
+            if (KS::options_["P_SUBSPACE"].size() > 0){
+                    //bool use_vir = true;
+                    int vir_size = accepted_virts.size();
+                    int vir_num = 0;
+                    do
+                    {
+                        use_vir = false;
+                        if(a==accepted_virts[vir_num]){
+                                use_vir = true;
+                                break;
+                        }
+                    vir_num++;
+                    }while(vir_num <= vir_size);
              }
              if (KS::options_["H_SUBSPACE"].size() > 0){
-		    int occ_num = 0;
-		    int occ_size = accepted_holes.size();
-		    do
-		    {
-			use_occ = false;
-			if(i==accepted_holes[occ_num].get<1>()){
-				use_occ = true;
-				break;
-			}
-		    occ_num++;
-		    }while(occ_num <= occ_size);
-            }
-		if(not do_symmetry or (symm == excited_state_symmetry_)){ // Test for symmetry
-		// Make sure we are not adding excitations to holes/particles that have been projected out
-		    if(KS::options_.get_double("REW") > 0.0){ // Perform Restricted Excitation Window Calculation
-		        double rew_cutoff = KS::options_.get_double("REW");
-		        if (std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and std::fabs(e_h) < rew_cutoff){
-		        	sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
-                    }
-                    }
-                        else if(KS::options_.get_str("CDFT_EXC_TYPE") == "CORE" and KS::options_["H_SUBSPACE"].size() > 0){
-				if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and i==accepted_holes[0].get<1>()){
-					sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
-				}
+                    int occ_num = 0;
+                    int occ_size = accepted_holes.size();
+                    do
+                    {
+                        use_occ = false;
+                        if(i==accepted_holes[occ_num].get<1>()){
+                                use_occ = true;
+                                break;
                         }
-			else{
-				if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and use_occ){ // Use Full Excitation Space                               
-					sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));  // N.B. shifted wrt to full indexing  
-                        	}
-                                                  
-		    	}		    
-	    }
-	}
+                    occ_num++;
+                    }while(occ_num <= occ_size);
+            }
+                if(not do_symmetry or (symm == excited_state_symmetry_)){ // Test for symmetry
+                // Make sure we are not adding excitations to holes/particles that have been projected out
+                    if(KS::options_.get_double("REW") > 0.0){ // Perform Restricted Excitation Window Calculation
+                        double rew_cutoff = KS::options_.get_double("REW");
+                        bool rew_criteria = false;
+                        if(std::fabs(e_h) < rew_cutoff){
+                                rew_criteria = true;
+                        }
+                        if(std::fabs(e_h) > 1.0e-6 and rew_criteria){
+                                sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
+                    }
+                    }
+                        else if(do_core_excitation and KS::options_["H_SUBSPACE"].size() > 0){
+                                if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and i==accepted_holes[0].get<1>()){
+                                        sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
+                                }
+                        }
+                        else{
+                                if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and use_occ){ // Use Full Excitation Space                               
+                                        sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));  // N.B. shifted wrt to full indexing  
+                                        //sorted_hp_pairs.push_back(boost::make_tuple(e_hp,vir_h,a,e_p,occ_h,i,e_h));
+                                }
+
+                        }
+            }
+        }
     }
     }
     }
@@ -849,11 +879,22 @@ void UOCDFT::compute_hole_particle_mos()
         int apart_h = aparts[n].get<0>();
         int apart_mo = aparts[n].get<1>();
         int npart = poffset[apart_h];
-        int maxa = gs_navirpi_[apart_h];
+        int maxa;
+        if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+                maxa = gs_nalphapi_[apart_h];
+        }
+        else{
+                maxa = gs_navirpi_[apart_h];
+        }
         for (int p = 0; p < nsopi_[apart_h]; ++p){
             double c_p = 0.0;
             for (int a = 0; a < maxa; ++a){
-                c_p += Ca0->get(apart_h,p,gs_nalphapi_[apart_h] + a) * Ua_v_->get(apart_h,a,apart_mo) ;
+                if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+                        c_p += Ca0->get(apart_h,p, a) * Ua_o_->get(apart_h,a,apart_mo) ;
+                }
+                else{
+                      c_p += Ca0->get(apart_h,p,gs_nalphapi_[apart_h] + a) * Ua_v_->get(apart_h,a,apart_mo) ;
+                }
             }
             Cp_->set(apart_h,p,npart,c_p);
         }
@@ -1851,8 +1892,15 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
 
     outfile->Printf("\n  Computing transition dipole moments");
     outfile->Printf("\n  %d determinants stored",static_cast<int>(dets.size()));
+    int temp_index;
 
-    SharedDeterminant A = dets[0];
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+        temp_index = 1;
+    }
+    else{
+        temp_index = 0;
+    }
+    SharedDeterminant A = dets[temp_index];
     SharedDeterminant B = dets[dets.size() - 1];
     // I. Form the corresponding alpha and beta orbitals
     boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
@@ -1867,7 +1915,13 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
     SharedVector s_b = cbeta.get<2>();
 
     // Compute the number of noncoincidences
-    double noncoincidence_threshold = 1.0e-9;
+    double noncoincidence_threshold = 0.0;
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+        noncoincidence_threshold = 1.0e-1;
+    }
+    else{
+        noncoincidence_threshold = 1.0e-9;
+    }
 
     std::vector<boost::tuple<int,int,double> > Aalpha_nonc;
     std::vector<boost::tuple<int,int,double> > Balpha_nonc;
@@ -2710,8 +2764,20 @@ double UOCDFT::compute_S_plus_triplet_correction()
     Process::environment.globals["OCDFT TRIPLET ENERGY STATE " + std::to_string(state_)] = triplet_energy;
     Process::environment.globals["OCDFT SINGLET ENERGY STATE " + std::to_string(state_)] = singlet_exc_energy + ground_state_energy;
 
+    double xes_energy;
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+        xes_energy = ((E_) - (dets[1]->energy()))*pc_hartree2ev;
+        outfile->Printf( "\n first state energy: %f\n", (dets[1]->energy()));
+        outfile->Printf( "\n XES Energy = %f\n", std::abs((xes_energy)));
+    }
+
     // Save the excitation energy
-    singlet_exc_energy_s_plus_ = singlet_exc_energy;
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+        singlet_exc_energy_s_plus_ = std::abs(xes_energy/pc_hartree2ev);
+    }
+    else{
+        singlet_exc_energy_s_plus_ = singlet_exc_energy;
+    }
     triplet_exc_energy_s_plus = triplet_energy - ground_state_energy;
 
     double dx = Process::environment.globals["OCDFT TRANSITION DIPOLE X"] / pc_dipmom_au2debye;

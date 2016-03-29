@@ -147,7 +147,12 @@ int read_options(std::string name, Options& options)
         options.add_double("HOLE_THRESHOLD", 0.2);
         /*- Threshold for overlap of MOs with AO particle subspace-*/
         options.add_double("PARTICLE_THRESHOLD", 0.1);
+        /*- Scale off-diagonal terms in CI spin adaptation -*/
         options.add_double("ALPHA_CI", 1.0);
+	/*- Print cube files for the particle and hole orbitals -*/
+        //  Cube files are EXTREMELY large files and thus this should be done
+        //  carefully. Even small molecules produce cube files that are 5-8 MB each.
+        //  Ensure that your computer has enough memory before printing cube files. 
 	options.add_bool("CUBE_HP", false);
 
         /////////////////////////////////////////////////////////////////
@@ -511,14 +516,23 @@ void OCDFT(SharedWavefunction ref_wfn, Options& options)
 
     outfile->Printf("\n    ----------------------------------------------------------------------------------------------------------");
     outfile->Printf("\n      State       Energy (Eh)    Omega (eV)   Osc. Str.     Osc. Str. (x)  Osc. Str. (y)  Osc. Str. (z) ");
-    outfile->Printf("\n    ----------------------------------------------------------------------------------------------------------");
+    outfile->Printf("\n    ----------------------------------------------------------------------------------------------------------"); 
     for (size_t n = 0; n < state_info.size(); ++n){
         double singlet_exc_en = state_info[n].get<3>();
         double osc_strength = state_info[n].get<4>();
 	double osc_strength_x = state_info[n].get<5>();
         double osc_strength_y = state_info[n].get<6>();
 	double osc_strength_z = state_info[n].get<7>();
-        outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f   %12.8f   %12.8f   %12.8f   %12.8f",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength,osc_strength_x,osc_strength_y,osc_strength_z);
+	if(n==0){
+        	outfile->Printf("\n     _OCDFT-%-3d %13.7f %11.4f   %12.8f   %12.8f   %12.8f   %12.8f (Ground State)",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength,osc_strength_x,osc_strength_y,osc_strength_z);
+	}
+	else if(options["VALENCE_TO_CORE"].has_changed() and n==1){
+		outfile->Printf("\n     _OCDFT-%-3d %13.7f %11.4f   %12.8f   %12.8f   %12.8f   %12.8f (Intermediate State)",n,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength,osc_strength_x,osc_strength_y,osc_strength_z);
+        outfile->Printf("\n                                    =====> X-Ray Emission Spectrum <=====                                        ");
+	}
+	else{
+		outfile->Printf("\n     @OCDFT-%-3d %13.7f %11.4f   %12.8f   %12.8f   %12.8f   %12.8f",n-1,energies[n],(singlet_exc_en) * pc_hartree2ev,osc_strength,osc_strength_x,osc_strength_y,osc_strength_z);
+	}
     }
     outfile->Printf("\n    -----------------------------------------------------------------------------------------------------------\n");
      if ( options["DO_NOCI_AND_OCDFT"].has_changed() ) {
