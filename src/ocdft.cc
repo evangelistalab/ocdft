@@ -629,7 +629,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     std::vector<boost::tuple<double,int,int,double,int,int,double> > sorted_hp_pairs;
     std::vector<int> accepted_virts;
     std::vector<boost::tuple<double,int>> accepted_holes;
-    if (KS::options_["P_SUBSPACE"].size() > 0){
+    if (KS::options_["P_SUBSPACE"].size() > 0 and KS::options_.get_bool("VALENCE_TO_CORE")and state_!=1){
     	accepted_virts = particle_subspace(wfn_, dets[0]->Ca());
     }
     if (KS::options_["H_SUBSPACE"].size() > 0){
@@ -674,7 +674,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
             int symm = occ_h ^ vir_h ^ ground_state_symmetry_;
             bool use_vir = true;
             bool use_occ = true;
-            if (KS::options_["P_SUBSPACE"].size() > 0){
+            if (KS::options_["P_SUBSPACE"].size() > 0 and KS::options_.get_bool("VALENCE_TO_CORE")and state_!=1){
                     //bool use_vir = true;
                     int vir_size = accepted_virts.size();
                     int vir_num = 0;
@@ -715,6 +715,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
                     }
                         else if(do_core_excitation and KS::options_["H_SUBSPACE"].size() > 0){
                                 if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and i==accepted_holes[0].get<1>()){
+				//if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and use_occ){
                                         sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
                                 }
                         }
@@ -973,6 +974,14 @@ std::vector<boost::tuple<double,int>> UOCDFT::hole_subspace(SharedWavefunction w
 	        }
 	    }
 	    // Print each molecular orbital's overlap with the subset and store the values above the specified threshold.
+	   
+            double hole_threshold;
+	    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+	        hole_threshold = 0.0;
+	    }
+	    else{
+	        hole_threshold = KS::options_.get_double("HOLE_THRESHOLD");
+	    }
 	    for(int i = 0; i < nocc; i++){  
                 if(iteration_ == 0){
                     if(print_count == 4){ 
@@ -988,7 +997,7 @@ std::vector<boost::tuple<double,int>> UOCDFT::hole_subspace(SharedWavefunction w
                     }
                     print_count++;
                 }
-                if(m_sub_diag[i] > KS::options_.get_double("HOLE_THRESHOLD")){
+                if(m_sub_diag[i] > hole_threshold){
                 	accepted_holes.push_back(boost::make_tuple(m_sub_diag[i],i));
                 }
             }
@@ -1040,7 +1049,8 @@ std::vector<int> UOCDFT::particle_subspace(SharedWavefunction wfn, SharedMatrix 
     if(iteration_==0){
         outfile->Printf("\n    Overlap of Virtual Orbitals with Atomic Orbital Subspace              ");
         outfile->Printf("\n    --------------------------------------------------------");
-        outfile->Printf("\n\n    %d Virtual MOs: \n \n", KS::basisset_->nbf() - nocc);
+        //outfile->Printf("\n\n    %d Particle MOs: \n \n", KS::basisset_->nbf() - nocc);
+	outfile->Printf("\n\n    %d Particle MOs: \n \n", nocc);
     }
 
     int num_funcs = selected_particles.size();
@@ -1068,7 +1078,8 @@ std::vector<int> UOCDFT::particle_subspace(SharedWavefunction wfn, SharedMatrix 
 	    }
 	}
     }
-    for(int i = nocc; i < KS::basisset_->nbf(); i++){
+    //for(int i = nocc; i < KS::basisset_->nbf(); i++){
+      for(int i = 0; i < nocc; i++){
 	if(iteration_ == 0){
 	    if(print_count == 4){                        
 		auto temp_string = boost::str(boost::format("     %2dA       %-5f") % (i+1) % m_sub_diag[i]);
@@ -1083,7 +1094,7 @@ std::vector<int> UOCDFT::particle_subspace(SharedWavefunction wfn, SharedMatrix 
 	    print_count++;
 	}
 	if(m_sub_diag[i] > KS::options_.get_double("PARTICLE_THRESHOLD")){
-		accepted_virts.push_back(i-nocc);
+		accepted_virts.push_back(i);
 	}
     }
     
@@ -1925,6 +1936,7 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
 
     std::vector<boost::tuple<int,int,double> > Aalpha_nonc;
     std::vector<boost::tuple<int,int,double> > Balpha_nonc;
+    std::vector<boost::tuple<double,int,int> > nonc;
     double Sta = 1.0;
     for (int h = 0; h < nirrep_; ++h){
         // Count all the numerical noncoincidences
@@ -1932,11 +1944,20 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
         for (int p = 0; p < nmin; ++p){
             if(std::fabs(s_a->get(h,p)) >= noncoincidence_threshold){
                 Sta *= s_a->get(h,p);
+		outfile->Printf("Not Accepted: %f \n ", std::fabs(s_a->get(h,p)));
             }else{
-                Aalpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
-                Balpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
+		outfile->Printf("Accepted: %f \n ", std::fabs(s_a->get(h,p)));
+		nonc.push_back(boost::make_tuple(std::fabs(s_a->get(h,p)),h,p));
+		std::sort(nonc.begin(),nonc.end());
+                //Aalpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
+                //Balpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
             }
+            //Aalpha_nonc.push_back(boost::make_tuple(nonc[0][1],nonc[0][2],nonc[0][0]);
+            //Balpha_nonc.push_back(boost::make_tuple(nonc[0][1],nonc[0][2],nonc[0][0]);
+	    
         }
+        Aalpha_nonc.push_back(boost::make_tuple(nonc[0].get<1>(),nonc[0].get<2>(),nonc[0].get<0>()));
+        Balpha_nonc.push_back(boost::make_tuple(nonc[0].get<1>(),nonc[0].get<2>(),nonc[0].get<0>()));
         // Count all the symmetry noncoincidences
         int nmax = std::max(A->nalphapi()[h],B->nalphapi()[h]);
         bool AgeB = A->nalphapi()[h] >= B->nalphapi()[h] ? true : false;
