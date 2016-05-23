@@ -1,8 +1,6 @@
 #! OCDFT CPH algorithm test, B3LYP computation on ethene
 
-#sys.path.insert(0, '/Users/wderri2')
 import cdft
-import numpy as np
 
 refdft                = -78.59098798412917 #TEST
 refocdft_singlet_spin = -78.322890378 #TEST
@@ -23,10 +21,7 @@ set {
   df_basis_scf cc-pvdz-jkfit
   guess sad
   scf_type df
-  dft_spherical_points 302
-  dft_radial_points 75
   reference uks
-  maxiter 200
   e_convergence 11 
   d_convergence 6
 }

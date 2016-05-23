@@ -2,39 +2,40 @@
 
 import cdft
 
-refdft                = -78.590987984 #TEST
-refocdft_singlet_spin = -78.319791740 #TEST
-refocdft_triplet_spin = -78.422818145 #TEST
+refdft                = -113.321135785 #TEST
+refocdft_singlet_spin = -113.031338099 #TEST
+refocdft_triplet_spin = -113.073211653 #TEST
 
 molecule {
 0 1
-H   0.000000   0.923274   1.238289
-H   0.000000  -0.923274   1.238289
-H   0.000000   0.923274  -1.238289
-H   0.000000  -0.923274  -1.238289
-C   0.000000   0.000000   0.668188
-C   0.000000   0.000000  -0.668188
+C           -0.000000000000     0.000000000000    -0.642713037152
+O            0.000000000000     0.000000000000     0.482188034714
+symmetry c1
 }
 
 set {
   basis cc-pvdz
   df_basis_scf cc-pvdz-jkfit
+  guess sad
   scf_type df
   reference uks
-  maxiter 200
+  maxiter 100
   e_convergence 11 
   d_convergence 6
 }
 
 set cdft {
-  roots_per_irrep [0,0,0,0,0,1,0,0]
-  cdft_exc_method chp-fb
+  cdft_exc_type core
+  nroots 3
+  cdft_exc_method chp
+  valence_to_core true
+  cdft_num_project_out 3
+  cdft_project_out H
 }
 
 set dft_functional B3LYP
 
 energy('ocdft')
-
 compare_values(refdft, get_variable("DFT ENERGY"),8, "DFT energy") #TEST
 compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST
 compare_values(refocdft_triplet_spin, get_variable("OCDFT TRIPLET ENERGY"),8, "OCDFT triplet energy") #TEST

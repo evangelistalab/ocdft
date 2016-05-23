@@ -1,7 +1,7 @@
 #! OCDFT CPH algorithm test, B3LYP computation on ethene
 
 import cdft
-refdft                = -78.53136946411685#TEST
+refdft                = -78.531369464 #TEST
 refocdft_singlet_spin = -78.261631126 #TEST
 refocdft_triplet_spin = -78.363363976 #TEST
 
@@ -18,12 +18,9 @@ C   0.000000   0.000000  -0.668188
 set {
   basis def2-svp
   df_basis_scf def2-svp-jkfit
-  guess sad
   scf_type df
-  dft_spherical_points 302
-  dft_radial_points 75
   reference uks
-  maxiter 200
+  maxiter 100
   e_convergence 11 
   d_convergence 6
 }

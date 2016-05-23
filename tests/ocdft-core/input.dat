@@ -15,11 +15,10 @@ O            0.000000000000     0.000000000000     0.482188034714
 
 set {
   basis def2-TZVP
-  guess sad
   scf_type df
   df_basis_scf def2-tzvp-jkfit
   reference uks
-  maxiter 200
+  maxiter 100
   e_convergence 11
   d_convergence 6
 }

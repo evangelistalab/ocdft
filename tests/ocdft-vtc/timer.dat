@@ -1,0 +1,144 @@
+
+Host: c-ac-3-179.wireless.emory.edu
+
+Timers On : Mon May 23 11:29:47 2016
+Timers Off: Mon May 23 11:30:03 2016
+
+Wall Time:       16.00 seconds
+
+V: Grid     :       0.13u       0.02s       0.00w      4 calls
+JK: (A|mn)  :       0.08u       0.00s       0.00w      4 calls
+JK: (A|Q)^-1/2:       0.17u       0.00s       0.00w      4 calls
+JK: (Q|mn)  :       0.02u       0.00s       0.00w      4 calls
+HF: Form H  :       0.00u       0.00s       0.00w      4 calls
+HF: Form S/X:       0.00u       0.00s       0.00w      4 calls
+HF: Guess   :       0.78u       0.00s       0.00w      4 calls
+HF: Form G  :      20.93u       0.58s      11.00w     58 calls
+UKS: Form V :      21.80u       0.60s      13.00w     61 calls
+V: D        :       0.00u       0.00s       0.00w     61 calls
+V: USO2AO   :       0.02u       0.00s       0.00w     61 calls
+V: V        :      21.78u       0.60s      13.00w     61 calls
+Properties  :      11.55u       0.48s       6.00w   2684 calls
+Points      :       8.30u       0.00s       4.00w   2684 calls
+Functional  :       7.57u       0.03s       5.00w   2684 calls
+V_XC        :       2.63u       0.05s       2.00w   2684 calls
+LSDA        :       1.57u       0.02s       2.00w   5368 calls
+GGA         :       0.97u       0.00s       0.00w   2684 calls
+V: AO2USO   :       0.00u       0.00s       0.00w     61 calls
+JK: D       :       0.00u       0.00s       0.00w     61 calls
+JK: USO2AO  :       0.00u       0.00s       0.00w     61 calls
+JK: JK      :       0.23u       0.02s       0.00w     61 calls
+JK: J       :       0.03u       0.00s       0.00w     61 calls
+JK: J1      :       0.02u       0.00s       0.00w    122 calls
+JK: J2      :       0.00u       0.00s       0.00w    122 calls
+JK: K       :       0.20u       0.02s       0.00w     61 calls
+JK: K1      :       0.20u       0.02s       0.00w    122 calls
+JK: K2      :       0.00u       0.00s       0.00w    122 calls
+JK: AO2USO  :       0.00u       0.00s       0.00w     61 calls
+HF: Form F  :       0.00u       0.00s       0.00w     58 calls
+HF: DIIS    :       0.02u       0.00s       0.00w     58 calls
+HF: Form C  :       0.12u       0.00s       0.00w     58 calls
+HF: Form D  :       0.00u       0.00s       0.00w     58 calls
+DIISManager::add_entry:       0.00u       0.00s       0.00w     57 calls
+DIISManager::extrapolate:       0.00u       0.00s       0.00w     53 calls
+DIISManager::extrapolate: bMatrix setup:       0.00u       0.00s       0.00w     53 calls
+DIISManager::extrapolate: bMatrix pseudoinverse:       0.00u       0.00s       0.00w     53 calls
+DIISManager::extrapolate: form new data:       0.00u       0.00s       0.00w     53 calls
+
+***********************************************************
+
+Host: c-ac-3-179.wireless.emory.edu
+
+Timers On : Mon May 23 11:33:25 2016
+Timers Off: Mon May 23 11:33:42 2016
+
+Wall Time:       17.00 seconds
+
+V: Grid     :       0.12u       0.02s       0.00w      4 calls
+JK: (A|mn)  :       0.07u       0.00s       0.00w      4 calls
+JK: (A|Q)^-1/2:       0.17u       0.00s       0.00w      4 calls
+JK: (Q|mn)  :       0.02u       0.00s       0.00w      4 calls
+HF: Form H  :       0.00u       0.02s       0.00w      4 calls
+HF: Form S/X:       0.00u       0.00s       0.00w      4 calls
+HF: Guess   :       0.78u       0.02s       0.00w      4 calls
+HF: Form G  :      22.50u       0.62s      12.00w     58 calls
+UKS: Form V :      23.63u       0.60s      14.00w     61 calls
+V: D        :       0.00u       0.00s       0.00w     61 calls
+V: USO2AO   :       0.00u       0.00s       0.00w     61 calls
+V: V        :      23.63u       0.60s      14.00w     61 calls
+Properties  :      12.47u       0.45s       6.00w   2684 calls
+Points      :       8.87u       0.02s       6.00w   2684 calls
+Functional  :       8.42u       0.02s       4.00w   2684 calls
+V_XC        :       2.68u       0.07s       3.00w   2684 calls
+LSDA        :       1.52u       0.00s       2.00w   5368 calls
+GGA         :       1.08u       0.02s       1.00w   2684 calls
+V: AO2USO   :       0.00u       0.00s       0.00w     61 calls
+JK: D       :       0.00u       0.00s       0.00w     61 calls
+JK: USO2AO  :       0.00u       0.00s       0.00w     61 calls
+JK: JK      :       0.12u       0.03s       0.00w     61 calls
+JK: J       :       0.00u       0.00s       0.00w     61 calls
+JK: J1      :       0.00u       0.00s       0.00w    122 calls
+JK: J2      :       0.00u       0.00s       0.00w    122 calls
+JK: K       :       0.12u       0.03s       0.00w     61 calls
+JK: K1      :       0.10u       0.02s       0.00w    122 calls
+JK: K2      :       0.02u       0.00s       0.00w    122 calls
+JK: AO2USO  :       0.00u       0.00s       0.00w     61 calls
+HF: Form F  :       0.02u       0.00s       0.00w     58 calls
+HF: DIIS    :       0.02u       0.02s       0.00w     58 calls
+HF: Form C  :       0.15u       0.00s       0.00w     58 calls
+HF: Form D  :       0.00u       0.00s       0.00w     58 calls
+DIISManager::add_entry:       0.02u       0.00s       0.00w     57 calls
+DIISManager::extrapolate:       0.00u       0.02s       0.00w     53 calls
+DIISManager::extrapolate: bMatrix setup:       0.00u       0.00s       0.00w     53 calls
+DIISManager::extrapolate: bMatrix pseudoinverse:       0.00u       0.00s       0.00w     53 calls
+DIISManager::extrapolate: form new data:       0.00u       0.02s       0.00w     53 calls
+
+***********************************************************
+
+Host: c-ac-3-179.wireless.emory.edu
+
+Timers On : Mon May 23 12:57:57 2016
+Timers Off: Mon May 23 12:58:13 2016
+
+Wall Time:       16.00 seconds
+
+V: Grid     :       0.15u       0.02s       0.00w      4 calls
+JK: (A|mn)  :       0.07u       0.00s       0.00w      4 calls
+JK: (A|Q)^-1/2:       0.18u       0.00s       0.00w      4 calls
+JK: (Q|mn)  :       0.00u       0.02s       0.00w      4 calls
+HF: Form H  :       0.00u       0.00s       0.00w      4 calls
+HF: Form S/X:       0.00u       0.00s       0.00w      4 calls
+HF: Guess   :       0.77u       0.02s       1.00w      4 calls
+HF: Form G  :      22.20u       0.60s      14.00w     58 calls
+UKS: Form V :      23.18u       0.60s      14.00w     61 calls
+V: D        :       0.00u       0.00s       0.00w     61 calls
+V: USO2AO   :       0.00u       0.00s       0.00w     61 calls
+V: V        :      23.18u       0.60s      14.00w     61 calls
+Properties  :      12.40u       0.52s       6.00w   2684 calls
+Points      :       9.07u       0.00s       5.00w   2684 calls
+Functional  :       7.98u       0.07s       6.00w   2684 calls
+V_XC        :       2.75u       0.00s       2.00w   2684 calls
+LSDA        :       1.45u       0.00s       1.00w   5368 calls
+GGA         :       1.18u       0.00s       1.00w   2684 calls
+V: AO2USO   :       0.00u       0.00s       0.00w     61 calls
+JK: D       :       0.00u       0.00s       0.00w     61 calls
+JK: USO2AO  :       0.00u       0.00s       0.00w     61 calls
+JK: JK      :       0.12u       0.02s       0.00w     61 calls
+JK: J       :       0.00u       0.00s       0.00w     61 calls
+JK: J1      :       0.00u       0.00s       0.00w    122 calls
+JK: J2      :       0.00u       0.00s       0.00w    122 calls
+JK: K       :       0.10u       0.02s       0.00w     61 calls
+JK: K1      :       0.08u       0.02s       0.00w    122 calls
+JK: K2      :       0.02u       0.00s       0.00w    122 calls
+JK: AO2USO  :       0.00u       0.00s       0.00w     61 calls
+HF: Form F  :       0.00u       0.00s       0.00w     58 calls
+HF: DIIS    :       0.03u       0.02s       0.00w     58 calls
+HF: Form C  :       0.22u       0.00s       0.00w     58 calls
+HF: Form D  :       0.00u       0.00s       0.00w     58 calls
+DIISManager::add_entry:       0.00u       0.00s       0.00w     57 calls
+DIISManager::extrapolate:       0.00u       0.02s       0.00w     53 calls
+DIISManager::extrapolate: bMatrix setup:       0.00u       0.02s       0.00w     53 calls
+DIISManager::extrapolate: bMatrix pseudoinverse:       0.00u       0.00s       0.00w     53 calls
+DIISManager::extrapolate: form new data:       0.00u       0.00s       0.00w     53 calls
+
+***********************************************************

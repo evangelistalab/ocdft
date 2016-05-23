@@ -1,8 +1,8 @@
     -----------------------------------------------------------------------
           Psi4: An Open-Source Ab Initio Electronic Structure Package
-                              Psi4 0.3.126 Driver
+                              Psi4 0.4.114 Driver
 
-                          Git: Rev {master} edd45cc 
+                          Git: Rev {master} 13bf41b 
 
     J. M. Turney, A. C. Simmonett, R. M. Parrish, E. G. Hohenstein,
     F. A. Evangelista, J. T. Fermann, B. J. Mintz, L. A. Burns, J. J. Wilke,
@@ -16,10 +16,10 @@
     -----------------------------------------------------------------------
 
 
-    Psi4 started on: Fri Sep 11 12:35:32 2015
+    Psi4 started on: Mon May 23 12:55:46 2016
 
-    Process ID:  65580
-    PSI4DATADIR: /Users/wderri2/Source/psi4/lib
+    Process ID:  98028
+    PSI4DATADIR: /Users/wderri2/Source/psi4/share
     Memory level set to 256.000 MB
 
   ==> Input File <==
@@ -28,7 +28,7 @@
 #! OCDFT CPH algorithm test, B3LYP computation on ethene
 
 import cdft
-refdft                = -78.53136946411685#TEST
+refdft                = -78.531369464 #TEST
 refocdft_singlet_spin = -78.261631126 #TEST
 refocdft_triplet_spin = -78.363363976 #TEST
 
@@ -45,12 +45,9 @@ C   0.000000   0.000000  -0.668188
 set {
   basis def2-svp
   df_basis_scf def2-svp-jkfit
-  guess sad
   scf_type df
-  dft_spherical_points 302
-  dft_radial_points 75
   reference uks
-  maxiter 200
+  maxiter 100
   e_convergence 11 
   d_convergence 6
 }
@@ -69,8 +66,11 @@ compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "O
 compare_values(refocdft_triplet_spin, get_variable("OCDFT TRIPLET ENERGY"),8, "OCDFT triplet energy") #TEST
 --------------------------------------------------------------------------
 /Users/wderri2/Source/cdft/cdft.so loaded.
+
 Reading options from the CDFT block
-Calling plugin cdft.so.
+Calling plugin /Users/wderri2/Source/cdft/cdft.so.
+
+
 
   ==> Orthogonality Constrained DFT <==
 
@@ -115,7 +115,7 @@ Calling plugin cdft.so.
   DIIS enabled.
   MOM disabled.
   Fractional occupation disabled.
-  Guess Type is SAD.
+  Guess Type is CORE.
   Energy threshold   = 1.00e-11
   Density threshold  = 1.00e-06
   Integral threshold = 1.00e-12
@@ -196,9 +196,6 @@ Calling plugin cdft.so.
     Total      48      48       8       8       8       0
    -------------------------------------------------------
 
- OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
-         stored in file 35.
-
   ==> Integral Setup <==
 
   ==> DFJK: Density-Fitted J/K Matrices <==
@@ -225,27 +222,38 @@ Calling plugin cdft.so.
 
   Minimum eigenvalue in the overlap matrix is 4.0241768173E-03.
   Using Symmetric Orthogonalization.
-  SCF Guess: Superposition of Atomic Densities via on-the-fly atomic UHF.
+  SCF Guess: Core (One-Electron) Hamiltonian.
 
   ==> Iterations <==
 
                            Total Energy        Delta E     RMS |[F,P]|
 
-   @DF-UKS iter   0:   -78.36324577993742   -7.83632e+01   6.30160e-02 
-   @DF-UKS iter   1:   -78.42423173472322   -6.09860e-02   3.05369e-02 
-   @DF-UKS iter   2:   -78.41234559622833    1.18861e-02   1.65533e-02 DIIS
-   @DF-UKS iter   3:   -78.53135087162912   -1.19005e-01   3.25551e-04 DIIS
-   @DF-UKS iter   4:   -78.53136895137091   -1.80797e-05   5.17592e-05 DIIS
-   @DF-UKS iter   5:   -78.53136944890626   -4.97535e-07   6.25281e-06 DIIS
-   @DF-UKS iter   6:   -78.53136946406025   -1.51540e-08   4.88563e-07 DIIS
-   @DF-UKS iter   7:   -78.53136946411666   -5.64171e-11   4.35400e-08 DIIS
-   @DF-UKS iter   8:   -78.53136946411682   -1.56319e-13   1.94517e-09 DIIS
+    Occupation by irrep:
+             Ag   B1g   B2g   B3g    Au   B1u   B2u   B3u 
+    DOCC [     3,    0,    0,    1,    0,    3,    1,    0 ]
+    SOCC [     0,    0,    0,    0,    0,    0,    0,    0 ]
+
+   @DF-UKS iter   1:   -64.88602626599260   -6.48860e+01   1.35169e+00 
+    Occupation by irrep:
+             Ag   B1g   B2g   B3g    Au   B1u   B2u   B3u 
+    DOCC [     3,    0,    0,    1,    0,    2,    1,    1 ]
+    SOCC [     0,    0,    0,    0,    0,    0,    0,    0 ]
+
+   @DF-UKS iter   2:   -69.84704550066428   -4.96102e+00   1.33523e+00 DIIS
+   @DF-UKS iter   3:   -77.90451136600313   -8.05747e+00   2.57231e-02 DIIS
+   @DF-UKS iter   4:   -78.47321257956233   -5.68701e-01   1.27086e-02 DIIS
+   @DF-UKS iter   5:   -78.52646274094127   -5.32502e-02   3.55168e-03 DIIS
+   @DF-UKS iter   6:   -78.53136392441546   -4.90118e-03   1.77925e-04 DIIS
+   @DF-UKS iter   7:   -78.53136941030488   -5.48589e-06   1.19092e-05 DIIS
+   @DF-UKS iter   8:   -78.53136946399198   -5.36871e-08   9.50287e-07 DIIS
+   @DF-UKS iter   9:   -78.53136946411620   -1.24217e-10   6.83456e-08 DIIS
+   @DF-UKS iter  10:   -78.53136946411681   -6.11067e-13   9.28670e-09 DIIS
 
   ==> Post-Iterations <==
 
-   @Spin Contamination Metric:  -1.776356839E-15
+   @Spin Contamination Metric:   3.552713679E-15
    @S^2 Expected:                0.000000000E+00
-   @S^2 Observed:               -1.776356839E-15
+   @S^2 Observed:                3.552713679E-15
    @S   Expected:                0.000000000E+00
    @S   Observed:                0.000000000E+00
 
@@ -305,18 +313,18 @@ Calling plugin cdft.so.
 
   Energy converged.
 
-  @DF-UKS Final Energy:   -78.53136946411682
+  @DF-UKS Final Energy:   -78.53136946411681
 
    => Energetics <=
 
-    Nuclear Repulsion Energy =              0.0000000000000000
-    One-Electron Energy =                   0.0000000000000000
-    Two-Electron Energy =                   0.0000000000000000
-    DFT Exchange-Correlation Energy =       0.0000000000000000
+    Nuclear Repulsion Energy =             33.2980976622856915
+    One-Electron Energy =                -170.0559855812671515
+    Two-Electron Energy =                  68.1615791475263819
+    DFT Exchange-Correlation Energy =      -9.9350606926617289
     Empirical Dispersion Energy =           0.0000000000000000
     PCM Polarization Energy =               0.0000000000000000
     EFP Energy =                            0.0000000000000000
-    Total Energy =                          0.0000000000000000
+    Total Energy =                        -78.5313694641168070
 
     Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
 
@@ -342,12 +350,12 @@ Properties computed using the SCF density matrix
   Saving occupied orbitals to File 180.
 
   UHF NO Occupations:
-  HONO-2 :    1B3g 2.0000000
+  HONO-2 :    2 Ag 2.0000000
   HONO-1 :    3 Ag 2.0000000
   HONO-0 :    2B1u 2.0000000
-  LUNO+0 :    2B3u 0.0000000
-  LUNO+1 :    4 Ag 0.0000000
-  LUNO+2 :    3B1u 0.0000000
+  LUNO+0 :    4 Ag 0.0000000
+  LUNO+1 :    3B1u 0.0000000
+  LUNO+2 :    4B1u 0.0000000
   LUNO+3 :    2B3g 0.0000000
 
 
@@ -395,7 +403,7 @@ Properties computed using the SCF density matrix
   DIIS enabled.
   MOM disabled.
   Fractional occupation disabled.
-  Guess Type is SAD.
+  Guess Type is CORE.
   Energy threshold   = 1.00e-11
   Density threshold  = 1.00e-06
   Integral threshold = 1.00e-12
@@ -459,34 +467,31 @@ Properties computed using the SCF density matrix
 
   ==> Unrestricted Orthogonality Constrained DFT (OCDFT) <==
 
-  Saving the reference orbitals for an excited state computation
 
-  Projecting out only holes.
-
-    Saved number of holes per irrep (n = 8): 0  0  0  0  0  0  0  0  
-
-    Saved number of particles per irrep (n = 8): 0  0  0  0  0  0  0  0  
-
-    Saved number of holes per irrep (n = 8): 0  0  0  0  0  0  0  0  
-  ==> Pre-Iterations <==
+  ==> OCDFT Algorithm Details <==
+  Excited State Type: VALENCE
+  Total Number of Roots: 0
+  Number of Roots Per Hole: 1
+  Excited State Algorithm: 
+  Projection Algorithm: H (Hole Projection)
+  
+  
+    ==> Pre-Iterations <==
 
    -------------------------------------------------------
     Irrep   Nso     Nmo     Nalpha   Nbeta   Ndocc  Nsocc
    -------------------------------------------------------
-     Ag        11      11       0       0       0       0
+     Ag        11      11       3       3       0       0
      B1g        2       2       0       0       0       0
      B2g        4       4       0       0       0       0
-     B3g        7       7       0       0       0       0
+     B3g        7       7       1       1       0       0
      Au         2       2       0       0       0       0
-     B1u       11      11       0       0       0       0
-     B2u        7       7       0       0       0       0
-     B3u        4       4       0       0       0       0
+     B1u       11      11       2       2       0       0
+     B2u        7       7       1       1       0       0
+     B3u        4       4       1       1       0       0
    -------------------------------------------------------
     Total      48      48       8       8       8       0
    -------------------------------------------------------
-
- OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
-         stored in file 35.
 
   ==> Integral Setup <==
 
@@ -514,12 +519,9 @@ Properties computed using the SCF density matrix
 
   Minimum eigenvalue in the overlap matrix is 4.0241768173E-03.
   Using Symmetric Orthogonalization.
-  Projecting out 0 previous holes
 
-  Ground state symmetry: Ag
-  Excited state symmetry: B1u
 
-  Lowest energy excitations:
+  ==> Chosen Hole/Particle pairs <==
   --------------------------------------
     N   Occupied     Virtual     E(eV)  
   --------------------------------------
@@ -534,68 +536,39 @@ Properties computed using the SCF density matrix
     9      2Ag   ->    3B1u      23.607
    10      3Ag   ->    5B1u      26.402
   --------------------------------------
-
-  HOLES:        1B3u (-0.275257)
-  PARTICLES:    1B2g (+0.004647)
-
+HOLE:      1B3u (-0.275257)
+PARTICLE:   1B2g (+0.004647)
   ==> Iterations <==
 
                            Total Energy        Delta E     RMS |[F,P]|
 
-  Projecting out 0 previous holes
-
-  HOLES:        1B3u (-0.239308)
-  PARTICLES:    1B2g (-0.075950)
-
-   @DF-UKS iter   1:   -78.30936290563935   -2.68977e+01   5.77551e-03 
-  Projecting out 0 previous holes
-
-  HOLES:        1B3u (-0.226165)
-  PARTICLES:    1B2g (-0.066421)
-
-   @DF-UKS iter   2:   -78.31054850454706   -1.18560e-03   1.59636e-03 DIIS
-  Projecting out 0 previous holes
-
-  HOLES:        1B3u (-0.222731)
-  PARTICLES:    1B2g (-0.065262)
-
-   @DF-UKS iter   3:   -78.31238008577554   -1.83158e-03   5.27017e-04 DIIS
-  Projecting out 0 previous holes
-
-  HOLES:        1B3u (-0.222699)
-  PARTICLES:    1B2g (-0.065194)
-
-   @DF-UKS iter   4:   -78.31249680966977   -1.16724e-04   3.39948e-05 DIIS
-  Projecting out 0 previous holes
-
-  HOLES:        1B3u (-0.222642)
-  PARTICLES:    1B2g (-0.065186)
-
-   @DF-UKS iter   5:   -78.31249741994718   -6.10277e-07   1.05664e-05 DIIS
-  Projecting out 0 previous holes
-
-  HOLES:        1B3u (-0.222647)
-  PARTICLES:    1B2g (-0.065189)
-
-   @DF-UKS iter   6:   -78.31249755001360   -1.30066e-07   4.34602e-07 DIIS
-  Projecting out 0 previous holes
-
-  HOLES:        1B3u (-0.222648)
-  PARTICLES:    1B2g (-0.065189)
-
-   @DF-UKS iter   7:   -78.31249755111246   -1.09885e-09   6.86700e-08 DIIS
-  Projecting out 0 previous holes
-
-  HOLES:        1B3u (-0.222648)
-  PARTICLES:    1B2g (-0.065190)
-
-   @DF-UKS iter   8:   -78.31249755114958   -3.71188e-11   1.95757e-08 DIIS
-  Projecting out 0 previous holes
-
-  HOLES:        1B3u (-0.222648)
-  PARTICLES:    1B2g (-0.065190)
-
-   @DF-UKS iter   9:   -78.31249755114983   -2.55795e-13   1.94148e-09 DIIS
+HOLE:      1B3u (-0.239308)
+PARTICLE:   1B2g (-0.075950)
+   @DF-UKS iter   1:   -78.30936290935686   -2.68977e+01   5.77550e-03 
+HOLE:      1B3u (-0.226165)
+PARTICLE:   1B2g (-0.066421)
+   @DF-UKS iter   2:   -78.31054850903941   -1.18560e-03   1.59635e-03 DIIS
+HOLE:      1B3u (-0.222731)
+PARTICLE:   1B2g (-0.065262)
+   @DF-UKS iter   3:   -78.31238008564128   -1.83158e-03   5.27017e-04 DIIS
+HOLE:      1B3u (-0.222699)
+PARTICLE:   1B2g (-0.065194)
+   @DF-UKS iter   4:   -78.31249680966981   -1.16724e-04   3.39948e-05 DIIS
+HOLE:      1B3u (-0.222642)
+PARTICLE:   1B2g (-0.065186)
+   @DF-UKS iter   5:   -78.31249741994725   -6.10277e-07   1.05664e-05 DIIS
+HOLE:      1B3u (-0.222647)
+PARTICLE:   1B2g (-0.065189)
+   @DF-UKS iter   6:   -78.31249755001353   -1.30066e-07   4.34601e-07 DIIS
+HOLE:      1B3u (-0.222648)
+PARTICLE:   1B2g (-0.065189)
+   @DF-UKS iter   7:   -78.31249755111239   -1.09885e-09   6.86699e-08 DIIS
+HOLE:      1B3u (-0.222648)
+PARTICLE:   1B2g (-0.065190)
+   @DF-UKS iter   8:   -78.31249755114955   -3.71614e-11   1.95755e-08 DIIS
+HOLE:      1B3u (-0.222648)
+PARTICLE:   1B2g (-0.065190)
+   @DF-UKS iter   9:   -78.31249755114982   -2.70006e-13   1.94139e-09 DIIS
 
   ==> Post-Iterations <==
 
@@ -661,18 +634,18 @@ Properties computed using the SCF density matrix
 
   Energy converged.
 
-  @DF-UKS Final Energy:   -78.31249755114983
+  @DF-UKS Final Energy:   -78.31249755114982
 
    => Energetics <=
 
-    Nuclear Repulsion Energy =              0.0000000000000000
-    One-Electron Energy =                   0.0000000000000000
-    Two-Electron Energy =                   0.0000000000000000
-    DFT Exchange-Correlation Energy =       0.0000000000000000
+    Nuclear Repulsion Energy =             33.2980976622856915
+    One-Electron Energy =                -169.6907455349139866
+    Two-Electron Energy =                  68.0173053941224737
+    DFT Exchange-Correlation Energy =      -9.9371550726439963
     Empirical Dispersion Energy =           0.0000000000000000
     PCM Polarization Energy =               0.0000000000000000
     EFP Energy =                            0.0000000000000000
-    Total Energy =                          0.0000000000000000
+    Total Energy =                        -78.3124975511498178
 
     Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
 
@@ -728,91 +701,76 @@ Properties computed using the OCDFT TRANSITION density matrix
      X:     0.0000      Y:     0.0000      Z:    -6.7313     Total:     6.7313
 
 
-  Dipole moments from AO integrals: 0.0000 -0.0000 0.0000
-  Mulliken Population Analysis of the Transition Dipole Moment:
+  Dipole moments from AO integrals: -0.0000 0.0000 -1.3900
+    ==> Restricted Sum from Atomic Population Analysis of NTO contributions <==
 
-  ===============================================================
-   Initial     Final     mu(x)      mu(y)      mu(z)       |mu|
-  ---------------------------------------------------------------
-    4  H s    4  H s  -0.000000   0.168129   0.225494   0.281274
-    3  H s    3  H s   0.000000  -0.168129   0.225494   0.281274
-    2  H s    2  H s  -0.000000   0.168129  -0.225494   0.281274
-    1  H s    1  H s   0.000000  -0.168129  -0.225494   0.281274
-    4  H p    4  H p  -0.000000   0.148868   0.199660   0.249050
-    3  H p    3  H p   0.000000  -0.148868   0.199660   0.249050
-    2  H p    2  H p  -0.000000   0.148868  -0.199660   0.249050
-    1  H p    1  H p   0.000000  -0.148868  -0.199660   0.249050
-    4  H s    3  H s   0.000000  -0.000399   0.104445   0.104445
-    3  H s    4  H s  -0.000000   0.000399   0.104445   0.104445
-    2  H s    1  H s   0.000000  -0.000399  -0.104445   0.104445
-    1  H s    2  H s  -0.000000   0.000399  -0.104445   0.104445
-    4  H s    4  H p  -0.000000   0.002557   0.072355   0.072400
-    3  H s    3  H p   0.000000  -0.002557   0.072355   0.072400
-    2  H s    2  H p  -0.000000   0.002557  -0.072355   0.072400
-    1  H s    1  H p   0.000000  -0.002557  -0.072355   0.072400
-    4  H s    2  H s   0.000000  -0.042453   0.000206   0.042454
-    3  H s    1  H s  -0.000000   0.042453   0.000206   0.042454
-    2  H s    4  H s   0.000000  -0.042453  -0.000206   0.042454
-    1  H s    3  H s  -0.000000   0.042453  -0.000206   0.042454
-    4  H p    4  H s   0.000000  -0.002412   0.034874   0.034957
-    3  H p    3  H s  -0.000000   0.002412   0.034874   0.034957
-    2  H p    2  H s   0.000000  -0.002412  -0.034874   0.034957
-    1  H p    1  H s  -0.000000   0.002412  -0.034874   0.034957
-    4  H s    3  H p  -0.000000   0.000064   0.017745   0.017745
-    3  H s    4  H p   0.000000  -0.000064   0.017745   0.017745
-    2  H s    1  H p  -0.000000   0.000064  -0.017745   0.017745
-    1  H s    2  H p   0.000000  -0.000064  -0.017745   0.017745
-    4  H s    2  H p  -0.000000   0.013331  -0.006562   0.014858
-    3  H s    1  H p   0.000000  -0.013331  -0.006562   0.014858
-    2  H s    4  H p  -0.000000   0.013331   0.006562   0.014858
-    1  H s    3  H p   0.000000  -0.013331   0.006562   0.014858
-    4  H p    3  H s  -0.000000   0.000059   0.010298   0.010299
-    3  H p    4  H s   0.000000  -0.000059   0.010298   0.010299
-    2  H p    1  H s  -0.000000   0.000059  -0.010298   0.010299
-    1  H p    2  H s   0.000000  -0.000059  -0.010298   0.010299
-    4  H p    2  H s  -0.000000   0.006630   0.003096   0.007318
-    3  H p    1  H s   0.000000  -0.006630   0.003096   0.007318
-    2  H p    4  H s  -0.000000   0.006630  -0.003096   0.007318
-    1  H p    3  H s   0.000000  -0.006630  -0.003096   0.007318
-    4  H s    1  H p   0.000000  -0.002750  -0.001903   0.003344
-    3  H s    2  H p  -0.000000   0.002750  -0.001903   0.003344
-    2  H s    3  H p   0.000000  -0.002750   0.001903   0.003344
-    1  H s    4  H p  -0.000000   0.002750   0.001903   0.003344
-    4  H p    3  H p   0.000000   0.000000   0.001541   0.001541
-    3  H p    4  H p   0.000000   0.000000   0.001541   0.001541
-    2  H p    1  H p   0.000000   0.000000  -0.001541   0.001541
-    1  H p    2  H p   0.000000   0.000000  -0.001541   0.001541
-    4  H p    1  H s  -0.000000   0.001288   0.000762   0.001497
-    3  H p    2  H s   0.000000  -0.001288   0.000762   0.001497
-    2  H p    3  H s  -0.000000   0.001288  -0.000762   0.001497
-    1  H p    4  H s   0.000000  -0.001288  -0.000762   0.001497
-    4  H p    2  H p   0.000000  -0.000387  -0.000000   0.000387
-    3  H p    1  H p  -0.000000   0.000387  -0.000000   0.000387
-    2  H p    4  H p   0.000000  -0.000387   0.000000   0.000387
-    1  H p    3  H p  -0.000000   0.000387   0.000000   0.000387
-    4  H s    1  H s  -0.000000   0.000047   0.000063   0.000078
-    3  H s    2  H s   0.000000  -0.000047   0.000063   0.000078
-    2  H s    3  H s  -0.000000   0.000047  -0.000063   0.000078
-    1  H s    4  H s   0.000000  -0.000047  -0.000063   0.000078
-  ===============================================================
+   ===================================================================================
+   Atomic Transition     PR%       |mu|%       |mu|     mu(x)      mu(y)      mu(z)  
+   ===================================================================================
+     C p --->  C p      99.51%      92.79   1.437673   0.000000   0.000000  -1.338859
+     C d --->  C p       0.15%       1.40   0.021674   0.000000   0.000000   0.017465
+     C p --->  H p       0.13%       2.09   0.032398   0.000000   0.000000  -0.027486
+     H p --->  C p       0.13%       2.31   0.035778   0.000000   0.000000  -0.023315
+     C p --->  C d       0.08%       1.08   0.016743   0.000000   0.000000  -0.016743
+     C d --->  H p       0.00%       0.04   0.000680   0.000000   0.000000   0.000639
+     C d --->  C d       0.00%       0.07   0.001056   0.000000   0.000000   0.001056
+     H p --->  C d       0.00%       0.03   0.000500   0.000000   0.000000  -0.000470
+     H p --->  H p       0.00%       0.19   0.002875   0.000000   0.000000  -0.002305
+   ===================================================================================
 
 
-  ===============================================================
+         ==> Mulliken Population Analysis of the Transition Dipole Moment <==
+
+   =================================================================================
+    Initial     Final     mu(x)      mu(y)      mu(z)       |mu|     PRnto     CT
+   ---------------------------------------------------------------------------------
+    6  C p    6  C p   0.000000   0.000000  -0.694133   0.694133     24.88%  0.140786
+    6  C p    5  C p   0.000000   0.000000   0.024704   0.024704     24.88%  0.140786
+    5  C p    6  C p   0.000000   0.000000   0.024704   0.024704     24.88%  0.140786
+    5  C p    5  C p   0.000000   0.000000  -0.694133   0.694133     24.88%  0.140786
+    5  C d    6  C p   0.000000   0.000000  -0.001052   0.001052      0.04%  0.000209
+    6  C d    6  C p   0.000000   0.000000   0.009785   0.009785      0.04%  0.000209
+    6  C d    5  C p   0.000000   0.000000  -0.001052   0.001052      0.04%  0.000209
+    5  C d    5  C p   0.000000   0.000000   0.009785   0.009785      0.04%  0.000209
+    6  C p    6  C d   0.000000   0.000000  -0.007669   0.007669      0.02%  0.000118
+    6  C p    5  C d   0.000000   0.000000  -0.000702   0.000702      0.02%  0.000118
+    5  C p    6  C d   0.000000   0.000000  -0.000702   0.000702      0.02%  0.000118
+    5  C p    5  C d   0.000000   0.000000  -0.007669   0.007669      0.02%  0.000118
+    6  C p    4  H p   0.000000  -0.003768  -0.006280   0.007324      0.02%  0.000094
+    6  C p    3  H p  -0.000000   0.003768  -0.006280   0.007324      0.02%  0.000094
+    6  C p    2  H p  -0.000000   0.000502  -0.000592   0.000776      0.02%  0.000094
+    6  C p    1  H p   0.000000  -0.000502  -0.000592   0.000776      0.02%  0.000094
+    5  C p    4  H p   0.000000  -0.000502  -0.000592   0.000776      0.02%  0.000094
+    5  C p    3  H p  -0.000000   0.000502  -0.000592   0.000776      0.02%  0.000094
+    5  C p    2  H p  -0.000000   0.003768  -0.006280   0.007324      0.02%  0.000094
+    5  C p    1  H p   0.000000  -0.003768  -0.006280   0.007324      0.02%  0.000094
+    4  H p    6  C p   0.000000  -0.004178  -0.006659   0.007861      0.02%  0.000091
+    4  H p    5  C p  -0.000000   0.000697   0.000830   0.001084      0.02%  0.000091
+    3  H p    6  C p  -0.000000   0.004178  -0.006659   0.007861      0.02%  0.000091
+    3  H p    5  C p   0.000000  -0.000697   0.000830   0.001084      0.02%  0.000091
+    2  H p    6  C p   0.000000  -0.000697   0.000830   0.001084      0.02%  0.000091
+    2  H p    5  C p  -0.000000   0.004178  -0.006659   0.007861      0.02%  0.000091
+    1  H p    6  C p  -0.000000   0.000697   0.000830   0.001084      0.02%  0.000091
+    1  H p    5  C p   0.000000  -0.004178  -0.006659   0.007861      0.02%  0.000091
+    6  C d    6  C d   0.000000   0.000000   0.000528   0.000528      0.00%  0.000000
+    5  C d    5  C d   0.000000   0.000000   0.000528   0.000528      0.00%  0.000000
+    6  C d    4  H p  -0.000000   0.000059   0.000160   0.000170      0.00%  0.000000
+    6  C d    3  H p   0.000000  -0.000059   0.000160   0.000170      0.00%  0.000000
+    5  C d    2  H p   0.000000  -0.000059   0.000160   0.000170      0.00%  0.000000
+    5  C d    1  H p  -0.000000   0.000059   0.000160   0.000170      0.00%  0.000000
+    4  H p    6  C d   0.000000  -0.000043  -0.000117   0.000125      0.00%  0.000000
+    3  H p    6  C d  -0.000000   0.000043  -0.000117   0.000125      0.00%  0.000000
+    2  H p    5  C d  -0.000000   0.000043  -0.000117   0.000125      0.00%  0.000000
+    1  H p    5  C d   0.000000  -0.000043  -0.000117   0.000125      0.00%  0.000000
+    4  H p    4  H p   0.000000  -0.000430  -0.000576   0.000719      0.00%  0.000000
+    3  H p    3  H p  -0.000000   0.000430  -0.000576   0.000719      0.00%  0.000000
+    2  H p    2  H p  -0.000000   0.000430  -0.000576   0.000719      0.00%  0.000000
+    1  H p    1  H p   0.000000  -0.000430  -0.000576   0.000719      0.00%  0.000000
+  ==================================================================================
 
   Excited mixed state   : excitation energy =  0.218872 Eh =   5.9558 eV =   48036.8 cm**-1 
 
   ==> Spin-adaptation correction using S+ <==
-  Most important corresponding occupied/virtual orbitals:
-
-  Pair  Irrep  MO  <phi_b|phi_a>
-     0     B3u    0    1.000000
-     1      Ag    0    0.012547
-     2     B1u    0    0.008673
-     3      Ag    1    0.006859
-     4     B2u    0    0.004991
-     5     B3g    0    0.002049
-     6     B1u    1    0.000072
-     7      Ag    2    0.000060
 
   Original occupation numbers:
 	NA   [     3,    0,    1,    1,    0,    2,    1,    0 ]
@@ -829,9 +787,8 @@ Properties computed using the OCDFT TRANSITION density matrix
   Excited triplet state 1-B1u : excitation energy (S+) =  0.168005 Eh =   4.5717 eV =   36872.9 cm**-1 
   Excited singlet state 1-B1u : excitation energy (S+) =  0.269738 Eh =   7.3400 eV =   59200.7 cm**-1 
 
-  Transition Dipole Moment = (0.000000,0.000000,-2.648297)
-
-   @Spin Contamination Metric:   2.000308805E+00
+  Transition Dipole Moment = (0.000000,0.000000,-2.648297) 
+    @Spin Contamination Metric:   2.000308805E+00
    @S^2 Expected:                0.000000000E+00
    @S^2 Observed:                2.000308805E+00
    @S   Expected:                0.000000000E+00
@@ -854,11 +811,14 @@ Properties computed using the OCDFT TRANSITION density matrix
 
        ==> OCDFT Excited State Information <==
 
-    ----------------------------------------------------
-      State       Energy (Eh)    Omega (eV)   Osc. Str.
-    ----------------------------------------------------
-     @OCDFT-0     -78.5313695      0.0000      0.0000
-     @OCDFT-1     -78.3124976      7.3400      1.2612
-    ----------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------
+      State       Energy (Eh)    Omega (eV)   Osc. Str.     Osc. Str. (x)  Osc. Str. (y)  Osc. Str. (z) 
+    ----------------------------------------------------------------------------------------------------------
+     _OCDFT-0     -78.5313695      0.0000     0.00000000     0.00000000     0.00000000     0.00000000 (Ground State)
+     @OCDFT-0     -78.3124976      7.3400     1.26120289     0.00000000     0.00000000     1.26120289
+    -----------------------------------------------------------------------------------------------------------
+	DFT energy........................................................PASSED
+	OCDFT singlet energy..............................................PASSED
+	OCDFT triplet energy..............................................PASSED
 
 *** PSI4 exiting successfully. Buy a developer a beer!

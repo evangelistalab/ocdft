@@ -39,8 +39,3 @@ for n in [1]:
     ref_cube = open('particle_%d_1_A.ref' % n,'r').read()
     this_cube = open('particle_%d_1_A.cube' % n,'r').read()
     compare_cubes(ref_cube,this_cube,"Comparing particle orbitals %d" % n) #TEST
-
-#for s in ['Da','Db','Dt','Ds']:
-#    ref_cube = open('%s.cube.ref' % s,'r').read()
-#    this_cube = open('%s.cube' % s,'r').read()
-#    compare_cubes(ref_cube,this_cube,"Comparing %s" % s) #TEST

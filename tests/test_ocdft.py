@@ -43,7 +43,7 @@ ocdft_tests = ["noci-1","noci-ocdft-hf-core-ex-CO","noci-ocdft-hf-val-ex-CO","no
 if options["NOCI"][0] == 'True':
 	ocdft_tests = ["noci-1","noci-ocdft-hf-core-ex-CO","noci-ocdft-hf-val-ex-CO","noci-val-ex-CO"]
 if options["OCDFT"][0] == 'True':
-        ocdft_tests = ["ocdft-ch","ocdft-chp", "ocdft-cp", "ocdft-cis", "ocdft-chpfb", "ocdft-core",  "ocdft-cube"]
+        ocdft_tests = ["ocdft-ch","ocdft-chp", "ocdft-cp", "ocdft-cis", "ocdft-chpfb", "ocdft-core",  "ocdft-cube", "ocdft-vtc"]
 
 
 tests = ocdft_tests

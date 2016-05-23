@@ -19,10 +19,9 @@ C   0.000000   0.000000  -0.668188
 set {
   basis cc-pvdz
   df_basis_scf cc-pvdz-jkfit
-  guess sad
   scf_type df
   reference uks
-  maxiter 200
+  maxiter 100
   e_convergence 11 
   d_convergence 6
 }
