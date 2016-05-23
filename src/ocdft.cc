@@ -258,11 +258,6 @@ void UOCDFT::init_excitation(SharedWavefunction ref_scf)
                 do_project_out_holes = true;
                 do_save_particles = true;
                 do_save_holes = true;
-		if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
-                	do_project_out_particles = true;
-         	        do_save_particles = true;
-                	do_save_holes = true;
-		}
                 for (int h = 0; h < nirrep_; ++h) saved_napartpi_[h] = 0;
                 Cp_->zero();
                 saved_Cp_->zero();
@@ -534,12 +529,24 @@ void UOCDFT::compute_holes()
 
         TempMatrix2->gemm(false,true,1.0,TempMatrix,TempMatrix,0.0);
         TempMatrix->gemm(false,false,1.0,TempMatrix2,S_,0.0);
-        TempMatrix2->gemm(false,false,1.0,TempMatrix,dets[0]->Ca(),0.0);
+	// If performing a valence-to-core transition, transform the projectors and Fa in the MO basis
+	// of the intermediate state (dets[1]) otherwise transform them in the basis of the ground state
+	if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
+        	TempMatrix2->gemm(false,false,1.0,TempMatrix,dets[1]->Ca(),0.0);
+	}
+	else{
+		TempMatrix2->gemm(false,false,1.0,TempMatrix,dets[0]->Ca(),0.0);
+	}
 
         TempMatrix->transform(Fa_,TempMatrix2);
     }else{
         // Transform Fa to the MO basis of the ground state
-        TempMatrix->transform(Fa_,dets[0]->Ca());
+	if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
+        	TempMatrix->transform(Fa_,dets[1]->Ca());
+	}
+	else{
+		TempMatrix->transform(Fa_,dets[0]->Ca());
+	}
     }
 
     // Grab the occ block of Fa
@@ -553,7 +560,12 @@ void UOCDFT::compute_holes()
 
     TempMatrix->gemm(false,true,1.0,project_Ch,project_Ch,0.0);
     TempMatrix->transform(S_);
-    TempMatrix->transform(dets[0]->Ca());
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
+    	TempMatrix->transform(dets[1]->Ca());
+    }
+    else{
+        TempMatrix->transform(dets[0]->Ca());
+    }
     SharedMatrix Ph = SharedMatrix(new Matrix("Ph",gs_nalphapi_,gs_nalphapi_));
     Ph->identity();
     copy_block(TempMatrix,-1.0,Ph,1.0,gs_nalphapi_,gs_nalphapi_);
@@ -566,7 +578,7 @@ void UOCDFT::compute_holes()
 
     // Diagonalize the occ block
     PoFaPo_->diagonalize(Ua_o_,lambda_a_o_);
-
+    //Ua_o_->print();
 #if DEBUG_OCDFT
     lambda_a_o_->print();
 #endif
@@ -584,12 +596,24 @@ void UOCDFT::compute_particles()
 
         TempMatrix2->gemm(false,true,1.0,TempMatrix,TempMatrix,0.0);
         TempMatrix->gemm(false,false,1.0,TempMatrix2,S_,0.0);
-        TempMatrix2->gemm(false,false,1.0,TempMatrix,dets[0]->Ca(),0.0);
+        // If performing a valence-to-core transition, transform the projectors and Fa in the MO basis
+        // of the intermediate state (dets[1]) otherwise transform them in the basis of the ground state
+	if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
+        	TempMatrix2->gemm(false,false,1.0,TempMatrix,dets[1]->Ca(),0.0);
+	}
+	else{
+		TempMatrix2->gemm(false,false,1.0,TempMatrix,dets[0]->Ca(),0.0);
+	}
 
         TempMatrix->transform(Fa_,TempMatrix2);
     }else{
         // Transform Fa to the MO basis of the ground state
-        TempMatrix->transform(Fa_,dets[0]->Ca());
+	if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
+        	TempMatrix->transform(Fa_,dets[1]->Ca());
+	}
+	else{
+		TempMatrix->transform(Fa_,dets[0]->Ca());
+	}
     }
 
     // Grab the vir block of Fa
@@ -602,7 +626,12 @@ void UOCDFT::compute_particles()
     copy_subblock(saved_Cp_,project_Cp,nsopi_,saved_napartpi_,true);
     TempMatrix->gemm(false,true,1.0,project_Cp,project_Cp,0.0);
     TempMatrix->transform(S_);
-    TempMatrix->transform(dets[0]->Ca());
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_ > 1){
+    	TempMatrix->transform(dets[1]->Ca());
+    }
+    else{
+	TempMatrix->transform(dets[0]->Ca());	
+    }
     SharedMatrix Pp = SharedMatrix(new Matrix("Pp",gs_navirpi_,gs_navirpi_));
     Pp->identity();
     copy_block(TempMatrix,-1.0,Pp,1.0,gs_navirpi_,gs_navirpi_,gs_nalphapi_,gs_nalphapi_);
@@ -626,6 +655,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     //Find the hole/particle pair to follow
     boost::tuple<double,int,int> hole;
     boost::tuple<double,int,int> particle;
+    int count = 1;
     std::vector<boost::tuple<double,int,int,double,int,int,double> > sorted_hp_pairs;
     std::vector<int> accepted_virts;
     std::vector<boost::tuple<double,int>> accepted_holes;
@@ -643,11 +673,10 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     if(KS::options_.get_str("CDFT_EXC_TYPE") == "CORE" and KS::options_["H_SUBSPACE"].size() > 0){
     	std::sort(accepted_holes.rbegin(),accepted_holes.rend());
     }
+    // If performing a valence-to-core transition, it is now desirable to obtain the "lowest" energy solutions,
+    // since the excitation energies will be negative.
     if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1 and KS::options_.get_str("CDFT_EXC_TYPE") == "CORE"){
         do_core_excitation = false;
-    }
-    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1 and KS::options_.get_str("CDFT_EXC_TYPE") == "VALENCE"){
-        do_core_excitation = true;
     }
     // Compute the symmetry adapted hole/particle pairs
     for (int occ_h = 0; occ_h < nirrep_; ++occ_h){
@@ -655,21 +684,9 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     for (int i = 0; i < nocc; ++i){
     double e_h = lambda_o->get(occ_h,i);
     for (int vir_h = 0; vir_h < nirrep_; ++vir_h){
-        int nvir;
-        if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
-                nvir = nocc;
-        }
-        else{
-              nvir = gs_navirpi_[vir_h];
-        }
+        int nvir = gs_navirpi_[vir_h];
         for (int a = 0; a < nvir; ++a){
-            double e_p;
-            if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
-                e_p = lambda_o->get(vir_h,a);
-            }
-            else{
-                e_p = lambda_v->get(vir_h,a);
-            }
+            double e_p = lambda_v->get(vir_h,a);
             double e_hp = do_core_excitation ? (e_p + e_h) : (e_p - e_h);
             int symm = occ_h ^ vir_h ^ ground_state_symmetry_;
             bool use_vir = true;
@@ -715,7 +732,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
                     }
                         else if(do_core_excitation and KS::options_["H_SUBSPACE"].size() > 0){
                                 if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and i==accepted_holes[0].get<1>()){
-				//if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and use_occ){
+				//if(std::fabs(e_h) > 1.0e-6 and std::fabs(e_p) > 1.0e-6 and use_vir and use_occ and e_h!=e_p){
                                         sorted_hp_pairs.push_back(boost::make_tuple(e_hp,occ_h,i,e_h,vir_h,a,e_p));
                                 }
                         }
@@ -731,6 +748,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
     }
     }
     }
+    count = count+1;
     // If we are using MOM, let MOM sort the orbitals via overlap criteria
     if(MOM_started_){
         HF::MOM();
@@ -851,7 +869,16 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v)
 
 void UOCDFT::compute_hole_particle_mos()
 {
-    SharedMatrix Ca0 = dets[0]->Ca();
+    SharedMatrix Ca0;
+    // If performing valence-to-core transition, the reference C matrix is now that of the
+    // intermediate state (dets[1]), otherwise the reference is the ground state. 
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+    	Ca0 = dets[1]->Ca();
+    }
+    else{
+        Ca0 = dets[0]->Ca();
+    }
+    
 
     Ch_->zero();
     Cp_->zero();
@@ -880,22 +907,11 @@ void UOCDFT::compute_hole_particle_mos()
         int apart_h = aparts[n].get<0>();
         int apart_mo = aparts[n].get<1>();
         int npart = poffset[apart_h];
-        int maxa;
-        if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
-                maxa = gs_nalphapi_[apart_h];
-        }
-        else{
-                maxa = gs_navirpi_[apart_h];
-        }
+        int maxa = gs_navirpi_[apart_h];
         for (int p = 0; p < nsopi_[apart_h]; ++p){
             double c_p = 0.0;
             for (int a = 0; a < maxa; ++a){
-                if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
-                        c_p += Ca0->get(apart_h,p, a) * Ua_o_->get(apart_h,a,apart_mo) ;
-                }
-                else{
                       c_p += Ca0->get(apart_h,p,gs_nalphapi_[apart_h] + a) * Ua_v_->get(apart_h,a,apart_mo) ;
-                }
             }
             Cp_->set(apart_h,p,npart,c_p);
         }
@@ -1137,18 +1153,33 @@ void UOCDFT::diagonalize_F_spectator_relaxed()
     }
 
     TempMatrix->transform(S_);
-    TempMatrix->transform(dets[0]->Ca());
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+    	TempMatrix->transform(dets[1]->Ca());
+    }
+    else{
+        TempMatrix->transform(dets[0]->Ca());
+    }
     TempMatrix2->identity();
     TempMatrix2->subtract(TempMatrix);
 
     // Form the Fock matrix in the excited state basis, project out the h/p
-    TempMatrix->transform(Fa_,dets[0]->Ca());
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+    	TempMatrix->transform(Fa_,dets[1]->Ca());
+    }
+    else{
+        TempMatrix->transform(Fa_,dets[0]->Ca());	
+    }
     TempMatrix->transform(TempMatrix2);
 
     // Diagonalize the Fock matrix and transform the MO coefficients
     TempMatrix->diagonalize(TempMatrix2,epsilon_a_);
     TempMatrix->zero();
-    TempMatrix->gemm(false,false,1.0,dets[0]->Ca(),TempMatrix2,0.0);
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+        TempMatrix->gemm(false,false,1.0,dets[1]->Ca(),TempMatrix2,0.0);
+    }
+    else{
+        TempMatrix->gemm(false,false,1.0,dets[0]->Ca(),TempMatrix2,0.0);
+    }
 
 //    outfile->Printf("\n  Epsilons for spectators");
 //    epsilon_a_->print();
@@ -1493,7 +1524,12 @@ void UOCDFT::form_C_beta()
 
         // Unrelaxed procedure, but still find MOs which diagonalize the occupied block
         // Transform Fb to the MO basis of the ground state
-        TempMatrix->transform(Fb_,dets[0]->Cb());
+	if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+        	TempMatrix->transform(Fb_,dets[1]->Cb());
+	}
+	else{
+		TempMatrix->transform(Fb_,dets[0]->Cb());
+	}
 
         // Grab the occ block of Fb
         copy_block(TempMatrix,1.0,PoFbPo_,0.0,gs_nbetapi_,gs_nbetapi_);
@@ -1512,7 +1548,12 @@ void UOCDFT::form_C_beta()
         copy_block(Ub_v_,1.0,TempMatrix,0.0,gs_nbvirpi_,gs_nbvirpi_,Dimension(nirrep_),Dimension(nirrep_),gs_nbetapi_,gs_nbetapi_);
 
         // Get the excited state orbitals: Cb(ex) = Cb(gs) * (Uo | Uv)
-        Cb_->gemm(false,false,1.0,dets[0]->Cb(),TempMatrix,0.0);
+	if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+        	Cb_->gemm(false,false,1.0,dets[1]->Cb(),TempMatrix,0.0);
+	}
+	else{
+	        Cb_->gemm(false,false,1.0,dets[0]->Cb(),TempMatrix,0.0);
+	}
     }
 }
 
@@ -1585,6 +1626,7 @@ double UOCDFT::compute_E()
         //outfile->Printf( "    -D Energy =                %24.14f\n", dashD_E);
      //Da_->print();
     //screen_virtuals();
+    Process::environment.globals["CURRENT ENERGY"] = Etotal;
     return Etotal;
 }
 
@@ -1781,12 +1823,18 @@ void UOCDFT::save_information()
             labelsh.push_back(ct.gamma(h).symbol());
         }
         CubeProperties cube = CubeProperties(wfn_);
-
+	
+	SharedMatrix Dp_ = SharedMatrix(new Matrix("Particle Attachment Density", nsopi_,gs_navirpi_));
+	Dp_->gemm(false,true,1.0,Cp_,Cp_,0.0);
+	SharedMatrix Dh_ = SharedMatrix(new Matrix("Hole Detachment Density", nsopi_,gs_nalphapi_));
+	Dh_->gemm(false,true,1.0,Ch_,Ch_,0.0);
 	std::string particle_str = boost::str(boost::format("particle_%d") % state_);
 	std::string hole_str = boost::str(boost::format("hole_%d") % state_);
 	if(KS::options_.get_bool("CUBE_HP")){
         	cube.compute_orbitals(Ca_, indsp0,labelsp, particle_str);
 		cube.compute_orbitals(Ca_, indsh0,labelsh, hole_str);
+		cube.compute_density(Dp_, "Dp");
+		cube.compute_density(Dh_, "Dh");
 	}
 	//cube.compute_properties();
 	// grid_->print_header();
@@ -1839,8 +1887,20 @@ void UOCDFT::analyze_excitations()
     CharacterTable ct = KS::molecule_->point_group()->char_table();
 
     outfile->Printf("\n\n  Analysis of the hole/particle MOs in terms of the ground state DFT MOs");
-    TempMatrix->gemm(false,false,1.0,S_,dets[0]->Ca(),0.0);
-    SharedMatrix ChSCa(new Matrix(Ch_->colspi(),dets[0]->Ca()->colspi()));
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+    	TempMatrix->gemm(false,false,1.0,S_,dets[1]->Ca(),0.0);
+    }
+    else{
+        TempMatrix->gemm(false,false,1.0,S_,dets[0]->Ca(),0.0);
+    }
+    int temp_int_new = 0;
+    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
+        temp_int_new = 1;
+    }
+    else{
+        temp_int_new = 0;
+    }
+    SharedMatrix ChSCa(new Matrix(Ch_->colspi(),dets[temp_int_new]->Ca()->colspi()));
     ChSCa->gemm(true,false,1.0,Ch_,TempMatrix,0.0);
     for (int h = 0; h < nirrep_; ++h){
         for (int p = 0; p < Ch_->colspi()[h]; ++p){
@@ -1867,8 +1927,8 @@ void UOCDFT::analyze_excitations()
     }
 
 
-    TempMatrix->gemm(false,false,1.0,S_,dets[0]->Ca(),0.0);
-    SharedMatrix CpSCa(new Matrix(Cp_->colspi(),dets[0]->Ca()->colspi()));
+    TempMatrix->gemm(false,false,1.0,S_,dets[temp_int_new]->Ca(),0.0);
+    SharedMatrix CpSCa(new Matrix(Cp_->colspi(),dets[temp_int_new]->Ca()->colspi()));
     CpSCa->gemm(true,false,1.0,Cp_,TempMatrix,0.0);
     for (int h = 0; h < nirrep_; ++h){
         for (int p = 0; p < Cp_->colspi()[h]; ++p){
@@ -1926,13 +1986,7 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
     SharedVector s_b = cbeta.get<2>();
 
     // Compute the number of noncoincidences
-    double noncoincidence_threshold = 0.0;
-    if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
-        noncoincidence_threshold = 1.0e-1;
-    }
-    else{
-        noncoincidence_threshold = 1.0e-9;
-    }
+    double noncoincidence_threshold = 1.0e-9;
 
     std::vector<boost::tuple<int,int,double> > Aalpha_nonc;
     std::vector<boost::tuple<int,int,double> > Balpha_nonc;
@@ -1944,20 +1998,16 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
         for (int p = 0; p < nmin; ++p){
             if(std::fabs(s_a->get(h,p)) >= noncoincidence_threshold){
                 Sta *= s_a->get(h,p);
-		outfile->Printf("Not Accepted: %f \n ", std::fabs(s_a->get(h,p)));
+		//outfile->Printf("Not Accepted: %f \n ", std::fabs(s_a->get(h,p)));
             }else{
-		outfile->Printf("Accepted: %f \n ", std::fabs(s_a->get(h,p)));
+		//outfile->Printf("Accepted: %f \n ", std::fabs(s_a->get(h,p)));
 		nonc.push_back(boost::make_tuple(std::fabs(s_a->get(h,p)),h,p));
 		std::sort(nonc.begin(),nonc.end());
-                //Aalpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
-                //Balpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
+            	Aalpha_nonc.push_back(boost::make_tuple(nonc[0].get<1>(),nonc[0].get<2>(),nonc[0].get<0>()));
+                Balpha_nonc.push_back(boost::make_tuple(nonc[0].get<1>(),nonc[0].get<2>(),nonc[0].get<0>()));
             }
-            //Aalpha_nonc.push_back(boost::make_tuple(nonc[0][1],nonc[0][2],nonc[0][0]);
-            //Balpha_nonc.push_back(boost::make_tuple(nonc[0][1],nonc[0][2],nonc[0][0]);
 	    
         }
-        Aalpha_nonc.push_back(boost::make_tuple(nonc[0].get<1>(),nonc[0].get<2>(),nonc[0].get<0>()));
-        Balpha_nonc.push_back(boost::make_tuple(nonc[0].get<1>(),nonc[0].get<2>(),nonc[0].get<0>()));
         // Count all the symmetry noncoincidences
         int nmax = std::max(A->nalphapi()[h],B->nalphapi()[h]);
         bool AgeB = A->nalphapi()[h] >= B->nalphapi()[h] ? true : false;
