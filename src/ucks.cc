@@ -38,6 +38,7 @@ UCKS::UCKS(SharedWavefunction ref_scf, Options &options, boost::shared_ptr<PSIO>
   ground_state_symmetry_(0)
 {
     init();
+    wfn_ = ref_scf;
 }
 
 void UCKS::init()
@@ -514,7 +515,7 @@ void UCKS::constraint_optimization()
                 h_inv_g->scale(threshold / step_size);
             }
             Vc->subtract(h_inv_g);
-
+	    Vc->print();
             // Reset the DIIS subspace
             diis_manager_->reset_subspace();
             nW_opt += 1;
@@ -529,7 +530,9 @@ double UCKS::compute_E()
     one_electron_E += Db_->vector_dot(H_);
     for (int c = 0; c < nconstraints; ++c){
         one_electron_E -= Vc->get(c) * constraints[c]->Nc(); // Added the CDFT contribution that is not included in H_
+	outfile->Printf( "\nConstraint:%f\n", constraints[c]->Nc());
     }
+    Vc->print();
     double coulomb_E = Da_->vector_dot(J_);
     coulomb_E += Db_->vector_dot(J_);
 
@@ -568,15 +571,14 @@ double UCKS::compute_E()
     Etotal += XC_E;
     Etotal += dashD_E;
 
-    if (debug_) {
-        outfile->Printf( "   => Energetics <=\n\n");
-        outfile->Printf( "    Nuclear Repulsion Energy = %24.14f\n", nuclearrep_);
+        //outfile->Printf( "   => Energetics <=\n\n");
+        //outfile->Printf( "    Nuclear Repulsion Energy = %24.14f\n", nuclearrep_);
         outfile->Printf( "    One-Electron Energy =      %24.14f\n", one_electron_E);
-        outfile->Printf( "    Coulomb Energy =           %24.14f\n", 0.5 * coulomb_E);
-        outfile->Printf( "    Hybrid Exchange Energy =   %24.14f\n", 0.5 * exchange_E);
-        outfile->Printf( "    XC Functional Energy =     %24.14f\n", XC_E);
-        outfile->Printf( "    -D Energy =                %24.14f\n", dashD_E);
-    }
+        //outfile->Printf( "    Coulomb Energy =           %24.14f\n", 0.5 * coulomb_E);
+        //outfile->Printf( "    Hybrid Exchange Energy =   %24.14f\n", 0.5 * exchange_E);
+        //outfile->Printf( "    XC Functional Energy =     %24.14f\n", XC_E);
+        //outfile->Printf( "    -D Energy =                %24.14f\n", dashD_E);
+
     return Etotal;
 }
 
@@ -614,7 +616,7 @@ bool UCKS::test_convergency()
     bool energy_test = fabs(ediff) < energy_threshold_;
     bool density_test = Drms_ < density_threshold_;
     bool cycle_test = iteration_ > 5;
-
+    //optimize_Vc = true;
     if(optimize_Vc){
         bool constraint_test = gradW->norm() < gradW_threshold_;
         constraint_optimization();

@@ -57,6 +57,9 @@ protected:
     /// The old beta density matrix
     SharedMatrix Doldb_;
 
+    /// Current Wavefunction
+    SharedWavefunction wfn_;
+
     /// A copy of the one-electron potential
     SharedMatrix H_copy;
     /// The Lagrange multipliers, Vc in Phys. Rev. A, 72, 024502 (2005)

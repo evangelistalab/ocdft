@@ -1,6 +1,8 @@
 #include <psi4-dec.h>
 #include <physconst.h>
-
+#include <boost/tuple/tuple_comparison.hpp>
+#include <boost/format.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <libplugin/plugin.h>
 #include <liboptions/liboptions.h>
 #include <libmints/mints.h>
@@ -8,6 +10,7 @@
 #include <libciomr/libciomr.h>
 #include <libscf_solver/hf.h>
 #include <libscf_solver/ks.h>
+#include <libcubeprop/cubeprop.h>
 
 #include <libmints/wavefunction.h>
 #include <libmints/writer.h>
@@ -68,9 +71,9 @@ int read_options(std::string name, Options& options)
         options.add("VC", new ArrayType());
 
 
-        //////////////////////////////////////////////////////
-        // Options for Orthogonality Constrained DFT (CDFT) //
-        //////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////
+        // Options for Orthogonality Constrained DFT (OCDFT) //
+        ///////////////////////////////////////////////////////
 
 	// Options for Specifying Excited States and Algorithms //
         /*- Number of excited states -*/
@@ -221,10 +224,18 @@ void CDFT(SharedWavefunction ref_wfn, Options& options)
         boost::shared_ptr<PSIO> psio = PSIO::shared_object();
 
         SharedWavefunction ref_scf = SharedWavefunction(new scf::UCKS(ref_wfn, options, psio));
-
+        boost::shared_ptr<OEProp> oe(new OEProp(ref_scf));
+        oe->set_Da_so(ref_scf->Da());
+        oe->add("MULLIKEN_CHARGES");
+        oe->add("LOWDIN_CHARGES");
+        oe->compute();
         double gs_energy = ref_scf->compute_energy();
-
-        // If requested, write a molden file
+        //boost::shared_ptr<OEProp> oe(new OEProp(ref_scf));
+        oe->set_Da_so(ref_scf->Da());
+        oe->add("MULLIKEN_CHARGES");
+        oe->add("LOWDIN_CHARGES");
+        oe->compute();
+        //If requested, write a molden file
         if ( options["MOLDEN_WRITE"].has_changed() ) {
             boost::shared_ptr<MoldenWriter> molden(new MoldenWriter(ref_scf));
             std::string filename = get_writer_file_prefix("OCDFT") + "." + to_string(0) + ".molden";
@@ -413,6 +424,7 @@ void OCDFT(SharedWavefunction ref_wfn, Options& options)
         SharedMatrix Cb_solab = ref_scf->Cb();
         energies.push_back(gs_energy);
         dets.push_back(SharedDeterminant(new scf::Determinant(ref_scf->Ca(),ref_scf->Cb(),ref_scf->nalphapi(),ref_scf->nbetapi())));
+	SharedMatrix GroundDens(ref_scf->Da()->clone());
         state_info.push_back(boost::make_tuple(0,1,gs_energy,0.0,0.0,0.0,0.0,0.0));
 
         // Print a molden file
@@ -431,11 +443,22 @@ void OCDFT(SharedWavefunction ref_wfn, Options& options)
         // Compute a number of excited states without specifying the symmetry
         if(options["NROOTS"].has_changed()){
             int nstates = options["NROOTS"].to_integer();
+	    std::vector<std::string> labels;
+	    labels.push_back("placeholder");
             for(int state = 1; state <= nstates; ++state){
                 SharedWavefunction new_scf = SharedWavefunction(new scf::UOCDFT(options,psio,ref_scf,state));
                 //Process::environment.wavefunction().reset();
                 //Process::environment.set_wavefunction(new_scf);
                 double new_energy = new_scf->compute_energy();
+		SharedMatrix Ddiff(GroundDens->clone());
+		Ddiff->subtract(new_scf->Da());
+		CubeProperties cube = CubeProperties(new_scf);
+		if(options.get_bool("CUBE_HP")){
+                    std::string label_str = boost::str(boost::format("Ddiff%d") % state);
+		    labels.push_back(label_str);
+		    cube.compute_density(Ddiff, label_str);
+		}
+		//Ddiff->print();
                 energies.push_back(new_energy);
                 if (options.get_bool("DIAG_DFT_E")){energies.push_back(new_energy);}
                 dets.push_back(SharedDeterminant(new scf::Determinant(new_scf->Ca(),new_scf->Cb(),new_scf->nalphapi(),new_scf->nbetapi())));

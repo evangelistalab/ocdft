@@ -1825,6 +1825,7 @@ void UOCDFT::save_information()
         CubeProperties cube = CubeProperties(wfn_);
 	
 	SharedMatrix Dp_ = SharedMatrix(new Matrix("Particle Attachment Density", nsopi_,gs_navirpi_));
+	SharedMatrix Ddiff_(Da_->clone());
 	Dp_->gemm(false,true,1.0,Cp_,Cp_,0.0);
 	SharedMatrix Dh_ = SharedMatrix(new Matrix("Hole Detachment Density", nsopi_,gs_nalphapi_));
 	Dh_->gemm(false,true,1.0,Ch_,Ch_,0.0);
@@ -1833,8 +1834,8 @@ void UOCDFT::save_information()
 	if(KS::options_.get_bool("CUBE_HP")){
         	cube.compute_orbitals(Ca_, indsp0,labelsp, particle_str);
 		cube.compute_orbitals(Ca_, indsh0,labelsh, hole_str);
-		cube.compute_density(Dp_, "Dp");
-		cube.compute_density(Dh_, "Dh");
+		//cube.compute_density(Dp_, "Dp");
+		//cube.compute_density(Dh_, "Dh");
 	}
 	//cube.compute_properties();
 	// grid_->print_header();
