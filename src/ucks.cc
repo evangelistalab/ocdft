@@ -530,7 +530,6 @@ double UCKS::compute_E()
     one_electron_E += Db_->vector_dot(H_);
     for (int c = 0; c < nconstraints; ++c){
         one_electron_E -= Vc->get(c) * constraints[c]->Nc(); // Added the CDFT contribution that is not included in H_
-	outfile->Printf( "\nConstraint:%f\n", constraints[c]->Nc());
     }
     Vc->print();
     double coulomb_E = Da_->vector_dot(J_);
@@ -570,14 +569,16 @@ double UCKS::compute_E()
     Etotal += 0.5 * exchange_E;
     Etotal += XC_E;
     Etotal += dashD_E;
-
-        //outfile->Printf( "   => Energetics <=\n\n");
-        //outfile->Printf( "    Nuclear Repulsion Energy = %24.14f\n", nuclearrep_);
+    
+    if(debug_){
+        outfile->Printf( "   => Energetics <=\n\n");
+        outfile->Printf( "    Nuclear Repulsion Energy = %24.14f\n", nuclearrep_);
         outfile->Printf( "    One-Electron Energy =      %24.14f\n", one_electron_E);
-        //outfile->Printf( "    Coulomb Energy =           %24.14f\n", 0.5 * coulomb_E);
-        //outfile->Printf( "    Hybrid Exchange Energy =   %24.14f\n", 0.5 * exchange_E);
-        //outfile->Printf( "    XC Functional Energy =     %24.14f\n", XC_E);
-        //outfile->Printf( "    -D Energy =                %24.14f\n", dashD_E);
+        outfile->Printf( "    Coulomb Energy =           %24.14f\n", 0.5 * coulomb_E);
+        outfile->Printf( "    Hybrid Exchange Energy =   %24.14f\n", 0.5 * exchange_E);
+        outfile->Printf( "    XC Functional Energy =     %24.14f\n", XC_E);
+        outfile->Printf( "    -D Energy =                %24.14f\n", dashD_E);
+    }
 
     return Etotal;
 }
