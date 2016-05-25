@@ -515,7 +515,7 @@ void UCKS::constraint_optimization()
                 h_inv_g->scale(threshold / step_size);
             }
             Vc->subtract(h_inv_g);
-	    Vc->print();
+
             // Reset the DIIS subspace
             diis_manager_->reset_subspace();
             nW_opt += 1;
@@ -531,7 +531,7 @@ double UCKS::compute_E()
     for (int c = 0; c < nconstraints; ++c){
         one_electron_E -= Vc->get(c) * constraints[c]->Nc(); // Added the CDFT contribution that is not included in H_
     }
-    Vc->print();
+
     double coulomb_E = Da_->vector_dot(J_);
     coulomb_E += Db_->vector_dot(J_);
 
@@ -617,7 +617,7 @@ bool UCKS::test_convergency()
     bool energy_test = fabs(ediff) < energy_threshold_;
     bool density_test = Drms_ < density_threshold_;
     bool cycle_test = iteration_ > 5;
-    //optimize_Vc = true;
+
     if(optimize_Vc){
         bool constraint_test = gradW->norm() < gradW_threshold_;
         constraint_optimization();
