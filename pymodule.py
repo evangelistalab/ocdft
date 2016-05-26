@@ -5,10 +5,10 @@ import inputparser
 import math
 import warnings
 from driver import *
-from wrappers import *
+#from wrappers import *
 from molutil import *
 import p4util
-from p4xcpt import *
+#from p4xcpt import *
 
 plugdir = os.path.split(os.path.abspath(__file__))[0]
 sofile = plugdir + "/cdft.so"
