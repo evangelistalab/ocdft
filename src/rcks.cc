@@ -173,10 +173,10 @@ double RCKS::compute_E()
     double alpha = functional_->x_alpha();
     double beta = 1.0 - alpha;
     if (functional_->is_x_hybrid()) {
-        exchange_E -= alpha*Da_->vector_dot(K_);
+        exchange_E -= alpha*D_->vector_dot(K_);
     }
     if (functional_->is_x_lrc()) {
-        exchange_E -=  beta*Da_->vector_dot(wK_);
+        exchange_E -=  beta*D_->vector_dot(wK_);
     }
 
     double dashD_E = 0.0;

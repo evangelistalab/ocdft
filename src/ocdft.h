@@ -161,6 +161,10 @@ protected:
     SharedMatrix TempMatrix;
     /// A temporary matrix
     SharedMatrix TempMatrix2;
+    /// A temporary matrix
+    SharedMatrix TempMatrix3;
+    /// A temporary matrix
+    SharedMatrix TempMatrix4;
     /// A temporary vector
     SharedVector TempVector;
     SharedVector AcceptedVirtuals;

@@ -47,7 +47,7 @@ void UCKS::init()
 
     optimize_Vc = false;
     if(KS::options_["CHARGE"].size() > 0 or KS::options_["SPIN"].size() > 0){
-        KS::options_.get_bool("OPTIMIZE_VC");
+        optimize_Vc = KS::options_.get_bool("OPTIMIZE_VC");
     }
     gradW_threshold_ = KS::options_.get_double("W_CONVERGENCE");
     outfile->Printf("  gradW threshold = :%9.2e\n",gradW_threshold_);
@@ -517,8 +517,10 @@ void UCKS::constraint_optimization()
             Vc->subtract(h_inv_g);
 
             // Reset the DIIS subspace
-            diis_manager_->reset_subspace();
-            nW_opt += 1;
+	    if(iteration_ > 1){
+            	diis_manager_->reset_subspace();
+		nW_opt += 1;
+	    }
         }
     }
 }
@@ -621,6 +623,7 @@ bool UCKS::test_convergency()
     if(optimize_Vc){
         bool constraint_test = gradW->norm() < gradW_threshold_;
         constraint_optimization();
+        //diis_manager_->reset_subspace();
         if(energy_test and density_test and constraint_test and cycle_test){
             return true;
         }else{

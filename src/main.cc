@@ -18,6 +18,7 @@
 #include<vector>
 
 #include "ucks.h"
+#include "rcks.h"
 #include "ocdft.h"
 
 #include "noci.h"
@@ -83,6 +84,7 @@ int read_options(std::string name, Options& options)
         /*- Perform a correction of the triplet excitation energies -*/
         options.add_bool("TRIPLET_CORRECTION", true);
         options.add_bool("VALENCE_TO_CORE", false);
+        options.add_bool("FULL_MULLIKEN_PRINT", false);
         /*- Perform a correction of the triplet excitation energies using the S+ formalism -*/
         options.add_bool("CDFT_SPIN_ADAPT_SP", true);
         /*- Perform a correction of the triplet excitation energies using a CI formalism -*/
@@ -216,10 +218,13 @@ extern "C" SharedWavefunction cdft(SharedWavefunction ref_wfn, Options& options)
 void CDFT(SharedWavefunction ref_wfn, Options& options)
 {
     std::string reference = options.get_str("REFERENCE");
+    if(reference == "RKS") {
+        boost::shared_ptr<PSIO> psio = PSIO::shared_object();
 
-    if (reference == "RKS") {
-        throw InputException("Constrained RKS is not implemented ", "REFERENCE to UKS", __FILE__, __LINE__);
-    }else if (reference == "UKS") {
+        SharedWavefunction ref_scf = SharedWavefunction(new scf::RCKS(ref_wfn, options, psio));  
+        double gs_energy = ref_scf->compute_energy(); 
+    }
+    else if (reference == "UKS") {
         // Run a ground state computation first
         boost::shared_ptr<PSIO> psio = PSIO::shared_object();
 

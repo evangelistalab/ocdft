@@ -19,6 +19,7 @@
 
 #include "ocdft.h"
 #include "aosubspace.h"
+#include "iao_builder.h"
 #include "helpers.h"
 
 #define DEBUG_OCDFT 0
@@ -127,7 +128,6 @@ void UOCDFT::init()
     MOM_started_ = false;
     MOM_performed_ = false;
 
-
     // Allocate vectors
     TempVector = factory_->create_shared_vector("SVD sigma");
     AcceptedVirtuals = factory_->create_shared_vector("Accepted Localized Adsorbate Virtual Orbitals");
@@ -138,6 +138,8 @@ void UOCDFT::init()
     gs_Ca = factory_->create_shared_matrix("Ground State MO Coefficients");
     TempMatrix = factory_->create_shared_matrix("Temp");
     TempMatrix2 = factory_->create_shared_matrix("Temp2");
+    TempMatrix3 = factory_->create_shared_matrix("Temp3");
+    TempMatrix4 = factory_->create_shared_matrix("Temp4");
     Dolda_ = factory_->create_shared_matrix("Dold alpha");
     Doldb_ = factory_->create_shared_matrix("Dold beta");
     NTOs_ =  factory_->create_shared_matrix("Natural Transition Orbitals");
@@ -1823,7 +1825,8 @@ void UOCDFT::save_information()
             labelsh.push_back(ct.gamma(h).symbol());
         }
         CubeProperties cube = CubeProperties(wfn_);
-	
+
+
 	SharedMatrix Dp_ = SharedMatrix(new Matrix("Particle Attachment Density", nsopi_,gs_navirpi_));
 	SharedMatrix Ddiff_(Da_->clone());
 	Dp_->gemm(false,true,1.0,Cp_,Cp_,0.0);
@@ -1834,6 +1837,7 @@ void UOCDFT::save_information()
 	if(KS::options_.get_bool("CUBE_HP")){
         	cube.compute_orbitals(Ca_, indsp0,labelsp, particle_str);
 		cube.compute_orbitals(Ca_, indsh0,labelsh, hole_str);
+
 		//cube.compute_density(Dp_, "Dp");
 		//cube.compute_density(Dh_, "Dh");
 	}
@@ -1886,7 +1890,262 @@ void UOCDFT::save_information()
 void UOCDFT::analyze_excitations()
 {
     CharacterTable ct = KS::molecule_->point_group()->char_table();
+    SharedMatrix S_ao = SharedMatrix(new Matrix("AO Overlap matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    boost::shared_ptr<PetiteList> pet(new PetiteList(KS::basisset_, integral_));
+    SharedMatrix SO2AO_ = pet->sotoao();
+    int nocc = gs_nalphapi_[0];
+    int nvir = gs_navirpi_[0];
+    boost::shared_ptr<BasisSet> minao = BasisSet::pyconstruct_orbital(wfn_->molecule(),"BASIS", KS::options_.get_str("MINAO_BASIS"));
+    S_ao->remove_symmetry(S_,SO2AO_);
+    SharedMatrix iao_coeffs;
+    TempMatrix->zero();
+    // Copy the occupied block of Ca and Fa
+    copy_block(Ca_,1.0,TempMatrix,0.0,nsopi_,nalphapi_);
+    // Bring in IAO Coefficients (nbfs x niaos)
+    boost::shared_ptr<IAOBuilder> iao = IAOBuilder::build(wfn_->basisset(), TempMatrix, KS::options_);
+    iao_coeffs = iao->build_iaos();
+    int nmin = iao_coeffs->colspi()[0];
+    SharedMatrix hole_iao = SharedMatrix(new Matrix("Hole IAO Density", nmin, nmin));
+    SharedMatrix part_iao = SharedMatrix(new Matrix("Particle IAO Density", nmin, nmin));
+    TempMatrix2->zero();
+    TempMatrix3->zero();
+    TempMatrix4->zero();
+    TempMatrix2->gemm(true,false,1.0,Ca_,S_,0.0);
+    SharedMatrix coeffs_transpose = SharedMatrix(new Matrix("Particle IAO Density",nmin, KS::basisset_->nbf()));
+    for (int i = 0; i < nmin; ++i){
+        for (int j = 0; j < KS::basisset_->nbf(); ++j){
+            coeffs_transpose->set(i,j,iao_coeffs->get(j,i));
+        }
+    }
+    SharedMatrix rhs = SharedMatrix(new Matrix("Particle IAO Density (RHS)", nmin,KS::basisset_->nbf()));
+    for (int i = 0; i < nmin; ++i){
+	for (int j = 0; j < KS::basisset_->nbf(); ++j){
+            double num_in = 0.0;
+	    for (int k = 0; k < KS::basisset_->nbf(); ++k){
+	        num_in += coeffs_transpose->get(i,k)*S_ao->get(k,j);
+	    }
+            rhs->set(i,j,num_in);
+        }
+    }
 
+
+    SharedMatrix c_iao_hole = SharedMatrix(new Matrix("C_iao_hole", nmin, nocc));
+    for (int i = 0; i < nmin; ++i){
+        for (int j = 0; j < nocc; ++j){
+            double num_in = 0.0;
+            for (int k = 0; k < KS::basisset_->nbf(); ++k){
+                num_in += rhs->get(i,k)*Ch_->get(k,j);
+            }
+            c_iao_hole->set(i,j,num_in);
+        }
+    }
+    SharedMatrix c_iao_part = SharedMatrix(new Matrix("C_iao_particle", nmin, nvir));
+    for (int i = 0; i < nmin; ++i){
+        for (int j = 0; j < nvir; ++j){
+            double num_in = 0.0;
+            for (int k = 0; k < KS::basisset_->nbf(); ++k){
+                num_in += rhs->get(i,k)*Cp_->get(k,j);
+            }
+            c_iao_part->set(i,j,num_in);
+        }
+    }
+
+    SharedMatrix c_iao_hole_transpose = SharedMatrix(new Matrix("Hole IAO Transpose",nocc,nmin));
+    for (int i = 0; i < nocc; ++i){
+        for (int j = 0; j < nmin; ++j){
+            c_iao_hole_transpose->set(i,j,c_iao_hole->get(j,i));
+        }
+    }
+    SharedMatrix c_iao_part_transpose = SharedMatrix(new Matrix("Particle IAO Transpose",nvir,nmin));
+    for (int i = 0; i < nvir; ++i){
+        for (int j = 0; j < nmin; ++j){
+            c_iao_part_transpose->set(i,j,c_iao_part->get(j,i));
+        }
+    }
+
+    for (int i = 0; i < nmin; ++i){
+        for (int j = 0; j < nmin; ++j){
+            double num_in = 0.0;
+            for (int k = 0; k < nocc; ++k){
+                num_in += c_iao_hole->get(i,k)*c_iao_hole_transpose->get(k,j);
+            }
+            hole_iao->set(i,j,num_in);
+        }    
+    }
+
+    for (int i = 0; i < nmin; ++i){
+        for (int j = 0; j < nmin; ++j){
+            double num_in = 0.0;
+            for (int k = 0; k < nvir; ++k){
+                num_in += c_iao_part->get(i,k)*c_iao_part_transpose->get(k,j);
+            }
+            part_iao->set(i,j,num_in);
+        }     
+    }
+
+    std::vector<std::pair<double,std::string>> iao_hole_contributions;
+    std::vector<std::pair<double,std::string>> iao_part_contributions;
+    std::vector<std::pair<double,std::string>> ao_hole_contributions;
+    std::vector<std::pair<double,std::string>> ao_part_contributions;
+
+    // Form a map that lists all functions on a given atom and with a given ang. momentum
+    std::map<std::pair<int,int>,std::vector<int>> atom_am_to_f;
+    int sum = 0;
+    for (int A = 0; A < KS::molecule_->natom(); A++) {
+        int n_shell = minao->nshell_on_center(A);
+        for (int Q = 0; Q < n_shell; Q++){
+            const GaussianShell& shell = minao->shell(A,Q);
+            int nfunction = shell.nfunction();
+            int am = shell.am();            
+	    std::pair<int,int> atom_am(A,am);
+            for (int p = sum; p < sum + nfunction; ++p){
+                atom_am_to_f[atom_am].push_back(p);
+            }
+            sum += nfunction;
+        }
+    } 
+    
+    // "I got the keys, the keys, the keys"
+    std::vector<std::pair<int,int>> keys;
+    for (auto& kv : atom_am_to_f){
+        keys.push_back(kv.first);
+    }
+    std::sort(keys.begin(),keys.end());
+    outfile->Printf("\n\n     =====> IAO Analysis of Hole Orbital <=====");
+    outfile->Printf("\n   =====================================================");
+    outfile->Printf("\n   Atom Number    Symbol         l            population");
+    outfile->Printf("\n   =====================================================");
+
+    std::vector<std::string> l_to_symbol{"s","p","d","f","g","h"};
+    for (auto& i : keys){
+        auto& ifn = atom_am_to_f[i];
+        // Mulliken Analysis from IAO Density Matrix
+        // 1. Form Population Matrix
+        // 2. Take Trace of Population Matrix
+        // 3. Decompose by atom
+
+        SharedMatrix population_matrix_hole = SharedMatrix(new Matrix("IAO Population Matrix ", KS::basisset_->nbf(), KS::basisset_->nbf()));
+        population_matrix_hole->gemm(false,false,1.0,hole_iao,S_ao,0.0);
+        double trace = 0.0;
+        double reg_trace = 0.0;
+        for (int iao : ifn){
+            trace += population_matrix_hole->get(iao,iao);
+        }
+        //outfile->Printf("\n        %d            %s          %s           %9.2f ", i.first+1,KS::molecule_->symbol(i.first).c_str(),l_to_symbol[i.second].c_str(),trace);
+        if (std::fabs(trace) >= 0.01){
+                std::string outstr = boost::str(boost::format("   %3d            %3s          %3s           %9.2f ") % (i.first + 1) % KS::molecule_->symbol(i.first).c_str() % l_to_symbol[i.second].c_str() % trace);
+	        iao_hole_contributions.push_back(std::make_pair(trace,outstr));	
+        }
+    }
+    std::sort(iao_hole_contributions.rbegin(),iao_hole_contributions.rend());
+    for (auto& kv : iao_hole_contributions){
+        outfile->Printf("\n%s",kv.second.c_str());
+    }
+    outfile->Printf("\n   -----------------------------------------------------");
+
+    outfile->Printf("\n\n     ===> IAO Analysis of Particle Orbital <===");
+    outfile->Printf("\n   =====================================================");
+    outfile->Printf("\n   Atom Number     Symbol       l             population");
+    outfile->Printf("\n   =====================================================");
+    for (auto& i : keys){
+        auto& ifn = atom_am_to_f[i];
+        SharedMatrix population_matrix_part = SharedMatrix(new Matrix("IAO Particle Population Matrix ", KS::basisset_->nbf(), KS::basisset_->nbf()));
+        population_matrix_part->gemm(false,false,1.0,part_iao,S_ao,0.0);
+        double trace = 0.0;
+        for (int iao : ifn){
+            trace += population_matrix_part->get(iao,iao);
+        }
+        if (std::fabs(trace) >= 0.01){
+                std::string outstr = boost::str(boost::format("   %3d            %3s          %3s           %9.2f ") % (i.first + 1) % KS::molecule_->symbol(i.first).c_str() % l_to_symbol[i.second].c_str() % trace);
+                iao_part_contributions.push_back(std::make_pair(trace,outstr));
+        }
+    }
+    std::sort(iao_part_contributions.rbegin(),iao_part_contributions.rend());
+    for (auto& kv : iao_part_contributions){
+        outfile->Printf("\n%s",kv.second.c_str());
+    }
+    outfile->Printf("\n   -----------------------------------------------------");
+    if(KS::options_.get_bool("FULL_MULLIKEN_PRINT")){
+	    std::map<std::pair<int,int>,std::vector<int>> atom_am_to_f_full;
+	    sum = 0;
+	    for (int A = 0; A < KS::molecule_->natom(); A++) {
+		int n_shell = KS::basisset_->nshell_on_center(A);
+		for (int Q = 0; Q < n_shell; Q++){
+		    const GaussianShell& shell = KS::basisset_->shell(A,Q);
+		    int nfunction = shell.nfunction();
+		    int am = shell.am();
+		    std::pair<int,int> atom_am(A,am);
+		    for (int p = sum; p < sum + nfunction; ++p){
+			atom_am_to_f_full[atom_am].push_back(p);
+		    }
+		    sum += nfunction;
+		}
+	    }
+
+	    // "I got the keys, the keys, the keys"
+	    std::vector<std::pair<int,int>> keys_full;
+	    for (auto& kv : atom_am_to_f_full){
+		keys_full.push_back(kv.first);
+	    }
+	    std::sort(keys.begin(),keys.end());
+	    outfile->Printf("\n\n     =====> AO Analysis of Hole Orbital <=====");
+	    outfile->Printf("\n   =====================================================");
+	    outfile->Printf("\n   Atom Number     Symbol       l             population");
+	    outfile->Printf("\n   =====================================================");
+
+	    std::vector<std::string> l_to_symbol_full{"s","p","d","f","g","h"};
+	    for (auto& i : keys_full){
+		auto& ifn = atom_am_to_f_full[i];
+		// Mulliken Analysis from IAO Density Matrix
+		// 1. Form Population Matrix
+		// 2. Take Trace of Population Matrix
+		// 3. Decompose by atom
+
+		SharedMatrix population_matrix_hole_full = SharedMatrix(new Matrix("IAO Population Matrix ", KS::basisset_->nbf(), KS::basisset_->nbf()));
+		SharedMatrix Dh_ = SharedMatrix(new Matrix("Hole Detachment Density", nsopi_,gs_nalphapi_));
+		Dh_->gemm(false,true,1.0,Ch_,Ch_,0.0);
+		population_matrix_hole_full->gemm(false,false,1.0,Dh_,S_ao,0.0);
+		double trace = 0.0;
+		for (int iao : ifn){
+		    trace += population_matrix_hole_full->get(iao,iao);
+		}
+        	if (std::fabs(trace) >= 0.01){
+                	std::string outstr = boost::str(boost::format("   %3d            %3s          %3s           %9.2f ") % (i.first + 1) % KS::molecule_->symbol(i.first).c_str() % l_to_symbol[i.second].c_str() % trace);
+                	ao_hole_contributions.push_back(std::make_pair(trace,outstr));
+        	}
+    	}
+    	std::sort(ao_hole_contributions.rbegin(),ao_hole_contributions.rend());
+    	for (auto& kv : ao_hole_contributions){
+        	outfile->Printf("\n%s",kv.second.c_str());
+    	}
+	    outfile->Printf("\n   -----------------------------------------------------");
+	    outfile->Printf("\n\n     ==> AO Analysis of Particle Orbital <==");
+	    outfile->Printf("\n   =====================================================");
+	    outfile->Printf("\n   Atom Number     Symbol       l             population");
+	    outfile->Printf("\n   =====================================================");
+
+	    for (auto& i : keys_full){
+		auto& ifn = atom_am_to_f_full[i];        
+
+		SharedMatrix population_matrix_particle_full = SharedMatrix(new Matrix("IAO Population Matrix ", KS::basisset_->nbf(), KS::basisset_->nbf()));
+		SharedMatrix Dp_ = SharedMatrix(new Matrix("Particle Detachment Density", nsopi_,gs_navirpi_));
+		Dp_->gemm(false,true,1.0,Cp_,Cp_,0.0);
+		population_matrix_particle_full->gemm(false,false,1.0,Dp_,S_ao,0.0);
+		double trace = 0.0;
+		for (int iao : ifn){
+		    trace += population_matrix_particle_full->get(iao,iao);
+		}
+            if (std::fabs(trace) >= 0.01){
+                    std::string outstr = boost::str(boost::format("   %3d            %3s          %3s           %9.2f ") % (i.first + 1) % KS::molecule_->symbol(i.first).c_str() % l_to_symbol[i.second].c_str() % trace);
+                    ao_part_contributions.push_back(std::make_pair(trace,outstr));
+            }
+        }
+        std::sort(ao_part_contributions.rbegin(),ao_part_contributions.rend());
+        for (auto& kv : ao_part_contributions){
+            outfile->Printf("\n%s",kv.second.c_str());
+        }
+	    outfile->Printf("\n   -----------------------------------------------------");
+    }
     outfile->Printf("\n\n  Analysis of the hole/particle MOs in terms of the ground state DFT MOs");
     if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
     	TempMatrix->gemm(false,false,1.0,S_,dets[1]->Ca(),0.0);
@@ -2124,6 +2383,8 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
         }
     }
     SharedMatrix trDa_ao = SharedMatrix(new Matrix("AO Density", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    SharedMatrix trDa_iao = SharedMatrix(new Matrix("IAO Density", KS::basisset_->nbf(), KS::basisset_->nbf()));
+
     SharedMatrix S_ao = SharedMatrix(new Matrix("AO Overlap matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
     SharedMatrix S_half_ao = SharedMatrix(new Matrix("Square root of the AO Overlap matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
     SharedMatrix S_inv_half_ao = SharedMatrix(new Matrix("Inverse square root of the AO Overlap matrix", KS::basisset_->nbf(), KS::basisset_->nbf()));
@@ -2142,9 +2403,9 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
         }
         offset += nsopi_[h];
     }
-
+    
     trDa_ao->transform(trDa_c1,SO2AO_c1);
-
+    //trDa_iao->transform(trDa_c1,IAO_coeffs);
 //    trDa_ao->remove_symmetry(trDa,SO2AO_);
     S_ao->remove_symmetry(S_,SO2AO_);
     S_half_ao->copy(S_ao);
@@ -2162,25 +2423,24 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
     oe->compute();
     
     // SVD To obtain NTOs
-    boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UtrdV = trDa->svd_temps();
-    SharedMatrix U = UtrdV.get<0>();
-    SharedVector sigma = UtrdV.get<1>();
-    SharedMatrix V = UtrdV.get<2>();
-    trDa->svd(U,sigma,V);
+    //boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UtrdV = trDa->svd_temps();
+    //SharedMatrix U = UtrdV.get<0>();
+    //SharedVector sigma = UtrdV.get<1>();
+    //SharedMatrix V = UtrdV.get<2>();
+    //trDa->svd(U,sigma,V);
     //sigma->print();
     //U->print();
     //V->print();
+    //double nto_participation_ratio = 0.0;
+    //double square_of_sums = 0.0;
+    //double sum_of_squares = 0.0;
 
-    double nto_participation_ratio = 0.0;
-    double square_of_sums = 0.0;
-    double sum_of_squares = 0.0;
+    //for (int i = 0; i < KS::basisset_->nbf(); i++){ 
+    //    sum_of_squares += sigma->get(i)*sigma->get(i);
+    //    square_of_sums += sigma->get(i);
+    //}
 
-    for (int i = 0; i < KS::basisset_->nbf(); i++){ 
-        sum_of_squares += sigma->get(i)*sigma->get(i);
-	square_of_sums += sigma->get(i);
-    }
-
-    nto_participation_ratio = square_of_sums*square_of_sums/(sum_of_squares);
+    //nto_participation_ratio = square_of_sums*square_of_sums/(sum_of_squares);
     //outfile->Printf( " PRnto = %f \n\n", nto_participation_ratio);
 //    Dt_->copy(Da_);
 //    Dt_->add(Db_);
@@ -2194,10 +2454,29 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
     aodOBI->set_origin(origin);
     aodOBI->compute(dipole_ints);
 
+    
     de[0] = trDa_ao->vector_dot(dipole_ints[0]);
     de[1] = trDa_ao->vector_dot(dipole_ints[1]);
     de[2] = trDa_ao->vector_dot(dipole_ints[2]);
-    
+
+    boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UtrdV = trDa_ao->svd_temps();
+    SharedMatrix U = UtrdV.get<0>();
+    SharedVector sigma = UtrdV.get<1>();
+    SharedMatrix V = UtrdV.get<2>();
+    trDa_ao->svd(U,sigma,V);
+    //sigma->print();
+    double nto_participation_ratio = 0.0;
+    double square_of_sums = 0.0;
+    double sum_of_squares = 0.0;
+
+    for (int i = 0; i < KS::basisset_->nbf(); i++){
+        sum_of_squares += sigma->get(i)*sigma->get(i);
+        //outfile->Printf("\n sum%d - %f \n", i, sum_of_squares);	
+        square_of_sums += sigma->get(i);
+    }
+
+    nto_participation_ratio = square_of_sums*square_of_sums/(sum_of_squares);
+ 
     double full_abs_dipole = std::sqrt(de[0] * de[0] + de[1] * de[1] + de[2] * de[2]);
     outfile->Printf("\n  Dipole moments from AO integrals: %.4f %.4f %.4f",de[0],de[1],de[2]);
 
@@ -2206,9 +2485,9 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
     int sum = 0;
     for (int A = 0; A < KS::molecule_->natom(); A++) {
         //outfile->Printf("\n Atom %d",A);
-        int n_shell = KS::KS::basisset_->nshell_on_center(A);
+        int n_shell = KS::basisset_->nshell_on_center(A);
         for (int Q = 0; Q < n_shell; Q++){
-            const GaussianShell& shell = KS::KS::basisset_->shell(A,Q);
+            const GaussianShell& shell = KS::basisset_->shell(A,Q);
             int nfunction = shell.nfunction();
             int am = shell.am();
             std::pair<int,int> atom_am(A,am);
@@ -2232,10 +2511,13 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
 
     std::vector<std::pair<double,std::string>> sorted_contributions;
     SharedMatrix trDa_ao_atom = SharedMatrix(new Matrix("AO Density", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    SharedMatrix trDa_atom_iao = SharedMatrix(new Matrix("AO Density", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    //SharedMatrix trDa_ao_atom_iao = SharedMatrix(new Matrix("AO Density [IAO Basis]", nmin,nmin));
     for (auto& i : keys){
+	auto& ifn = atom_am_to_f[i];
         for (auto& f : keys){
-            trDa_ao_atom->zero();
-            auto& ifn = atom_am_to_f[i];
+	    trDa_ao_atom->zero();
+            trDa_atom_iao->zero();
             auto& ffn = atom_am_to_f[f];
             for (int iao : ifn){
                 for (int fao : ffn){
@@ -2243,26 +2525,33 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
                     trDa_ao_atom->set(fao,iao,value);
                 }
             }
+	    //trDa_ao_atom_iao->transform(IAO_coeffs);
+	    //trDa_ao_atom_iao->print();
             de[0] = trDa_ao_atom->vector_dot(dipole_ints[0]);
             de[1] = trDa_ao_atom->vector_dot(dipole_ints[1]);
             de[2] = trDa_ao_atom->vector_dot(dipole_ints[2]);
-	    boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UtrdaV = trDa_ao_atom->svd_temps();
+	   
+	    boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UtrdaV = trDa_atom_iao->svd_temps();
 	    SharedMatrix U_atom = UtrdaV.get<0>();
 	    SharedVector sigma_atom = UtrdaV.get<1>();
 	    SharedMatrix V_atom = UtrdaV.get<2>();
 	    trDa_ao_atom->svd(U_atom,sigma_atom,V_atom);
+
 	    double sum_of_squares_atom = 0.0;
 	    double square_of_sums_atom = 0.0;
 	    double charge_transfer_number = 0.0;
 	    for (int i = 0; i < KS::basisset_->nbf(); i++){
-        	sum_of_squares_atom += sigma_atom->get(i)*sigma_atom->get(i);
+                sum_of_squares_atom += sigma_atom->get(i)*sigma_atom->get(i);
+	        //outfile->Printf("\n ao%d - %f \n", i, sum_of_squares_atom);
+		//outfile->Printf("\n ao%d - %f \n", i, sum_of_squares); 
                 square_of_sums_atom += sigma_atom->get(i);
     	    }
-	    double participation_percentage = (sum_of_squares_atom/sum_of_squares)*100.0;
-	    charge_transfer_number = (square_of_sums_atom*square_of_sums_atom);
+	    //outfile->Printf("\ntotal: %f \n", sum_of_squares_atom);
+	    double participation_percentage = ((sum_of_squares_atom)/(sum_of_squares))*100.0;
+	    //charge_transfer_number = (square_of_sums_atom*square_of_sums_atom);
             double abs_dipole = std::sqrt(de[0] * de[0] + de[1] * de[1] + de[2] * de[2]);
 	    double dipole_percent = abs_dipole/(full_abs_dipole)*100.0;
-            if (participation_percentage >= 0.1 or abs_dipole >= 1.0e-4){
+            if (dipole_percent >= 2.0){
                 std::string outstr = boost::str(boost::format("  %3d %2s %1s  %3d %2s %1s  %9f  %9f  %9f  %9f %9.2f%% %9f") %
                             (i.first + 1) %
                             KS::molecule_->symbol(i.first).c_str() %
@@ -2271,7 +2560,7 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
                             KS::molecule_->symbol(f.first).c_str() %
                             l_to_symbol[f.second].c_str() %
                             de[0] % de[1] % de[2] % abs_dipole % participation_percentage % charge_transfer_number);
-                sorted_contributions.push_back(std::make_pair(participation_percentage,outstr));
+                sorted_contributions.push_back(std::make_pair(dipole_percent,outstr));
 		all_atomic_trans.push_back(boost::make_tuple(KS::molecule_->symbol(i.first).c_str(),l_to_symbol[i.second].c_str(), KS::molecule_->symbol(f.first).c_str(), l_to_symbol[f.second].c_str(), abs_dipole, participation_percentage, de[0], de[1], de[2],dipole_percent));
             }
         }
@@ -2314,7 +2603,7 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
 	duplicates.push_back(istring.c_str());
 	total_dipole_percent = (total_dipole/total_abs_dipole_all)*100.0;
 	std::string trans_str = boost::str(boost::format("    %2s %1s ---> %2s %1s  %9.2f%%  %9.2f  %9f  %9f  %9f  %9f") % all_atomic_trans[i].get<0>().c_str() % all_atomic_trans[i].get<1>().c_str() % all_atomic_trans[i].get<2>().c_str() % all_atomic_trans[i].get<3>().c_str() % total_pr % total_dipole_percent % total_dipole % total_mux % total_muy % total_muz);
-	restricted_sums.push_back(std::make_pair(total_pr,trans_str.c_str()));
+	restricted_sums.push_back(std::make_pair(total_dipole_percent,trans_str.c_str()));
     }	
     }
     std::sort(restricted_sums.rbegin(),restricted_sums.rend());    
@@ -2332,7 +2621,7 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
     }
     outfile->Printf("\n  ==================================================================================\n\n");
 
-
+    trDa_iao->zero();
     sorted_contributions.clear();
     trDa_ao->transform(S_half_ao);
     for (int i = 0; i < 3; ++i){
@@ -2805,7 +3094,7 @@ double UOCDFT::compute_S_plus_triplet_correction()
     
     form_D();
     form_G();
-    //form_F();
+    form_F();
     // Compute the triplet energy from the density matrices
     double triplet_energy = compute_E();
     double triplet_exc_energy = triplet_energy - ground_state_energy;
@@ -2838,14 +3127,14 @@ double UOCDFT::compute_S_plus_triplet_correction()
 
     double xes_energy;
     if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
-        xes_energy = ((E_) - (dets[1]->energy()))*pc_hartree2ev;
+        xes_energy = (dets[state_]->energy() - dets[1]->energy());
         outfile->Printf( "\n first state energy: %f\n", (dets[1]->energy()));
-        outfile->Printf( "\n XES Energy = %f\n", std::abs((xes_energy)));
+        outfile->Printf( "\n XES Energy = %f\n", std::abs(((2.0*xes_energy - triplet_energy)*pc_hartree2ev)));
     }
 
     // Save the excitation energy
     if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
-        singlet_exc_energy_s_plus_ = std::abs(xes_energy/pc_hartree2ev);
+        singlet_exc_energy_s_plus_ = std::abs(xes_energy);
     }
     else{
         singlet_exc_energy_s_plus_ = singlet_exc_energy;
