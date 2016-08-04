@@ -116,7 +116,7 @@ public:
         boost::shared_ptr<Matrix> C,
         Options& options);
     /// Build the IAOs for exporting
-    SharedMatrix build_iaos();
+    std::map<std::string, SharedMatrix> build_iaos();
 
     // => Knobs <= //
 

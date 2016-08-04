@@ -99,7 +99,7 @@ boost::shared_ptr<IAOBuilder> IAOBuilder::build(
     return local;
 }
 
-SharedMatrix IAOBuilder::build_iaos()
+std::map<std::string, SharedMatrix> IAOBuilder::build_iaos()
 {
     // => Ghosting <= //
     boost::shared_ptr<Molecule> mol = minao_->molecule();
@@ -217,8 +217,16 @@ SharedMatrix IAOBuilder::build_iaos()
     S_ = S11;
     A_ = A;
 
-    SharedMatrix Acoeff(A->clone()); 
-    return Acoeff;
+    SharedMatrix Acoeff(A->clone());
+    SharedMatrix S_min(S22->clone());
+    std::map<std::string, SharedMatrix > ret; 
+    ret["A"] = Acoeff;
+    ret["S_min"] = S_min;
+
+    //ret["A"] = set_name("A")
+    //ret["S_min"] = set_name("S_min")
+    
+    return ret;
 }
 
 } // Namespace psi

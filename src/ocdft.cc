@@ -1903,8 +1903,12 @@ void UOCDFT::analyze_excitations()
     copy_block(Ca_,1.0,TempMatrix,0.0,nsopi_,nalphapi_);
     // Bring in IAO Coefficients (nbfs x niaos)
     boost::shared_ptr<IAOBuilder> iao = IAOBuilder::build(wfn_->basisset(), TempMatrix, KS::options_);
-    iao_coeffs = iao->build_iaos();
+    std::map<std::string, SharedMatrix > ret;
+    ret = iao->build_iaos();
+    iao_coeffs = ret["A"];
     int nmin = iao_coeffs->colspi()[0];
+    SharedMatrix S_min = SharedMatrix(new Matrix("AO Overlap matrix", nmin, nmin));
+    S_min = ret["S_min"];
     SharedMatrix hole_iao = SharedMatrix(new Matrix("Hole IAO Density", nmin, nmin));
     SharedMatrix part_iao = SharedMatrix(new Matrix("Particle IAO Density", nmin, nmin));
     TempMatrix2->zero();
@@ -2024,8 +2028,8 @@ void UOCDFT::analyze_excitations()
         // 2. Take Trace of Population Matrix
         // 3. Decompose by atom
 
-        SharedMatrix population_matrix_hole = SharedMatrix(new Matrix("IAO Population Matrix ", KS::basisset_->nbf(), KS::basisset_->nbf()));
-        population_matrix_hole->gemm(false,false,1.0,hole_iao,S_ao,0.0);
+        SharedMatrix population_matrix_hole = SharedMatrix(new Matrix("IAO Population Matrix ", nmin, nmin));
+        population_matrix_hole->gemm(false,false,1.0,hole_iao,S_min,0.0);
         double trace = 0.0;
         double reg_trace = 0.0;
         for (int iao : ifn){
@@ -2049,8 +2053,8 @@ void UOCDFT::analyze_excitations()
     outfile->Printf("\n   =====================================================");
     for (auto& i : keys){
         auto& ifn = atom_am_to_f[i];
-        SharedMatrix population_matrix_part = SharedMatrix(new Matrix("IAO Particle Population Matrix ", KS::basisset_->nbf(), KS::basisset_->nbf()));
-        population_matrix_part->gemm(false,false,1.0,part_iao,S_ao,0.0);
+        SharedMatrix population_matrix_part = SharedMatrix(new Matrix("IAO Particle Population Matrix ", nmin, nmin));
+        population_matrix_part->gemm(false,false,1.0,part_iao,S_min,0.0);
         double trace = 0.0;
         for (int iao : ifn){
             trace += population_matrix_part->get(iao,iao);
@@ -2102,7 +2106,7 @@ void UOCDFT::analyze_excitations()
 		// 3. Decompose by atom
 
 		SharedMatrix population_matrix_hole_full = SharedMatrix(new Matrix("IAO Population Matrix ", KS::basisset_->nbf(), KS::basisset_->nbf()));
-		SharedMatrix Dh_ = SharedMatrix(new Matrix("Hole Detachment Density", nsopi_,gs_nalphapi_));
+		SharedMatrix Dh_ = SharedMatrix(new Matrix("Hole Detachment Density", nsopi_,nsopi_));
 		Dh_->gemm(false,true,1.0,Ch_,Ch_,0.0);
 		population_matrix_hole_full->gemm(false,false,1.0,Dh_,S_ao,0.0);
 		double trace = 0.0;
@@ -2128,7 +2132,7 @@ void UOCDFT::analyze_excitations()
 		auto& ifn = atom_am_to_f_full[i];        
 
 		SharedMatrix population_matrix_particle_full = SharedMatrix(new Matrix("IAO Population Matrix ", KS::basisset_->nbf(), KS::basisset_->nbf()));
-		SharedMatrix Dp_ = SharedMatrix(new Matrix("Particle Detachment Density", nsopi_,gs_navirpi_));
+		SharedMatrix Dp_ = SharedMatrix(new Matrix("Particle Detachment Density", nsopi_,nsopi_));
 		Dp_->gemm(false,true,1.0,Cp_,Cp_,0.0);
 		population_matrix_particle_full->gemm(false,false,1.0,Dp_,S_ao,0.0);
 		double trace = 0.0;
