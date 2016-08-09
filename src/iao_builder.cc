@@ -25,7 +25,11 @@
  * @END LICENSE
  */
 
+#include <boost/tuple/tuple_comparison.hpp>
+#include <boost/format.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <libqt/qt.h>
+#include <libcubeprop/cubeprop.h>
 #include <libmints/mints.h>
 #include "iao_builder.h"
 
@@ -219,14 +223,386 @@ std::map<std::string, SharedMatrix> IAOBuilder::build_iaos()
 
     SharedMatrix Acoeff(A->clone());
     SharedMatrix S_min(S22->clone());
+    SharedMatrix L_clone(L->clone());
+
+    std::vector<std::vector<int> > minao_inds;
+    for (int A = 0; A < true_atoms_.size(); A++) {
+        std::vector<int> vec;
+        for (int m = 0; m < iaos_to_atoms_.size(); m++) {
+            if (iaos_to_atoms_[m] == A) {
+                vec.push_back(m);
+            }
+        }
+        minao_inds.push_back(vec);
+    }
+    
+    int nocc = L->rowspi()[0];
+    
+    std::vector<int> ranges;
+    ranges.push_back(0);
+    ranges.push_back(nocc);
+
+    std::vector<std::pair<int,int> > rot_inds;
+    for (int ind = 0; ind < ranges.size() - 1; ind++) {
+        int start = ranges[ind];
+        int stop  = ranges[ind+1];
+        for (int i = start; i < stop; i++) {
+            for (int j = start; j < i; j++) {
+                rot_inds.push_back(std::pair<int,int>(i,j));
+            }
+        }
+    }
+
+
     std::map<std::string, SharedMatrix > ret; 
     ret["A"] = Acoeff;
     ret["S_min"] = S_min;
-
+    //ret["U"] = U;
+    //print_IAO(Acoeff,nmin,primary_->nbf()); Function I envision
     //ret["A"] = set_name("A")
     //ret["S_min"] = set_name("S_min")
     
     return ret;
+}
+
+void IAOBuilder::print_IAO(SharedMatrix A, int nmin, int nbf, SharedWavefunction wfn_)
+{
+    CubeProperties cube = CubeProperties(wfn_);
+    std::vector<int> iao_inds;
+    SharedMatrix A_nbf = SharedMatrix(new Matrix("IAO coefficient matrix in nbf dimensions", nbf,nbf));
+    for (int i = 0; i < nbf; ++i){
+        for (int j = 0; j < nbf; ++j){
+	    A_nbf->set(i,j,A->get(i,j));
+        }
+    }
+
+    std::vector<std::string> iao_labs;
+    for (int ind = 0; ind < nmin ; ++ind){
+        std::string state_str = boost::str(boost::format("%d") % 1);
+        iao_inds.push_back(ind);
+        iao_labs.push_back(state_str);
+     }
+    cube.compute_orbitals(A_nbf, iao_inds,iao_labs, "iao");
+}
+
+std::map<std::string, boost::shared_ptr<Matrix>> IAOBuilder::ibo_localizer(boost::shared_ptr<Matrix> L, const std::vector<std::vector<int> >& minao_inds, const std::vector<std::pair<int, int> >& rot_inds, double convergence,int maxiter, int power)
+{
+    int nmin = L->colspi()[0];
+    int nocc = L->rowspi()[0];
+
+    boost::shared_ptr<Matrix> L2(L->clone());
+    L2->copy(L);
+    double** Lp = L2->pointer();
+
+    boost::shared_ptr<Matrix> U(new Matrix("U", nocc, nocc));
+    U->identity();
+    double** Up = U->pointer();
+
+    bool converged = false;
+
+    if (power != 2 && power != 4) throw PSIEXCEPTION("IAO: Invalid metric power.");
+
+    outfile->Printf( "    @IBO %4s: %24s %14s\n", "Iter", "Metric", "Gradient");
+
+    for (int iter = 1; iter <= maxiter; iter++) {
+
+        double metric = 0.0;
+        for (int i = 0; i < nocc; i++) {
+            for (int A = 0; A < minao_inds.size(); A++) {
+                double Lval = 0.0;
+                for (int m = 0; m < minao_inds[A].size(); m++) {
+                    int mind = minao_inds[A][m];
+                    Lval += Lp[i][mind] * Lp[i][mind];
+                }
+                metric += pow(Lval, power);
+            }        
+	}
+        metric = pow(metric, 1.0 / power);
+
+        double gradient = 0.0;
+        for (int ind = 0; ind < rot_inds.size(); ind++) {
+            int i = rot_inds[ind].first;
+            int j = rot_inds[ind].second;
+
+            double Aij = 0.0;
+            double Bij = 0.0;
+            for (int A = 0; A < minao_inds.size(); A++) {
+                double Qii = 0.0;
+                double Qij = 0.0;
+                double Qjj = 0.0;
+                for (int m = 0; m < minao_inds[A].size(); m++) {
+                    int mind = minao_inds[A][m];
+                    Qii += Lp[i][mind] * Lp[i][mind];
+                    Qij += Lp[i][mind] * Lp[j][mind];
+                    Qjj += Lp[j][mind] * Lp[j][mind];
+                }
+                if (power == 2) {
+                    Aij += 4.0 * Qij * Qij - (Qii - Qjj) * (Qii - Qjj);
+                    Bij += 4.0 * Qij * (Qii - Qjj);
+                } else {
+                    Aij += (-1.0) * Qii * Qii * Qii * Qii - Qjj * Qjj * Qjj * Qjj + 6.0 * (Qii * Qii + Qjj * Qjj) * Qij * Qij + Qii * Qii * Qii * Qjj + Qii * Qjj * Qjj * Qjj;
+                    Bij += 4.0 * Qij * (Qii * Qii * Qii - Qjj * Qjj * Qjj);
+                }
+            }
+            double phi = 0.25 * atan2(Bij, -Aij);
+            double c = cos(phi);
+            double s = sin(phi);
+
+            C_DROT(nmin,Lp[i],1,Lp[j],1,c,s);
+            C_DROT(nocc,Up[i],1,Up[j],1,c,s);
+
+            gradient += Bij * Bij;
+
+        }
+        gradient = sqrt(gradient);
+
+        outfile->Printf( "    @IBO %4d: %24.16E %14.6E\n", iter, metric, gradient);
+
+        if (gradient < convergence) {
+            converged = true;
+            break;
+        }
+
+    }
+    outfile->Printf( "\n");
+    if (converged) {
+        outfile->Printf( "    IBO Localizer converged.\n\n");
+    } else {
+        outfile->Printf( "    IBO Localizer failed.\n\n");
+    }
+
+    U->transpose_this();
+
+    std::map<std::string, boost::shared_ptr<Matrix> > ret;
+    ret["U"] = U;
+    ret["L"] = L2;
+    SharedMatrix L_local(L2->clone());
+    //ret["U"]->set_name("U");
+    //ret["L"]->set_name("L");
+
+    return ret;
+
+}
+
+std::map<std::string, boost::shared_ptr<Matrix> > IAOBuilder::localize(
+        boost::shared_ptr<Matrix> Cocc,
+        boost::shared_ptr<Matrix> Focc,
+        const std::vector<int>& ranges2
+        )
+{
+    if (!A_) build_iaos();
+
+    std::vector<int> ranges = ranges2;
+    if (!ranges.size()) {
+        ranges.push_back(0);
+        ranges.push_back(Cocc->colspi()[0]);
+    }
+
+    std::vector<std::vector<int> > minao_inds;
+    for (int A = 0; A < true_atoms_.size(); A++) {
+        std::vector<int> vec;
+        for (int m = 0; m < iaos_to_atoms_.size(); m++) {
+            if (iaos_to_atoms_[m] == A) {
+                vec.push_back(m);
+            }
+        }
+        minao_inds.push_back(vec);
+    }
+
+    std::vector<std::pair<int,int> > rot_inds;
+    for (int ind = 0; ind < ranges.size() - 1; ind++) {
+        int start = ranges[ind];
+        int stop  = ranges[ind+1];
+        for (int i = start; i < stop; i++) {
+            for (int j = start; j < i; j++) {
+                rot_inds.push_back(std::pair<int,int>(i,j));
+            }
+        }
+    }
+
+    boost::shared_ptr<Matrix> L = Matrix::triplet(Cocc,S_,A_,true,false,false);
+    //L->set_name("L");
+   
+    std::map<std::string, boost::shared_ptr<Matrix> > ret1 = IAOBuilder::ibo_localizer(L,minao_inds,rot_inds,convergence_,maxiter_,power_);
+    L = ret1["L"];
+    boost::shared_ptr<Matrix> U = ret1["U"];
+
+    if (use_stars_) {
+        boost::shared_ptr<Matrix> Q = orbital_charges(L);
+        double** Qp = Q->pointer();
+        int nocc  = Q->colspi()[0];
+        int natom = Q->rowspi()[0];
+
+        std::vector<int> pi_orbs;
+        for (int i = 0; i < nocc; i++) {
+            std::vector<double> Qs;            for (int A = 0; A < natom; A++) {
+                Qs.push_back(fabs(Qp[A][i]));
+            }
+            std::sort(Qs.begin(),Qs.end(),std::greater<double>());
+            double Qtot = 0.0;
+            for (int A = 0; A < natom && A < 2; A++) {
+                Qtot += Qs[A];
+            }
+            if (Qtot < stars_completeness_) {
+                pi_orbs.push_back(i);
+            }
+        }
+        std::vector<std::pair<int,int> > rot_inds2;
+        for (int iind = 0; iind < pi_orbs.size(); iind++) {
+            for (int jind = 0; jind < iind; jind++) {
+                rot_inds2.push_back(std::pair<int,int>(pi_orbs[iind],pi_orbs[jind]));
+            }
+        }
+
+        std::vector<std::vector<int> > minao_inds2;
+        for (int Aind = 0; Aind < stars_.size(); Aind++) {
+            int A = -1;
+            for (int A2 = 0; A2 < true_atoms_.size(); A2++) {
+                if (stars_[Aind] == true_atoms_[A2]) {                    A = A2;
+                    break;
+                }
+            }
+            if (A == -1) continue;
+            std::vector<int> vec;            for (int m = 0; m < iaos_to_atoms_.size(); m++) {
+                if (iaos_to_atoms_[m] == A) {
+                    vec.push_back(m);
+                }
+            }
+            minao_inds2.push_back(vec);
+        }
+
+        outfile->Printf( "    *** Stars Procedure ***\n\n");
+        outfile->Printf( "    Pi Completeness = %11.3f\n", stars_completeness_);
+        outfile->Printf( "    Number of Pis   = %11zu\n", pi_orbs.size());
+        outfile->Printf( "    Number of Stars = %11zu\n", stars_.size());
+        outfile->Printf( "    Star Centers: ");
+        for (int ind = 0; ind < stars_.size(); ind++) {
+            outfile->Printf( "%3d ", stars_[ind]+1);
+        }
+        outfile->Printf( "\n\n");
+
+        std::map<std::string, boost::shared_ptr<Matrix> > ret2 = IAOBuilder::ibo_localizer(
+L,minao_inds2,rot_inds2,convergence_,maxiter_,power_);
+        L = ret2["L"];
+        boost::shared_ptr<Matrix> U3 = ret2["U"];
+        U = Matrix::doublet(U,U3,false,false);
+
+        std::map<std::string, boost::shared_ptr<Matrix> > ret3 = IAOBuilder::ibo_localizer(
+L,minao_inds,rot_inds,convergence_,maxiter_,power_);
+        L = ret3["L"];
+        boost::shared_ptr<Matrix> U4 = ret3["U"];
+        U = Matrix::doublet(U,U4,false,false);
+
+        // => Analysis <= //
+
+        Q = orbital_charges(L);
+        Qp = Q->pointer();
+
+        pi_orbs.clear();
+        for (int i = 0; i < nocc; i++) {
+            std::vector<double> Qs;
+            for (int A = 0; A < natom; A++) {
+                Qs.push_back(fabs(Qp[A][i]));
+            }
+            std::sort(Qs.begin(),Qs.end(),std::greater<double>());
+            double Qtot = 0.0;
+            for (int A = 0; A < natom && A < 2; A++) {
+                Qtot += Qs[A];
+            }
+            if (Qtot < stars_completeness_) {
+                pi_orbs.push_back(i);
+            }
+        }
+
+        std::vector<int> centers;
+        for (int i2 = 0; i2 < pi_orbs.size(); i2++) {
+            int i = pi_orbs[i2];
+            int ind = 0;
+            for (int A = 0; A < natom; A++) {
+                if (fabs(Qp[A][i]) >= fabs(Qp[ind][i])) {
+                    ind = A;
+                }
+            }
+            centers.push_back(ind);
+        }   
+        std::sort(centers.begin(), centers.end());
+
+        outfile->Printf( "    *** Stars Analysis ***\n\n");
+        outfile->Printf( "    Pi Centers: ");
+        for (int ind = 0; ind < centers.size(); ind++) {
+            outfile->Printf( "%3d ", centers[ind]+1);
+        }
+        outfile->Printf( "\n\n");
+    }
+
+    boost::shared_ptr<Matrix> Focc2 = Matrix::triplet(U,Focc,U,true,false,false);
+    boost::shared_ptr<Matrix> U2 = IAOBuilder::reorder_orbitals(Focc2, ranges);
+
+    boost::shared_ptr<Matrix> Uocc3 = Matrix::doublet(U,U2,false,false);
+    boost::shared_ptr<Matrix> Focc3 = Matrix::triplet(Uocc3,Focc,Uocc3,true,false,false);
+    boost::shared_ptr<Matrix> Locc3 = Matrix::doublet(Cocc,Uocc3,false,false);
+    L = Matrix::doublet(U2,L,true,false);
+    boost::shared_ptr<Matrix> Q = orbital_charges(L);
+
+    std::map<std::string, boost::shared_ptr<Matrix> > ret;
+    ret["L"] = Locc3;
+    ret["U"] = Uocc3;
+    ret["F"] = Focc3;
+    ret["Q"] = Q;
+
+    //ret["L"]->set_name("L");
+    //ret["U"]->set_name("U");
+    //ret["F"]->set_name("F");
+    //ret["Q"]->set_name("Q");
+
+    return ret;
+
+}
+
+boost::shared_ptr<Matrix> IAOBuilder::reorder_orbitals(
+    boost::shared_ptr<Matrix> F,
+    const std::vector<int>& ranges)
+{
+    int nmo = F->rowspi()[0];
+    double** Fp = F->pointer();
+
+    boost::shared_ptr<Matrix> U(new Matrix("U", nmo, nmo));
+    double** Up = U->pointer();
+
+    for (int ind = 0; ind < ranges.size() - 1; ind++) {
+        int start = ranges[ind];
+        int stop = ranges[ind+1];
+        std::vector<std::pair<double,int> > fvals;
+        for (int i = start; i < stop; i++) {
+            fvals.push_back(std::pair<double,int>(Fp[i][i],i));
+        }
+        std::sort(fvals.begin(),fvals.end());
+        for (int i = start; i < stop; i++) {
+            Up[i][fvals[i-start].second] = 1.0;
+        }
+    }
+
+    return U;
+}
+
+boost::shared_ptr<Matrix> IAOBuilder::orbital_charges(
+    boost::shared_ptr<Matrix> L)
+{
+    double** Lp = L->pointer();
+    int nocc = L->rowspi()[0];
+    int nmin = L->colspi()[0];
+    int natom = true_atoms_.size();
+
+    boost::shared_ptr<Matrix> Q(new Matrix("Q", natom, nocc));
+    double** Qp = Q->pointer();
+
+    for (int i = 0; i < nocc; i++) {
+        for (int m = 0; m < nmin; m++) {
+            Qp[iaos_to_atoms_[m]][i] += Lp[i][m] * Lp[i][m];
+        }
+    }
+
+    return Q;
 }
 
 } // Namespace psi

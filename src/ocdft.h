@@ -117,6 +117,8 @@ protected:
     SharedMatrix Ub_o_;
     /// The eigenvectors of PvFPv
     SharedMatrix Ub_v_;
+    //SharedMatrix L_ibo;
+    //SharedMatrix A_iao;
     ///// Old C Alpha matrix (if needed for MOM)
     //SharedMatrix Ca_old_;
     ///// Old C Beta matrix (if needed for MOM)

@@ -140,6 +140,8 @@ void UOCDFT::init()
     TempMatrix2 = factory_->create_shared_matrix("Temp2");
     TempMatrix3 = factory_->create_shared_matrix("Temp3");
     TempMatrix4 = factory_->create_shared_matrix("Temp4");
+    //L_ibo = factory_->create_shared_matrix("IBO Coefficients");
+    //A_iao = factory_->create_shared_matrix("IAOs in Primary basis size Matrix");
     Dolda_ = factory_->create_shared_matrix("Dold alpha");
     Doldb_ = factory_->create_shared_matrix("Dold beta");
     NTOs_ =  factory_->create_shared_matrix("Natural Transition Orbitals");
@@ -215,6 +217,8 @@ void UOCDFT::init_excitation(SharedWavefunction ref_scf)
     Ua_v_ = SharedMatrix(new Matrix("Ua_v_",gs_navirpi_,gs_navirpi_));
     lambda_a_o_ = SharedVector(new Vector("lambda_a_o_",gs_nalphapi_));
     lambda_a_v_ = SharedVector(new Vector("lambda_a_v_",gs_navirpi_));
+    //A_iao = SharedMatrix(new Matrix("IAO Coefficients",nsopi_, nsopi_));
+    //L_ibo = SharedMatrix(new Matrix("IBO Coefficients",nsopi_, nsopi_));
 
     Ch_ = SharedMatrix(new Matrix("Ch_",nsopi_,gs_nalphapi_));
     Cp_ = SharedMatrix(new Matrix("Cp_",nsopi_,gs_navirpi_));
@@ -1899,14 +1903,37 @@ void UOCDFT::analyze_excitations()
     S_ao->remove_symmetry(S_,SO2AO_);
     SharedMatrix iao_coeffs;
     TempMatrix->zero();
+    TempMatrix3->zero();
+    TempMatrix4->zero();
     // Copy the occupied block of Ca and Fa
     copy_block(Ca_,1.0,TempMatrix,0.0,nsopi_,nalphapi_);
+    copy_block(dets[0]->Ca(),1.0,TempMatrix3,0.0,nsopi_,nalphapi_);
+    copy_block(Fa_,1.0,TempMatrix2,0.0,nsopi_,nalphapi_);
+    copy_block(gs_Fa_,1.0,TempMatrix4,0.0,nsopi_,nalphapi_);
     // Bring in IAO Coefficients (nbfs x niaos)
     boost::shared_ptr<IAOBuilder> iao = IAOBuilder::build(wfn_->basisset(), TempMatrix, KS::options_);
     std::map<std::string, SharedMatrix > ret;
+    std::map<std::string, boost::shared_ptr<Matrix>> ret2;
     ret = iao->build_iaos();
+    std::vector<int> ranges;
+    ranges.push_back(0);
+    ranges.push_back(nocc); 
+    ret2 = iao->localize(TempMatrix3, TempMatrix4, ranges);
+    SharedMatrix L = SharedMatrix(new Matrix("AO Overlap matrix",KS::basisset_->nbf() , KS::basisset_->nbf()));
+    L = ret2["L"];
     iao_coeffs = ret["A"];
     int nmin = iao_coeffs->colspi()[0];
+    if(state_==1){
+        iao->print_IAO(iao_coeffs, nmin, KS::basisset_->nbf(), wfn_);
+    }
+    SharedMatrix IAO_print = SharedMatrix(new Matrix("AO Overlap matrix",KS::basisset_->nbf() , KS::basisset_->nbf()));
+    for (int i = 0; i < KS::basisset_->nbf(); ++i){
+        for (int j = 0; j < nmin; ++j){
+            IAO_print->set(i,j,iao_coeffs->get(i,j));
+        }
+    }
+    IAO_print->print();
+    //int nmin = iao_coeffs->colspi()[0];
     SharedMatrix S_min = SharedMatrix(new Matrix("AO Overlap matrix", nmin, nmin));
     S_min = ret["S_min"];
     SharedMatrix hole_iao = SharedMatrix(new Matrix("Hole IAO Density", nmin, nmin));
@@ -2150,7 +2177,7 @@ void UOCDFT::analyze_excitations()
         }
 	    outfile->Printf("\n   -----------------------------------------------------");
     }
-    outfile->Printf("\n\n  Analysis of the hole/particle MOs in terms of the ground state DFT MOs");
+    //outfile->Printf("\n\n  Analysis of the hole/particle MOs in terms of the ground state DFT MOs");
     if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
     	TempMatrix->gemm(false,false,1.0,S_,dets[1]->Ca(),0.0);
     }
@@ -2164,6 +2191,86 @@ void UOCDFT::analyze_excitations()
     else{
         temp_int_new = 0;
     }
+    SharedMatrix Temporary_hole = SharedMatrix(new Matrix("Hole Transformation Matrix", KS::basisset_->nbf(), nocc));
+    SharedMatrix Temporary_particle = SharedMatrix(new Matrix("Particle Transformation Matrix", KS::basisset_->nbf(), nvir));
+    Temporary_hole->gemm(false,false,1.0,S_,Ch_,0.0);
+    Temporary_particle->gemm(false,false,1.0,S_,Cp_,0.0);
+    SharedMatrix LSCh = SharedMatrix(new Matrix("IBO Hole Overlap ", KS::basisset_->nbf(), nocc));
+    SharedMatrix LSCp = SharedMatrix(new Matrix("IBO Particle Overlap ", KS::basisset_->nbf(), nvir));
+    SharedMatrix ASCh = SharedMatrix(new Matrix("IAO Hole Overlap ", KS::basisset_->nbf(), nocc));
+    SharedMatrix ASCp = SharedMatrix(new Matrix("IAO Particle Overlap ", KS::basisset_->nbf(), nvir));
+    LSCh->gemm(true,false,1.0,L,Temporary_hole,0.0);
+    ASCh->gemm(true,false,1.0,IAO_print,Temporary_hole,0.0);
+    //LSCh->print();
+    LSCp->gemm(true,false,1.0,L,Temporary_particle,0.0);
+    ASCp->gemm(true,false,1.0,IAO_print,Temporary_particle,0.0);
+    //LSCp->gemm(true,false,1.0,L,Temporary_particle,0.0);
+    //ASCp->gemm(true,false,1.0,IAO_print,Temporary_particle,0.0);
+    std::vector<std::pair<double,int> > pair_occ_ibo_hole;
+    for (int i = 0; i < nocc; ++i){
+            double overlap = std::pow(LSCh->get(i,0),2.0);
+	    outfile->Printf("\n %f", overlap);
+            if(overlap>0.01){
+                pair_occ_ibo_hole.push_back(std::make_pair(overlap,i+1));
+            }
+    } 
+    outfile->Printf("\n\n  Analysis of the hole/particle MOs in terms of the Intrinsic Bond Orbitals (IBOs)");
+    std::sort(pair_occ_ibo_hole.begin(),pair_occ_ibo_hole.end());
+    std::reverse(pair_occ_ibo_hole.begin(),pair_occ_ibo_hole.end());
+    outfile->Printf("\n Hole: ");
+    for(auto occ_ibo : pair_occ_ibo_hole){
+        outfile->Printf("|%.1f%% IBO%d|",occ_ibo.first*100.0,occ_ibo.second);
+    }
+    outfile->Printf("\n");
+
+    std::vector<std::pair<double,int> > pair_occ_ibo_part;
+    for (int i = 0; i < nocc; ++i){
+            double overlap = std::pow(LSCp->get(i,0),2.0);
+            if(overlap>0.01){
+                pair_occ_ibo_part.push_back(std::make_pair(overlap,i+1));
+            }
+    }
+    std::sort(pair_occ_ibo_part.begin(),pair_occ_ibo_part.end());
+    std::reverse(pair_occ_ibo_part.begin(),pair_occ_ibo_part.end());
+    outfile->Printf("\n Particle: ");
+    for(auto occ_ibo : pair_occ_ibo_part){
+        outfile->Printf("|%.1f%% IBO%d|",occ_ibo.first*100.0,occ_ibo.second);
+    }
+
+    std::vector<std::pair<double,int> > pair_occ_iao_hole;
+    for (int i = 0; i < KS::basisset_->nbf(); ++i){
+            double overlap = std::pow(ASCh->get(i,0),2.0);
+            if(overlap>0.01){
+                pair_occ_iao_hole.push_back(std::make_pair(overlap,i+1));
+            }
+    }
+
+    outfile->Printf("\n\n  Analysis of the hole/particle MOs in terms of the Intrinsic Atomic Orbitals (IAOs)");
+    std::sort(pair_occ_iao_hole.begin(),pair_occ_iao_hole.end());
+    std::reverse(pair_occ_iao_hole.begin(),pair_occ_iao_hole.end());
+    outfile->Printf("\n Hole: ");
+    for(auto occ_iao : pair_occ_iao_hole){
+        outfile->Printf("|%.1f%% IAO%d|",occ_iao.first*100.0,occ_iao.second);
+    }
+    outfile->Printf("\n");
+
+
+    std::vector<std::pair<double,int> > pair_occ_iao_part;
+    for (int i = 0; i < KS::basisset_->nbf(); ++i){
+            double overlap = std::pow(ASCp->get(i,0),2.0);
+            if(overlap>0.01){
+                pair_occ_iao_part.push_back(std::make_pair(overlap,i+1));
+            }
+    }
+    std::sort(pair_occ_iao_part.begin(),pair_occ_iao_part.end());
+    std::reverse(pair_occ_iao_part.begin(),pair_occ_iao_part.end());
+    outfile->Printf("\n Particle: ");
+    for(auto occ_iao : pair_occ_iao_part){
+        outfile->Printf("|%.1f%% IAO%d|",occ_iao.first*100.0,occ_iao.second);
+    }
+
+
+    outfile->Printf("\n\n  Analysis of the hole/particle MOs in terms of the ground state DFT MOs");
     SharedMatrix ChSCa(new Matrix(Ch_->colspi(),dets[temp_int_new]->Ca()->colspi()));
     ChSCa->gemm(true,false,1.0,Ch_,TempMatrix,0.0);
     for (int h = 0; h < nirrep_; ++h){

@@ -118,6 +118,23 @@ public:
     /// Build the IAOs for exporting
     std::map<std::string, SharedMatrix> build_iaos();
 
+    void print_IAO(SharedMatrix A, int nmin, int nbf, SharedWavefunction wfn_);
+
+std::map<std::string, boost::shared_ptr<Matrix>> ibo_localizer(boost::shared_ptr<Matrix> L, const std::vector<std::vector<int> >& minao_inds, const std::vector<std::pair<int, int> >& rot_inds, double convergence,int maxiter, int power);
+
+std::map<std::string, boost::shared_ptr<Matrix> > localize(
+        boost::shared_ptr<Matrix> Cocc,
+        boost::shared_ptr<Matrix> Focc,
+        const std::vector<int>& ranges2
+        );
+
+boost::shared_ptr<Matrix> reorder_orbitals(
+    boost::shared_ptr<Matrix> F,
+    const std::vector<int>& ranges);
+
+boost::shared_ptr<Matrix> orbital_charges(
+    boost::shared_ptr<Matrix> L);
+
     // => Knobs <= //
 
     void set_print(int print) { print_ = print; }
