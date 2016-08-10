@@ -265,22 +265,59 @@ std::map<std::string, SharedMatrix> IAOBuilder::build_iaos()
     return ret;
 }
 
-void IAOBuilder::print_IAO(SharedMatrix A, int nmin, int nbf, SharedWavefunction wfn_)
+void IAOBuilder::print_IAO(SharedMatrix A_, int nmin, int nbf, SharedWavefunction wfn_)
 {
     CubeProperties cube = CubeProperties(wfn_);
+    boost::shared_ptr<Molecule> mol = minao_->molecule();
     std::vector<int> iao_inds;
     SharedMatrix A_nbf = SharedMatrix(new Matrix("IAO coefficient matrix in nbf dimensions", nbf,nbf));
     for (int i = 0; i < nbf; ++i){
         for (int j = 0; j < nbf; ++j){
-	    A_nbf->set(i,j,A->get(i,j));
+	    A_nbf->set(i,j,A_->get(i,j));
+        }
+    }
+    // Form a map that lists all functions on a given atom and with a given ang. momentum
+    std::map<boost::tuple<int,int,int>,std::vector<int>> atom_am_to_f;
+    int sum = 0;
+    for (int A = 0; A < mol->natom(); A++) {
+        int principal_qn = 0;
+        int n_shell = minao_->nshell_on_center(A);
+        for (int Q = 0; Q < n_shell; Q++){
+            const GaussianShell& shell = minao_->shell(A,Q);
+            int nfunction = shell.nfunction();
+            int am = shell.am();
+            if(am==0){
+                principal_qn = principal_qn + 1;
+            }
+            boost::tuple<int,int,int> atom_am;
+            atom_am = boost::make_tuple(A,am,(principal_qn));
+            for (int p = sum; p < sum + nfunction; ++p){
+                atom_am_to_f[atom_am].push_back(p);
+            }
+            sum += nfunction;
         }
     }
 
+    std::vector<std::string> l_to_symbol{"s","p","d","f","g","h"};
+
+    // "I got the keys, the keys, the keys"
+    std::vector<boost::tuple<int,int,int>> keys;
+    for (auto& kv : atom_am_to_f){
+        keys.push_back(kv.first);
+    }
+
     std::vector<std::string> iao_labs;
+    for (auto& i : keys){
+        auto& ifn = atom_am_to_f[i];
+        for (auto& iao : ifn){
+            std::string outstr = boost::str(boost::format("%d%s_%d%s") % (i.get<0>() + 1) % mol->symbol(i.get<0>(
+)).c_str() % i.get<2>() % l_to_symbol[i.get<1>()].c_str());
+            iao_labs.push_back(outstr);
+        }
+    }
+
     for (int ind = 0; ind < nmin ; ++ind){
-        std::string state_str = boost::str(boost::format("%d") % 1);
         iao_inds.push_back(ind);
-        iao_labs.push_back(state_str);
      }
     cube.compute_orbitals(A_nbf, iao_inds,iao_labs, "iao");
 }
