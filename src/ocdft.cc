@@ -1932,7 +1932,7 @@ void UOCDFT::analyze_excitations()
             IAO_print->set(i,j,iao_coeffs->get(i,j));
         }
     }
-    IAO_print->print();
+    //IAO_print->print();
     //int nmin = iao_coeffs->colspi()[0];
     SharedMatrix S_min = SharedMatrix(new Matrix("AO Overlap matrix", nmin, nmin));
     S_min = ret["S_min"];
@@ -2020,15 +2020,20 @@ void UOCDFT::analyze_excitations()
     std::vector<std::pair<double,std::string>> ao_part_contributions;
 
     // Form a map that lists all functions on a given atom and with a given ang. momentum
-    std::map<std::pair<int,int>,std::vector<int>> atom_am_to_f;
+    std::map<boost::tuple<int,int,int>,std::vector<int>> atom_am_to_f;
     int sum = 0;
     for (int A = 0; A < KS::molecule_->natom(); A++) {
+        int principal_qn = 0;
         int n_shell = minao->nshell_on_center(A);
         for (int Q = 0; Q < n_shell; Q++){
             const GaussianShell& shell = minao->shell(A,Q);
             int nfunction = shell.nfunction();
-            int am = shell.am();            
-	    std::pair<int,int> atom_am(A,am);
+            int am = shell.am();
+	    if(am==0){
+		principal_qn = principal_qn + 1;
+	    }            
+	    boost::tuple<int,int,int> atom_am;
+	    atom_am = boost::make_tuple(A,am,(principal_qn));
             for (int p = sum; p < sum + nfunction; ++p){
                 atom_am_to_f[atom_am].push_back(p);
             }
@@ -2037,7 +2042,7 @@ void UOCDFT::analyze_excitations()
     } 
     
     // "I got the keys, the keys, the keys"
-    std::vector<std::pair<int,int>> keys;
+    std::vector<boost::tuple<int,int,int>> keys;
     for (auto& kv : atom_am_to_f){
         keys.push_back(kv.first);
     }
@@ -2064,7 +2069,7 @@ void UOCDFT::analyze_excitations()
         }
         //outfile->Printf("\n        %d            %s          %s           %9.2f ", i.first+1,KS::molecule_->symbol(i.first).c_str(),l_to_symbol[i.second].c_str(),trace);
         if (std::fabs(trace) >= 0.01){
-                std::string outstr = boost::str(boost::format("   %3d            %3s          %3s           %9.2f ") % (i.first + 1) % KS::molecule_->symbol(i.first).c_str() % l_to_symbol[i.second].c_str() % trace);
+                std::string outstr = boost::str(boost::format("   %3d            %3s          %3s           %9.2f ") % (i.get<0>() + 1) % KS::molecule_->symbol(i.get<0>()).c_str() % l_to_symbol[i.get<1>()].c_str() % trace);
 	        iao_hole_contributions.push_back(std::make_pair(trace,outstr));	
         }
     }
@@ -2087,7 +2092,7 @@ void UOCDFT::analyze_excitations()
             trace += population_matrix_part->get(iao,iao);
         }
         if (std::fabs(trace) >= 0.01){
-                std::string outstr = boost::str(boost::format("   %3d            %3s          %3s           %9.2f ") % (i.first + 1) % KS::molecule_->symbol(i.first).c_str() % l_to_symbol[i.second].c_str() % trace);
+                std::string outstr = boost::str(boost::format("   %3d            %3s          %3s           %9.2f ") % (i.get<0>() + 1) % KS::molecule_->symbol(i.get<0>()).c_str() % l_to_symbol[i.get<1>()].c_str() % trace);
                 iao_part_contributions.push_back(std::make_pair(trace,outstr));
         }
     }
@@ -2209,64 +2214,82 @@ void UOCDFT::analyze_excitations()
     std::vector<std::pair<double,int> > pair_occ_ibo_hole;
     for (int i = 0; i < nocc; ++i){
             double overlap = std::pow(LSCh->get(i,0),2.0);
-	    outfile->Printf("\n %f", overlap);
+	    //outfile->Printf("\n %f", overlap);
             if(overlap>0.01){
                 pair_occ_ibo_hole.push_back(std::make_pair(overlap,i+1));
             }
-    } 
-    outfile->Printf("\n\n  Analysis of the hole/particle MOs in terms of the Intrinsic Bond Orbitals (IBOs)");
-    std::sort(pair_occ_ibo_hole.begin(),pair_occ_ibo_hole.end());
-    std::reverse(pair_occ_ibo_hole.begin(),pair_occ_ibo_hole.end());
-    outfile->Printf("\n Hole: ");
-    for(auto occ_ibo : pair_occ_ibo_hole){
-        outfile->Printf("|%.1f%% IBO%d|",occ_ibo.first*100.0,occ_ibo.second);
     }
-    outfile->Printf("\n");
-
-    std::vector<std::pair<double,int> > pair_occ_ibo_part;
-    for (int i = 0; i < nocc; ++i){
-            double overlap = std::pow(LSCp->get(i,0),2.0);
+    if(KS::options_.get_bool("IBO_ANALYSIS")){ 
+	    outfile->Printf("\n\n  Analysis of the hole/particle MOs in terms of the Intrinsic Bond Orbitals (IBOs)");
+	    std::sort(pair_occ_ibo_hole.begin(),pair_occ_ibo_hole.end());
+	    std::reverse(pair_occ_ibo_hole.begin(),pair_occ_ibo_hole.end());
+	    outfile->Printf("\n Hole: ");
+	    for(auto occ_ibo : pair_occ_ibo_hole){
+		outfile->Printf("|%.1f%% IBO%d|",occ_ibo.first*100.0,occ_ibo.second);
+	    }
+	    outfile->Printf("\n");
+	    std::vector<std::pair<double,int> > pair_occ_ibo_part;
+	    for (int i = 0; i < nocc; ++i){
+		    double overlap = std::pow(LSCp->get(i,0),2.0);
+		    if(overlap>0.01){
+			pair_occ_ibo_part.push_back(std::make_pair(overlap,i+1));
+		    }
+	    }
+	    std::sort(pair_occ_ibo_part.begin(),pair_occ_ibo_part.end());
+	    std::reverse(pair_occ_ibo_part.begin(),pair_occ_ibo_part.end());
+	    outfile->Printf("\n Particle: ");
+	    for(auto occ_ibo : pair_occ_ibo_part){
+		outfile->Printf("|%.1f%% IBO%d|",occ_ibo.first*100.0,occ_ibo.second);
+	    }
+    }
+    
+    std::vector<std::pair<double,std::string> > pair_occ_iao_hole;
+    for (auto& i : keys){
+        auto& ifn = atom_am_to_f[i];
+	for (auto& iao : ifn){
+            double overlap = std::pow(ASCh->get(iao,0),2.0);
+            std::string outstr = boost::str(boost::format("%d%s(%d%s)") % (i.get<0>() + 1) % KS::molecule_->symbol(i.get<0>()).c_str() % i.get<2>() % l_to_symbol[i.get<1>()].c_str());
+	    //outfile->Printf("\n %s",outstr.c_str());
             if(overlap>0.01){
-                pair_occ_ibo_part.push_back(std::make_pair(overlap,i+1));
+                pair_occ_iao_hole.push_back(std::make_pair(overlap,outstr));
             }
+	}
     }
-    std::sort(pair_occ_ibo_part.begin(),pair_occ_ibo_part.end());
-    std::reverse(pair_occ_ibo_part.begin(),pair_occ_ibo_part.end());
-    outfile->Printf("\n Particle: ");
-    for(auto occ_ibo : pair_occ_ibo_part){
-        outfile->Printf("|%.1f%% IBO%d|",occ_ibo.first*100.0,occ_ibo.second);
-    }
-
-    std::vector<std::pair<double,int> > pair_occ_iao_hole;
-    for (int i = 0; i < KS::basisset_->nbf(); ++i){
-            double overlap = std::pow(ASCh->get(i,0),2.0);
-            if(overlap>0.01){
-                pair_occ_iao_hole.push_back(std::make_pair(overlap,i+1));
-            }
-    }
+    //std::vector<std::pair<double,int> > pair_occ_iao_hole;
+    //for (int i = 0; i < KS::basisset_->nbf(); ++i){
+    //        double overlap = std::pow(ASCh->get(i,0),2.0);
+    //        if(overlap>0.01){
+    //            pair_occ_iao_hole.push_back(std::make_pair(overlap,i+1));
+    //        }
+    //}
 
     outfile->Printf("\n\n  Analysis of the hole/particle MOs in terms of the Intrinsic Atomic Orbitals (IAOs)");
     std::sort(pair_occ_iao_hole.begin(),pair_occ_iao_hole.end());
     std::reverse(pair_occ_iao_hole.begin(),pair_occ_iao_hole.end());
-    outfile->Printf("\n Hole: ");
+    outfile->Printf("\n Hole:     ");
     for(auto occ_iao : pair_occ_iao_hole){
-        outfile->Printf("|%.1f%% IAO%d|",occ_iao.first*100.0,occ_iao.second);
+        outfile->Printf("|%.1f%% %s|",occ_iao.first*100.0,occ_iao.second.c_str());
     }
     outfile->Printf("\n");
 
 
-    std::vector<std::pair<double,int> > pair_occ_iao_part;
-    for (int i = 0; i < KS::basisset_->nbf(); ++i){
-            double overlap = std::pow(ASCp->get(i,0),2.0);
+    std::vector<std::pair<double,std::string> > pair_occ_iao_part;
+    for (auto& i : keys){
+        auto& ifn = atom_am_to_f[i];
+        for (auto& iao : ifn){
+            double overlap = std::pow(ASCp->get(iao,0),2.0);
+            std::string outstr = boost::str(boost::format("%d%s(%d%s)") % (i.get<0>() + 1) % KS::molecule_->symbol(i.get<0>()).c_str() % i.get<2>() % l_to_symbol[i.get<1>()].c_str());
+            //outfile->Printf("\n %s",outstr.c_str());
             if(overlap>0.01){
-                pair_occ_iao_part.push_back(std::make_pair(overlap,i+1));
+                pair_occ_iao_part.push_back(std::make_pair(overlap,outstr));
             }
+        }
     }
     std::sort(pair_occ_iao_part.begin(),pair_occ_iao_part.end());
     std::reverse(pair_occ_iao_part.begin(),pair_occ_iao_part.end());
     outfile->Printf("\n Particle: ");
     for(auto occ_iao : pair_occ_iao_part){
-        outfile->Printf("|%.1f%% IAO%d|",occ_iao.first*100.0,occ_iao.second);
+        outfile->Printf("|%.1f%% %s|",occ_iao.first*100.0,occ_iao.second.c_str());
     }
 
 
@@ -2342,11 +2365,45 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf)
     else{
         temp_index = 0;
     }
+    
+    TempMatrix->zero();
+    TempMatrix2->zero();
+    copy_block(Ca_,1.0,TempMatrix,0.0,nsopi_,nalphapi_); 
+    boost::shared_ptr<IAOBuilder> iao = IAOBuilder::build(wfn_->basisset(), TempMatrix, KS::options_);
+    std::map<std::string, SharedMatrix > ret;
+    ret = iao->build_iaos();
+    
+    SharedMatrix IAO = SharedMatrix(new Matrix("IAO coeffs in primary", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    SharedMatrix iao_coeffs2 = ret["A"];
+    int nmin = iao_coeffs2->colspi()[0];
+    for (int i = 0; i <  KS::basisset_->nbf(); ++i){
+        for (int j = 0; j < nmin; ++j){
+	    IAO->set(i,j,iao_coeffs2->get(i,j));
+	}
+    }
+    SharedMatrix Ca_A_iao = SharedMatrix(new Matrix("Determinant A alpha coeffs IAO Basis", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    SharedMatrix Ca_B_iao = SharedMatrix(new Matrix("Determinant B alpha coeffs IAO Basis", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    SharedMatrix Cb_A_iao = SharedMatrix(new Matrix("Determinant A beta coeffs IAO Basis", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    SharedMatrix Cb_B_iao = SharedMatrix(new Matrix("Determinant B beta coeffs IAO Basis", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    TempMatrix->gemm(true,false,1.0,IAO,S_,0.0);
     SharedDeterminant A = dets[temp_index];
     SharedDeterminant B = dets[dets.size() - 1];
     // I. Form the corresponding alpha and beta orbitals
+    SharedMatrix Ca_A(A->Ca()->clone());
+    outfile->Printf("\n HERE!");
+    Ca_A_iao->gemm(false,false,1.0,TempMatrix,Ca_A,0.0);
+    outfile->Printf("\n HERE!");
+    //Ca_A_iao->print();
+    SharedMatrix Ca_B(B->Ca()->clone());
+    Ca_B_iao->gemm(false,false,1.0,TempMatrix,Ca_B,0.0);
+    SharedMatrix Cb_A(A->Cb()->clone());
+    Cb_A_iao->gemm(false,false,1.0,TempMatrix,Cb_A,0.0);
+    SharedMatrix Cb_B(B->Cb()->clone());
+    Cb_B_iao->gemm(false,false,1.0,TempMatrix,Cb_B,0.0);
     boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
     boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> cbeta  = corresponding_orbitals(A->Cb(),B->Cb(),A->nbetapi(),B->nbetapi());
+    //boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(Ca_A_iao,Ca_B_iao,A->nalphapi(),B->nalphapi());
+    //boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> cbeta  = corresponding_orbitals(Cb_A_iao,Cb_B_iao,A->nbetapi(),B->nbetapi());
     SharedMatrix ACa = calpha.get<0>();
     SharedMatrix BCa = calpha.get<1>();
     SharedMatrix ACb = cbeta.get<0>();

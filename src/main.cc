@@ -87,6 +87,8 @@ int read_options(std::string name, Options& options)
         options.add_bool("FULL_MULLIKEN_PRINT", false);
         /*- Perform a correction of the triplet excitation energies using the S+ formalism -*/
         options.add_bool("CDFT_SPIN_ADAPT_SP", true);
+        /*- Show analysis of hole and particle orbitals in terms of Intrinsic Bond Orbitals -*/
+        options.add_bool("IBO_ANALYSIS", false);
         /*- Perform a correction of the triplet excitation energies using a CI formalism -*/
         options.add_bool("CDFT_SPIN_ADAPT_CI", false);
         /*- Break the symmetry of the HOMO/LUMO pair (works only in C1 symmetry) -*/
