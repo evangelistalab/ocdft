@@ -64,6 +64,7 @@ protected:
     int excited_state_symmetry_;
     /// Excited state number, starting from one
     int state_;
+    int nvvos;
 
     double singlet_exc_energy_s_plus_;
     double triplet_exc_energy_s_plus;
@@ -105,6 +106,7 @@ protected:
     SharedMatrix Ua_o_;
     /// The eigenvectors of PvFPv
     SharedMatrix Ua_v_;
+    SharedMatrix L_vvo;
     /// The eigenvalues of PoFPo
     SharedVector lambda_a_o_;
     /// The eigenvalues of PvFPv

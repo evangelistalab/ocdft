@@ -4,13 +4,15 @@
 #include <physconst.h>
 #include <psifiles.h>
 #include <libmints/view.h>
+#include <liboptions/liboptions.h>
+#include <libmints/local.h> 
 #include <libmints/mints.h>
 #include <libfock/apps.h>
 #include <libfock/v.h>
 #include <libfock/jk.h>
 #include <libcubeprop/cubeprop.h>
 #include <libdisp/dispersion.h>
-#include <liboptions/liboptions.h>
+//#include <liboptions/liboptions.h>
 #include <libciomr/libciomr.h>
 #include <libscf_solver/hf.h>
 #include <libqt/qt.h>
@@ -145,6 +147,8 @@ void UOCDFT::init()
     Dolda_ = factory_->create_shared_matrix("Dold alpha");
     Doldb_ = factory_->create_shared_matrix("Dold beta");
     NTOs_ =  factory_->create_shared_matrix("Natural Transition Orbitals");
+    //L_vvo = factory_->create_shared_matrix("Localized Ground State VVOs");
+    nvvos = 0;
     save_H_ = true;
 }
 
@@ -1911,7 +1915,7 @@ void UOCDFT::analyze_excitations()
     copy_block(Fa_,1.0,TempMatrix2,0.0,nsopi_,nalphapi_);
     copy_block(gs_Fa_,1.0,TempMatrix4,0.0,nsopi_,nalphapi_);
     // Bring in IAO Coefficients (nbfs x niaos)
-    boost::shared_ptr<IAOBuilder> iao = IAOBuilder::build(wfn_->basisset(), TempMatrix, KS::options_);
+    boost::shared_ptr<IAOBuilder> iao = IAOBuilder::build(wfn_->basisset(), dets[0]->Ca(), KS::options_);
     std::map<std::string, SharedMatrix > ret;
     std::map<std::string, boost::shared_ptr<Matrix>> ret2;
     ret = iao->build_iaos();
@@ -1932,8 +1936,7 @@ void UOCDFT::analyze_excitations()
             IAO_print->set(i,j,iao_coeffs->get(i,j));
         }
     }
-    //IAO_print->print();
-    //int nmin = iao_coeffs->colspi()[0];
+
     SharedMatrix S_min = SharedMatrix(new Matrix("AO Overlap matrix", nmin, nmin));
     S_min = ret["S_min"];
     SharedMatrix hole_iao = SharedMatrix(new Matrix("Hole IAO Density", nmin, nmin));
@@ -2130,6 +2133,7 @@ void UOCDFT::analyze_excitations()
 	    outfile->Printf("\n   =====================================================");
 
 	    std::vector<std::string> l_to_symbol_full{"s","p","d","f","g","h"};
+            int hole_index = 0;
 	    for (auto& i : keys_full){
 		auto& ifn = atom_am_to_f_full[i];
 		// Mulliken Analysis from IAO Density Matrix
@@ -2149,6 +2153,9 @@ void UOCDFT::analyze_excitations()
                 	std::string outstr = boost::str(boost::format("   %3d            %3s          %3s           %9.2f ") % (i.first + 1) % KS::molecule_->symbol(i.first).c_str() % l_to_symbol[i.second].c_str() % trace);
                 	ao_hole_contributions.push_back(std::make_pair(trace,outstr));
         	}
+                if (std::fabs(trace) >= 0.85){
+		    hole_index = i.first;
+		}
     	}
     	std::sort(ao_hole_contributions.rbegin(),ao_hole_contributions.rend());
     	for (auto& kv : ao_hole_contributions){
@@ -2159,7 +2166,7 @@ void UOCDFT::analyze_excitations()
 	    outfile->Printf("\n   =====================================================");
 	    outfile->Printf("\n   Atom Number     Symbol       l             population");
 	    outfile->Printf("\n   =====================================================");
-
+	    double local_p_character_sum;
 	    for (auto& i : keys_full){
 		auto& ifn = atom_am_to_f_full[i];        
 
@@ -2168,6 +2175,11 @@ void UOCDFT::analyze_excitations()
 		Dp_->gemm(false,true,1.0,Cp_,Cp_,0.0);
 		population_matrix_particle_full->gemm(false,false,1.0,Dp_,S_ao,0.0);
 		double trace = 0.0;
+		if (i.first==hole_index and l_to_symbol[i.second] == "p"){
+		    for (int iao : ifn){
+		        local_p_character_sum += Cp_->get(iao,0)*Cp_->get(iao,0);
+		    }
+		}
 		for (int iao : ifn){
 		    trace += population_matrix_particle_full->get(iao,iao);
 		}
@@ -2181,7 +2193,9 @@ void UOCDFT::analyze_excitations()
             outfile->Printf("\n%s",kv.second.c_str());
         }
 	    outfile->Printf("\n   -----------------------------------------------------");
+            outfile->Printf("\n Local P Character: %f \n", local_p_character_sum);
     }
+    //outfile->Printf("\n Local P Character: %f \n", local_p_character_sum);
     //outfile->Printf("\n\n  Analysis of the hole/particle MOs in terms of the ground state DFT MOs");
     if(KS::options_.get_bool("VALENCE_TO_CORE") and state_!=1){
     	TempMatrix->gemm(false,false,1.0,S_,dets[1]->Ca(),0.0);
@@ -2198,17 +2212,164 @@ void UOCDFT::analyze_excitations()
     }
     SharedMatrix Temporary_hole = SharedMatrix(new Matrix("Hole Transformation Matrix", KS::basisset_->nbf(), nocc));
     SharedMatrix Temporary_particle = SharedMatrix(new Matrix("Particle Transformation Matrix", KS::basisset_->nbf(), nvir));
+    SharedMatrix Temporary_particle_rev = SharedMatrix(new Matrix("Particle Transformation Matrix", nvir, KS::basisset_->nbf())
+);
+    SharedMatrix Temporary_iao_overlap = SharedMatrix(new Matrix("IAO hole transform Matrix", nvir, KS::basisset_->nbf()));
+    SharedMatrix Temporary_iao_transform = SharedMatrix(new Matrix("IAO hole transform Matrix", nmin, KS::basisset_->nbf()));
     Temporary_hole->gemm(false,false,1.0,S_,Ch_,0.0);
-    Temporary_particle->gemm(false,false,1.0,S_,Cp_,0.0);
+    TempMatrix->zero();
+    copy_block(dets[0]->Ca(),1.0,TempMatrix,0.0,nsopi_,nmopi_ - nalphapi_,zero_dim_,nalphapi_,zero_dim_,napartpi_);
+    //TempMatrix->print();
+    std::vector<SharedMatrix> overlaps;
+    SharedMatrix current_overlap(wfn_->S()->clone());
+    overlaps.push_back(current_overlap);
+    Temporary_particle->gemm(false,false,1.0,overlaps[0],Cp_,0.0);
+    Temporary_particle_rev->gemm(true,false,1.0,Cp_,overlaps[0],0.0);
+    Temporary_iao_overlap->gemm(true,false,1.0,TempMatrix,overlaps[0],0.0);
+    Temporary_iao_transform->gemm(true,false,1.0,iao_coeffs,overlaps[0],0.0);
+ 
+    // FORM MATRICES FOR ss^t matrix in valence virtual orbitals! //
+    SharedMatrix CtS = SharedMatrix(new Matrix("CtS ", nvir, KS::basisset_->nbf()));
+    SharedMatrix CtSA = SharedMatrix(new Matrix("CtSA", nvir, nmin));
+    SharedMatrix CtSAAt = SharedMatrix(new Matrix("CtSAAt", nvir,KS::basisset_->nbf() ));
+    SharedMatrix CtSAAtS = SharedMatrix(new Matrix("CtSAAtS ", nvir, KS::basisset_->nbf()));
+    SharedMatrix CtSAAtSC = SharedMatrix(new Matrix("CtSAAtSC ", nvir, nvir));
+    SharedMatrix CtSAAtSC_eigvec = SharedMatrix(new Matrix("CtSAAtSC Eigen Vector", nvir, nvir));
+    SharedVector CtSAAtSC_eigvals = SharedVector(new Vector("CtSAAtSC Eigen Values", nvir));
+
+    SharedMatrix Ground_State_Overlap = SharedMatrix(new Matrix("Rotated Particle Orbital", KS::basisset_->nbf(),KS::basisset_->nbf()));
+    Ground_State_Overlap->gemm(true,false,1.0,dets[0]->Ca(),dets[0]->Ca(),0.0);
+
+    CtS->gemm(true,false,1.0,TempMatrix,S_,0.0);
+    CtSA->gemm(false,false,1.0,CtS,iao_coeffs,0.0);
+    CtSAAt->gemm(false,true,1.0,CtSA,iao_coeffs,0.0);
+    CtSAAtS->gemm(false,false,1.0,CtSAAt,S_,0.0);
+    CtSAAtSC->gemm(false,false,1.0,CtSAAtS,TempMatrix,0.0);
+    //CtSAAtSC->print();
+    CtSAAtSC->diagonalize(CtSAAtSC_eigvec, CtSAAtSC_eigvals); 
+    //CtSAAtSC_eigvals->print();
+    for (int i = 0; i < nvir; ++i){
+        outfile->Printf("\n %f \n", CtSAAtSC_eigvals->get(i));
+    }
+    // END //
     SharedMatrix LSCh = SharedMatrix(new Matrix("IBO Hole Overlap ", KS::basisset_->nbf(), nocc));
     SharedMatrix LSCp = SharedMatrix(new Matrix("IBO Particle Overlap ", KS::basisset_->nbf(), nvir));
-    SharedMatrix ASCh = SharedMatrix(new Matrix("IAO Hole Overlap ", KS::basisset_->nbf(), nocc));
-    SharedMatrix ASCp = SharedMatrix(new Matrix("IAO Particle Overlap ", KS::basisset_->nbf(), nvir));
+    SharedMatrix ASCh = SharedMatrix(new Matrix("IAO Hole Overlap ", nmin, nocc));
+    SharedMatrix CpSA = SharedMatrix(new Matrix("Hole Overlap with IAO Basis ", nvir, nmin));
+    SharedMatrix LvvoSCp = SharedMatrix(new Matrix("Particle Overlap with VVO basis", KS::basisset_->nbf(), nvir));
+    SharedMatrix CpSLvvo = SharedMatrix(new Matrix("Particle Overlap with VVO basis", nvir, KS::basisset_->nbf())); 
+    SharedMatrix ASCp = SharedMatrix(new Matrix("IAO Particle Overlap ", nmin, nvir));
+    SharedMatrix ASLvvo = SharedMatrix(new Matrix("IAO Particle Overlap ", nmin, KS::basisset_->nbf()));
+    SharedMatrix ASCp_print = SharedMatrix(new Matrix("IAO Particle Overlap ", KS::basisset_->nbf(), KS::basisset_->nbf()));
+    CpSA->gemm(false,false,1.0,Temporary_iao_overlap,iao_coeffs,0.0);
+    //CpSA->print();
+    boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UCpSAV = CpSA->svd_temps();
+    SharedMatrix U = UCpSAV.get<0>();
+    SharedVector sigma = UCpSAV.get<1>();
+    SharedMatrix V = UCpSAV.get<2>();
+    CpSA->svd(U,sigma,V);
+    //sigma->print();
+    //U->print();
+    //V->print();
+    //int nvvos = 0;
+    for (int i = 0; i < nmin; ++i){
+        double eigen = 0.0;
+	eigen = sigma->get(i);
+        if(eigen >= 0.9 and eigen <= 1.1){
+ 	    outfile->Printf("\n ADDING ONE %f", sigma->get(i));
+	    nvvos = nvvos + 1;
+	}
+    }
+    outfile->Printf("\n There are %d Valence Virtual Orbitals", nvvos);
+    SharedMatrix Rotated_particle = SharedMatrix(new Matrix("Rotated Particle Orbital", KS::basisset_->nbf(),nvir));
+    //SharedMatrix Ground_State_Overlap = SharedMatrix(new Matrix("Rotated Particle Orbital", KS::basisset_->nbf(),KS::basisset_->nbf()));
+    SharedMatrix Occ_Space_Matrix = SharedMatrix(new Matrix("Occupied Space", KS::basisset_->nbf(),KS::basisset_->nbf()));
+    SharedMatrix VVO_Space_Matrix = SharedMatrix(new Matrix("VVO Space", KS::basisset_->nbf(),KS::basisset_->nbf()));
+    SharedMatrix EXT_Space_Matrix = SharedMatrix(new Matrix("External Orbital Space", KS::basisset_->nbf(),KS::basisset_->nbf()));
+    SharedMatrix Full_Space_Matrix = SharedMatrix(new Matrix("Occ+VVO+Ext Space", KS::basisset_->nbf(),KS::basisset_->nbf()));
+    //std::string local_type_ = options().get_str("LOCALIZE_TYPE");
+    //Ground_State_Overlap->gemm(true,false,1.0,dets[0]->Ca(),dets[0]->Ca(),0.0);
+    for (int i = 0; i < KS::basisset_->nbf(); ++i){
+	for (int j = 0; j < nvir; ++j){
+	    double post_svd_sum = 0.0;
+            for (int k = 0; k < nvir; ++k){
+                post_svd_sum += TempMatrix->get(i,k)*U->get(k,j); 
+            }
+            Rotated_particle->set(i,j,post_svd_sum);
+        }
+    }
+
+    for (int i = 0; i < nocc; ++i){
+	SharedVector vec;
+	vec = dets[0]->Ca()->get_column(0,i);
+	Occ_Space_Matrix->set_column(0,i,vec);
+    }
+    for (int i = 0; i < nvvos; ++i){
+        SharedVector vec;
+        vec = Rotated_particle->get_column(0,i);
+        VVO_Space_Matrix->set_column(0,i+nocc,vec);
+    }
+    for (int i = 0; i < (nvir-nvvos); ++i){
+        SharedVector vec;
+        vec = Rotated_particle->get_column(0,i+(nvvos));
+        EXT_Space_Matrix->set_column(0,i+(nocc+nvvos),vec);
+    }
+    SharedMatrix L_vvo;
+    boost::shared_ptr<Localizer> loc_vvo = Localizer::build("PIPEK_MEZEY", wfn_->basisset(), VVO_Space_Matrix);
+    loc_vvo->localize();
+    L_vvo = loc_vvo->L();
+    //L_vvo->print();
+    VVO_Space_Matrix->zero();
+    
+    for (int i = 0; i < nvvos; ++i){
+        SharedVector vec;
+        vec = L_vvo->get_column(0,i+nocc);
+        VVO_Space_Matrix->set_column(0,i+nocc,vec);
+    }
+    
+    Full_Space_Matrix->add(Occ_Space_Matrix);
+    Full_Space_Matrix->add(VVO_Space_Matrix);
+    Full_Space_Matrix->add(EXT_Space_Matrix);
+    // Psuedo-Canonicalization Procedure //
+    //TempMatrix2->zero();
+    //TempMatrix3->zero();
+    //TempMatrix2->gemm(true,false,1.0,VVO_Space_Matrix,Fa_,0.0);
+    //TempMatrix3->gemm(false,false,1.0,TempMatrix2,VVO_Space_Matrix,0.0);
+    //TempMatrix3->print();
+    //Full_Space_Matrix->print();
+    //Ca_ = Full_Space_Matrix;
+    //Cb_ = Full_Space_Matrix; 
+    //dets[0]->Ca()->print();    
+    //Rotated_particle->print();
+    //Full_VVO_Matrix->print();
+    //boost::shared_ptr<Localizer> loc_vvo = Localizer::build("PIPEK_MEZEY", wfn_->basisset(), VVO_Space_Matrix);
+    //loc_vvo->localize();
+    //SharedMatrix L_vvo = loc_vvo->L();
+    //L_vvo->print();
     LSCh->gemm(true,false,1.0,L,Temporary_hole,0.0);
-    ASCh->gemm(true,false,1.0,IAO_print,Temporary_hole,0.0);
-    //LSCh->print();
+    ASCh->gemm(true,false,1.0,iao_coeffs,Temporary_hole,0.0);
+    //ASCh->print();
     LSCp->gemm(true,false,1.0,L,Temporary_particle,0.0);
-    ASCp->gemm(true,false,1.0,IAO_print,Temporary_particle,0.0);
+    ASCp->gemm(true,false,1.0,iao_coeffs,Temporary_particle,0.0);
+    TempMatrix4->zero();
+    TempMatrix4 = VVO_Space_Matrix;
+    TempMatrix4->add(EXT_Space_Matrix);
+    LvvoSCp->gemm(true,false,1.0,L_vvo,Temporary_particle,0.0);
+    CpSLvvo->gemm(false,false,1.0,Temporary_particle_rev,L_vvo,0.0);
+    ASLvvo->gemm(false,false,1.0,Temporary_iao_transform,L_vvo,0.0);
+    for (int i = 0; i < nmin; ++i){
+        for (int j = 0; j < nvir; ++j){
+            ASCp_print->set(i,j,ASCp->get(i,j));
+        }
+    }
+    //ASCp_print->print();
+    //CubeProperties cube = CubeProperties(wfn_);
+    //std::vector<int> indsp0;
+    //std::vector<std::string> labelsp;
+    //indsp0.push_back(0);
+    //labelsp.push_back("part_iao");
+    //cube.compute_orbitals(ASCp_print, indsp0,labelsp, "1");
+    //ASCp->print();
     //LSCp->gemm(true,false,1.0,L,Temporary_particle,0.0);
     //ASCp->gemm(true,false,1.0,IAO_print,Temporary_particle,0.0);
     std::vector<std::pair<double,int> > pair_occ_ibo_hole;
@@ -2244,17 +2405,31 @@ void UOCDFT::analyze_excitations()
     }
     
     std::vector<std::pair<double,std::string> > pair_occ_iao_hole;
+    SharedMatrix C_h_cont = SharedMatrix(new Matrix("Sum of IAO Contributions Hole ", KS::basisset_->nbf(), KS::basisset_->nbf()));
     for (auto& i : keys){
         auto& ifn = atom_am_to_f[i];
 	for (auto& iao : ifn){
             double overlap = std::pow(ASCh->get(iao,0),2.0);
             std::string outstr = boost::str(boost::format("%d%s(%d%s)") % (i.get<0>() + 1) % KS::molecule_->symbol(i.get<0>()).c_str() % i.get<2>() % l_to_symbol[i.get<1>()].c_str());
 	    //outfile->Printf("\n %s",outstr.c_str());
+            TempMatrix->zero();
             if(overlap>0.01){
+                for (int j = 0; j < KS::basisset_->nbf(); ++j){
+                    TempMatrix->set(j,0,overlap*iao_coeffs->get(j,iao));
+		}
                 pair_occ_iao_hole.push_back(std::make_pair(overlap,outstr));
+		C_h_cont->add(TempMatrix);
             }
 	}
     }
+    //std::sort(pair_occ_iao_part.begin(),pair_occ_iao_part.end());
+    //C_h_cont->print();
+    CubeProperties cube = CubeProperties(wfn_);
+    std::vector<int> indsp0_hole;
+    std::vector<std::string> labelsp_hole;
+    indsp0_hole.push_back(0);
+    labelsp_hole.push_back("hole_iao");
+    cube.compute_orbitals(C_h_cont, indsp0_hole,labelsp_hole, "1");
     //std::vector<std::pair<double,int> > pair_occ_iao_hole;
     //for (int i = 0; i < KS::basisset_->nbf(); ++i){
     //        double overlap = std::pow(ASCh->get(i,0),2.0);
@@ -2274,18 +2449,80 @@ void UOCDFT::analyze_excitations()
 
 
     std::vector<std::pair<double,std::string> > pair_occ_iao_part;
+    std::vector<std::pair<double,std::string> > pair_occ_vvoiao_part;
+    SharedMatrix C_p_cont = SharedMatrix(new Matrix("Sum of IAO Contributions ", KS::basisset_->nbf(), KS::basisset_->nbf()));
     for (auto& i : keys){
         auto& ifn = atom_am_to_f[i];
         for (auto& iao : ifn){
             double overlap = std::pow(ASCp->get(iao,0),2.0);
             std::string outstr = boost::str(boost::format("%d%s(%d%s)") % (i.get<0>() + 1) % KS::molecule_->symbol(i.get<0>()).c_str() % i.get<2>() % l_to_symbol[i.get<1>()].c_str());
             //outfile->Printf("\n %s",outstr.c_str());
+	    TempMatrix->zero();
             if(overlap>0.01){
+		for (int j = 0; j < KS::basisset_->nbf(); ++j){
+		    TempMatrix->set(j,0,overlap*iao_coeffs->get(j,iao));
+		}
                 pair_occ_iao_part.push_back(std::make_pair(overlap,outstr));
+		C_p_cont->add(TempMatrix);
             }
         }
     }
+   //LvvoSCp->print();
+   std::vector<std::pair<double,int> > pair_occ_vvo_part;
+   for (int i = 0; i < nvir; ++i){
+       double overlap = std::pow(LvvoSCp->get(i+nocc,0),2.0);
+       if(overlap>0.01){
+           pair_occ_vvo_part.push_back(std::make_pair(overlap,(i+nocc)+1));
+       }
+    }
+    std::sort(pair_occ_vvo_part.begin(),pair_occ_vvo_part.end());
+    std::reverse(pair_occ_vvo_part.begin(),pair_occ_vvo_part.end());
+    double valence_sum = 0.0;
+    outfile->Printf("\n\n         ===> VVO Contributions To Particle Orbital <===");
+    outfile->Printf("\n   ===============================================================");
+    outfile->Printf("\n    VVO                   %%Contribution         IAO Contributions");
+    outfile->Printf("\n   ===============================================================");
+    std::string total_string;
+    for(auto occ_vvo : pair_occ_vvo_part){
+        double overlap_iao = 0.0;
+        total_string = boost::str(boost::format(""));
+        std::vector<std::pair<double,std::string>> iao_cont;
+        //outfile->Printf("\n     %d                       %.1f%%",occ_vvo.second, occ_vvo.first*100.0);
+        for (auto& i : keys){
+            auto& ifn = atom_am_to_f[i];
+            for (auto& iao : ifn){
+                overlap_iao = std::pow(ASLvvo->get(iao,occ_vvo.second-1),2.0);
+                std::string outstr = boost::str(boost::format("%d%s%s-") % (i.get<0>() + 1) % KS::molecule_->symbol(i.get<0>()).c_str()  % l_to_symbol[i.get<1>()].c_str());
+	        if(overlap_iao >= 0.1){                
+                    iao_cont.push_back(std::make_pair(overlap_iao,outstr));
+		    total_string.append(outstr.c_str());
+                }
+	     }
+        }
+        std::sort(iao_cont.begin(),iao_cont.end());
+        std::reverse(iao_cont.begin(),iao_cont.end());
+        std::string current_string = total_string.c_str();
+        //current_string.pop_back();
+        outfile->Printf("\n     %d                       %.1f%%                %s",occ_vvo.second, occ_vvo.first*100.0,current_string.c_str());
+        valence_sum += occ_vvo.first*100.0;
+    }
+    outfile->Printf("\n              -------------------------------------");
+    outfile->Printf("\n                Total Valence Character: %.1f%%    ", valence_sum);
+    outfile->Printf("\n              -------------------------------------");
+    outfile->Printf("\n   ================================================================\n\n");
     std::sort(pair_occ_iao_part.begin(),pair_occ_iao_part.end());
+    //C_p_cont->print();
+    //CubeProperties cube = CubeProperties(wfn_);
+	    std::vector<int> indsp0;
+	    std::vector<std::string> labelsp;
+	    for (int i = 0; i < nvvos; ++i){
+		indsp0.push_back(i+nocc);
+	    }
+	    for (int i = 0; i < nvvos; ++i){
+                std::string part_iao("part_iao%d", state_);
+		labelsp.push_back(part_iao);
+	    }
+	    cube.compute_orbitals(VVO_Space_Matrix, indsp0,labelsp, "vvo");
     std::reverse(pair_occ_iao_part.begin(),pair_occ_iao_part.end());
     outfile->Printf("\n Particle: ");
     for(auto occ_iao : pair_occ_iao_part){
