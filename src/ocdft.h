@@ -106,6 +106,7 @@ protected:
     SharedMatrix Ua_o_;
     /// The eigenvectors of PvFPv
     SharedMatrix Ua_v_;
+    SharedMatrix L_vvo;
     /// The eigenvalues of PoFPo
     SharedVector lambda_a_o_;
     /// The eigenvalues of PvFPv

@@ -2375,7 +2375,6 @@ void UOCDFT::analyze_excitations()
     SharedMatrix current_overlap(wfn_->S()->clone());
     overlaps.push_back(current_overlap);
     Temporary_particle->gemm(false,false,1.0,overlaps[0],Cp_,0.0);
-
     Temporary_particle_rev->gemm(true,false,1.0,Cp_,overlaps[0],0.0);
     Temporary_iao_overlap->gemm(true,false,1.0,TempMatrix,overlaps[0],0.0);
     Temporary_iao_transform->gemm(true,false,1.0,iao_coeffs,overlaps[0],0.0);
@@ -2400,15 +2399,14 @@ void UOCDFT::analyze_excitations()
     //CtSAAtSC->print();
     CtSAAtSC->diagonalize(CtSAAtSC_eigvec, CtSAAtSC_eigvals); 
     //CtSAAtSC_eigvals->print();
-    //for (int i = 0; i < nvir; ++i){
-    //    outfile->Printf("\n %f \n", CtSAAtSC_eigvals->get(i));
-    //}
+    for (int i = 0; i < nvir; ++i){
+        outfile->Printf("\n %f \n", CtSAAtSC_eigvals->get(i));
+    }
     // END //
     SharedMatrix LSCh = SharedMatrix(new Matrix("IBO Hole Overlap ", KS::basisset_->nbf(), nocc));
     SharedMatrix LSCp = SharedMatrix(new Matrix("IBO Particle Overlap ", KS::basisset_->nbf(), nvir));
     SharedMatrix ASCh = SharedMatrix(new Matrix("IAO Hole Overlap ", nmin, nocc));
     SharedMatrix CpSA = SharedMatrix(new Matrix("Hole Overlap with IAO Basis ", nvir, nmin));
-    //SharedMatrix ASLvvo = SharedMatrix(new Matrix("VVOs in the IAO Basis ", nmin, KS::basisset_->nbf()));
     SharedMatrix LvvoSCp = SharedMatrix(new Matrix("Particle Overlap with VVO basis", KS::basisset_->nbf(), nvir));
     SharedMatrix LvvoSCp_iao = SharedMatrix(new Matrix("Particle Overlap with VVO basis in IAO basis", nmin, nvir));
     SharedMatrix CpSLvvo = SharedMatrix(new Matrix("Particle Overlap with VVO basis", nvir, KS::basisset_->nbf())); 
@@ -2430,11 +2428,11 @@ void UOCDFT::analyze_excitations()
         double eigen = 0.0;
 	eigen = sigma->get(i);
         if(eigen >= 0.9 and eigen <= 1.1){
- 	    //outfile->Printf("\n ADDING ONE %f", sigma->get(i));
+ 	    outfile->Printf("\n ADDING ONE %f", sigma->get(i));
 	    nvvos = nvvos + 1;
 	}
     }
-    //outfile->Printf("\n There are %d Valence Virtual Orbitals", nvvos);
+    outfile->Printf("\n There are %d Valence Virtual Orbitals", nvvos);
     SharedMatrix Rotated_particle = SharedMatrix(new Matrix("Rotated Particle Orbital", KS::basisset_->nbf(),nvir));
     //SharedMatrix Ground_State_Overlap = SharedMatrix(new Matrix("Rotated Particle Orbital", KS::basisset_->nbf(),KS::basisset_->nbf()));
     SharedMatrix Occ_Space_Matrix = SharedMatrix(new Matrix("Occupied Space", KS::basisset_->nbf(),KS::basisset_->nbf()));
@@ -2515,7 +2513,6 @@ void UOCDFT::analyze_excitations()
         vec = L_vvo->get_column(0,i+nocc);
         VVO_Space_Matrix->set_column(0,i+nocc,vec);
     }
-
     for (int i = 0; i < nocc; ++i){
         SharedVector vec;
         vec = L_occ->get_column(0,i);
@@ -2546,6 +2543,13 @@ void UOCDFT::analyze_excitations()
     //ASCh->print();
     LSCp->gemm(true,false,1.0,L,Temporary_particle,0.0);
     SharedMatrix Localized_particle = SharedMatrix(new Matrix("PM Localized Particle Orbital", nmin,KS::basisset_->nbf()));
+    ASCp->gemm(true,false,1.0,iao_coeffs,Temporary_particle,0.0);
+    TempMatrix4->zero();
+    TempMatrix4 = VVO_Space_Matrix;
+    TempMatrix4->add(EXT_Space_Matrix);
+    LvvoSCp->gemm(true,false,1.0,L_vvo,Temporary_particle,0.0);
+    CpSLvvo->gemm(false,false,1.0,Temporary_particle_rev,L_vvo,0.0);
+    ASLvvo->gemm(false,false,1.0,Temporary_iao_transform,L_vvo,0.0);
     for (int i = 0; i < nmin; ++i){
         for (int j = 0; j < nvir; ++j){
             ASCp_print->set(i,j,ASCp->get(i,j));
@@ -2699,8 +2703,7 @@ void UOCDFT::analyze_excitations()
    //LvvoSCp_iao->print();
    for (int i = 0; i < nvir; ++i){
        double overlap = std::pow(LvvoSCp->get(i+nocc,0),2.0);
-       //double overlap = std::pow(LvvoSCp_iao->get(i+nocc,0),2.0);
-       if(overlap){
+       if(overlap>0.01){
            pair_occ_vvo_part.push_back(std::make_pair(overlap,(i+nocc)+1));
        }
     }
@@ -2729,7 +2732,7 @@ void UOCDFT::analyze_excitations()
 		//	is_sigma = true;
 		//}
                 std::string outstr = boost::str(boost::format("%.2f_%s +") % overlap_iao % iao_labels[iao].c_str());
-	        if(overlap_iao >= 0.01){                
+	        if(overlap_iao >= 0.01){                             
                     iao_cont.push_back(std::make_pair(overlap_iao,outstr));
 		    total_string.append(outstr.c_str());
                 }
