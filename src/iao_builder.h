@@ -118,7 +118,7 @@ public:
     /// Build the IAOs for exporting
     std::map<std::string, SharedMatrix> build_iaos();
 
-    void print_IAO(SharedMatrix A, int nmin, int nbf, SharedWavefunction wfn_);
+    std::vector<std::string> print_IAO(SharedMatrix A, int nmin, int nbf, SharedWavefunction wfn_);
 
 std::map<std::string, boost::shared_ptr<Matrix>> ibo_localizer(boost::shared_ptr<Matrix> L, const std::vector<std::vector<int> >& minao_inds, const std::vector<std::pair<int, int> >& rot_inds, double convergence,int maxiter, int power);
 

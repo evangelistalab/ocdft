@@ -64,6 +64,7 @@ protected:
     int excited_state_symmetry_;
     /// Excited state number, starting from one
     int state_;
+    int nvvos;
 
     double singlet_exc_energy_s_plus_;
     double triplet_exc_energy_s_plus;

@@ -265,20 +265,23 @@ std::map<std::string, SharedMatrix> IAOBuilder::build_iaos()
     return ret;
 }
 
-void IAOBuilder::print_IAO(SharedMatrix A_, int nmin, int nbf, SharedWavefunction wfn_)
+std::vector<std::string> IAOBuilder::print_IAO(SharedMatrix A_, int nmin, int nbf, SharedWavefunction wfn_)
 {
     CubeProperties cube = CubeProperties(wfn_);
     boost::shared_ptr<Molecule> mol = minao_->molecule();
     std::vector<int> iao_inds;
     SharedMatrix A_nbf = SharedMatrix(new Matrix("IAO coefficient matrix in nbf dimensions", nbf,nbf));
     for (int i = 0; i < nbf; ++i){
-        for (int j = 0; j < nbf; ++j){
+        for (int j = 0; j < minao_->nbf(); ++j){
 	    A_nbf->set(i,j,A_->get(i,j));
         }
     }
     // Form a map that lists all functions on a given atom and with a given ang. momentum
-    std::map<boost::tuple<int,int,int>,std::vector<int>> atom_am_to_f;
+    std::map<boost::tuple<int,int,int,int>,std::vector<int>> atom_am_to_f_minao;
+    std::map<boost::tuple<int,int,int,int>,std::vector<int>> atom_am_to_f_primary;
+    std::vector<boost::tuple<std::string, double>> all_basis_conts;
     int sum = 0;
+    int count_iao = 0;
     for (int A = 0; A < mol->natom(); A++) {
         int principal_qn = 0;
         int n_shell = minao_->nshell_on_center(A);
@@ -289,10 +292,11 @@ void IAOBuilder::print_IAO(SharedMatrix A_, int nmin, int nbf, SharedWavefunctio
             if(am==0){
                 principal_qn = principal_qn + 1;
             }
-            boost::tuple<int,int,int> atom_am;
-            atom_am = boost::make_tuple(A,am,(principal_qn));
+            boost::tuple<int,int,int,int> atom_am;
+            atom_am = boost::make_tuple(A,am,(principal_qn),count_iao);
+            count_iao++;
             for (int p = sum; p < sum + nfunction; ++p){
-                atom_am_to_f[atom_am].push_back(p);
+                atom_am_to_f_minao[atom_am].push_back(p);
             }
             sum += nfunction;
         }
@@ -300,32 +304,143 @@ void IAOBuilder::print_IAO(SharedMatrix A_, int nmin, int nbf, SharedWavefunctio
 
     std::vector<std::string> l_to_symbol{"s","p","d","f","g","h"};
 
-    // "I got the keys, the keys, the keys"
-    std::vector<boost::tuple<int,int,int>> keys;
-    for (auto& kv : atom_am_to_f){
+    
+    std::vector<boost::tuple<int,int,int,int>> keys;
+    for (auto& kv : atom_am_to_f_minao){
         keys.push_back(kv.first);
     }
 
-    std::vector<std::string> iao_labs;
-    for (auto& i : keys){
-        auto& ifn = atom_am_to_f[i];
-        for (auto& iao : ifn){
-            std::string outstr = boost::str(boost::format("%d%s_%d%s") % (i.get<0>() + 1) % mol->symbol(i.get<0>(
-)).c_str() % i.get<2>() % l_to_symbol[i.get<1>()].c_str());
-            iao_labs.push_back(outstr);
+    int sum2 = 0;
+    int count_nbf = 0;
+    for (int A = 0; A < mol->natom(); A++) {
+        int principal_qn = 0;
+        int n_shell = primary_->nshell_on_center(A);
+        for (int Q = 0; Q < n_shell; Q++){
+            const GaussianShell& shell = primary_->shell(A,Q);
+            int nfunction = shell.nfunction();
+            int am = shell.am();
+            if(am==0){
+                principal_qn = principal_qn + 1;
+            }
+            boost::tuple<int,int,int,int> atom_am;
+            atom_am = boost::make_tuple(A,am,(principal_qn),count_nbf);
+	    count_nbf++;
+            for (int p = sum2; p < sum2 + nfunction; ++p){
+                atom_am_to_f_primary[atom_am].push_back(p);
+            }
+            sum2 += nfunction;
         }
     }
 
+    std::vector<boost::tuple<int,int,int,int>> keys_primary;
+    std::vector<boost::tuple<int,double,std::string>> all_iao_contributions;
+    std::vector<std::string> duplicates_iao;
+    for (auto& kv_primary : atom_am_to_f_primary){
+        keys_primary.push_back(kv_primary.first);
+    }
+    std::vector<std::string> iao_labs;
+    for (auto& i : keys){
+        auto& ifn = atom_am_to_f_minao[i];
+        for (auto& k : keys_primary){
+            for (auto& iao : ifn){
+                auto& ifn_primary = atom_am_to_f_primary[k];
+                for (auto& nbf_primary : ifn_primary){
+		    int num = iao;
+                    std::string outstr_primary = boost::str(boost::format("%d%s%s_%d") % (k.get<0>()+1) % mol->symbol(k.get<0>()).c_str() % l_to_symbol[k.get<1>()].c_str() % num);
+                    //iao_labs.push_back(outstr);
+                    double a = 0.0;
+                    a = A_nbf->get(nbf_primary,iao);
+                   // outfile->Printf("%s: %.5f \n", outstr_primary.c_str(), a);
+		    boost::tuple<std::string, double> base;
+                    boost::tuple<int,double,std::string> iao_cont;
+		    base = boost::make_tuple(outstr_primary.c_str(), a);
+                    iao_cont = boost::make_tuple(num,a,outstr_primary.c_str());
+		    all_basis_conts.push_back(base);
+                    all_iao_contributions.push_back(iao_cont);
+	        }
+		
+                std::string outstr = boost::str(boost::format("%d%s%s_%d") % (i.get<0>() + 1) % mol->symbol(i.get<0>()).c_str() % l_to_symbol[i.get<1>()].c_str() % iao);
+                std::string istring = outstr;
+                if(std::find(duplicates_iao.begin(), duplicates_iao.end(), istring.c_str()) != duplicates_iao.end()){}
+		else{
+		    outfile->Printf("%s\n", outstr.c_str());
+                    //iao_labs.push_back(outstr);
+		}
+		duplicates_iao.push_back(istring.c_str());
+	    }
+        }
+    }
+
+    //for (int ind = 0; ind < nmin ; ++ind){
+    //    iao_inds.push_back(ind);
+    // }
+    //cube.compute_orbitals(A_nbf, iao_inds,iao_labs, "iao");
+     
+    std::vector<std::string> duplicates;
+    int basis_conts_size =  all_basis_conts.size();
+    int all_iao_size = all_iao_contributions.size();
+    std::vector<boost::tuple<int,double,std::string>> iao_sum;
+    std::vector<boost::tuple<int, std::string>> iao_sum_final;
+    for (int i = 0; i < all_iao_size; ++i){
+        double total_basis_cont = 0.0;
+        std::string istring = all_iao_contributions[i].get<2>();
+	if(std::find(duplicates.begin(), duplicates.end(), istring.c_str()) != duplicates.end()){}
+	else{
+	    for(int j = 0; j < basis_conts_size; ++j){
+                std::string jstring = all_basis_conts[j].get<0>();
+	        if(istring==jstring){
+ 	            total_basis_cont += std::abs(all_iao_contributions[j].get<1>());
+	        }
+ 	    }
+	}
+	duplicates.push_back(istring.c_str());
+	if(total_basis_cont > 0.001){
+            outfile->Printf("SUM(%s): %.2f \n",istring.c_str(),total_basis_cont);
+	    boost::tuple<int,double,std::string> iao_sum_cont;
+            iao_sum_cont = boost::make_tuple(all_iao_contributions[i].get<0>(),total_basis_cont,all_iao_contributions[i].get<2>().c_str());
+	    iao_sum.push_back(iao_sum_cont);
+	    //outfile->Printf("Saved Tuple: (%d,%.2f,%s)\n",all_iao_contributions[i].get<0>(),total_basis_cont,all_iao_contributions[i].get<2>().c_str());
+  	}
+    }
+
+    std::sort(iao_sum.begin(),iao_sum.end());
+    int iao_sum_size = iao_sum.size();
+    for(int i = 0; i < nmin; ++i){
+	std::vector<boost::tuple<double,int,std::string>> iao_max_contributions;
+        double a = 0.0;
+	for(int j = 0; j < iao_sum_size; ++j){
+	   std::vector<double> max_candidates;
+	   if(i==iao_sum[j].get<0>()){
+	       a = iao_sum[j].get<1>();
+	       //outfile->Printf("for i=%d -> (%s)\n", iao_sum[j].get<0>(), iao_sum[j].get<2>().c_str());
+               boost::tuple<double,int,std::string> iao_max_candidate;
+	       iao_max_candidate = boost::make_tuple(iao_sum[j].get<1>(), iao_sum[j].get<0>(), iao_sum[j].get<2>().c_str());
+	       iao_max_contributions.push_back(iao_max_candidate);
+	   }
+	   else{}
+        //outfile->Printf("Saved Tuple: (%d,%.2f,%s)\n",iao_sum[i].get<0>(),iao_sum[i].get<1>(),iao_sum[i].get<2>().c_str());
+	}
+	std::sort(iao_max_contributions.begin(),iao_max_contributions.end());
+	std::reverse(iao_max_contributions.begin(),iao_max_contributions.end());
+	outfile->Printf("IAO%d -> %s(%.2f) \n", iao_max_contributions[0].get<1>(), iao_max_contributions[0].get<2>().c_str(),iao_max_contributions[0].get<0>());
+	iao_labs.push_back(iao_max_contributions[0].get<2>().c_str());
+    }
+    
     for (int ind = 0; ind < nmin ; ++ind){
         iao_inds.push_back(ind);
      }
     cube.compute_orbitals(A_nbf, iao_inds,iao_labs, "iao");
+ 
+    //A_->print();
+    //A_nbf->print();
+    return iao_labs;
 }
 
 std::map<std::string, boost::shared_ptr<Matrix>> IAOBuilder::ibo_localizer(boost::shared_ptr<Matrix> L, const std::vector<std::vector<int> >& minao_inds, const std::vector<std::pair<int, int> >& rot_inds, double convergence,int maxiter, int power)
 {
     int nmin = L->colspi()[0];
     int nocc = L->rowspi()[0];
+    int nvir = primary_->nbf() - nocc;
 
     boost::shared_ptr<Matrix> L2(L->clone());
     L2->copy(L);
@@ -409,7 +524,7 @@ std::map<std::string, boost::shared_ptr<Matrix>> IAOBuilder::ibo_localizer(boost
     }
 
     U->transpose_this();
-
+    //L2->transpose_this();
     std::map<std::string, boost::shared_ptr<Matrix> > ret;
     ret["U"] = U;
     ret["L"] = L2;
@@ -462,6 +577,9 @@ std::map<std::string, boost::shared_ptr<Matrix> > IAOBuilder::localize(
    
     std::map<std::string, boost::shared_ptr<Matrix> > ret1 = IAOBuilder::ibo_localizer(L,minao_inds,rot_inds,convergence_,maxiter_,power_);
     L = ret1["L"];
+    SharedMatrix L_local(L->clone());
+    outfile->Printf("Localized Matrix from ibo code! \n");
+    //L_local->print();
     boost::shared_ptr<Matrix> U = ret1["U"];
 
     if (use_stars_) {
@@ -583,6 +701,7 @@ L,minao_inds,rot_inds,convergence_,maxiter_,power_);
 
     std::map<std::string, boost::shared_ptr<Matrix> > ret;
     ret["L"] = Locc3;
+    ret["L_local"] = L_local;
     ret["U"] = Uocc3;
     ret["F"] = Focc3;
     ret["Q"] = Q;
