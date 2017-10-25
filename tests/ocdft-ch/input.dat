@@ -25,7 +25,7 @@ set {
   d_convergence 6
 }
 
-set cdft {
+set ocdft {
   roots_per_irrep [0,0,0,0,0,1,0,0]
   cdft_exc_method ch
 }

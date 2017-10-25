@@ -1656,7 +1656,6 @@ double UOCDFT::compute_E() {
     Etotal += dashD_E;
 
     Process::environment.globals["CURRENT ENERGY"] = Etotal;
-
     return Etotal;
 
     //    std::string functional_prefix = functional_->name().substr(0, 2);
@@ -1866,7 +1865,12 @@ void UOCDFT::save_information() {
     if (do_excitation) {
         Process::environment.globals["DFT ENERGY"] = ground_state_energy;
 
-        analyze_excitations();
+        if (nirrep_ == 1) {
+            analyze_excitations();
+        } else {
+            outfile->Printf(
+                "\n\n  Skipping analysis of excitations. To enable run in C1 symmetry.\n");
+        }
         std::vector<std::tuple<double, int, int>> info_a_;
         int nirrep = wfn_->nirrep();
         Dimension nmopi = wfn_->nmopi();
@@ -3011,54 +3015,59 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf) {
         temp_index = 0;
     }
 
-    TempMatrix->zero();
-    TempMatrix2->zero();
-    copy_block(Ca_, 1.0, TempMatrix, 0.0, nsopi_, nalphapi_);
-    std::shared_ptr<IAOBuilder> iao = IAOBuilder::build(
-        wfn_->basisset(), wfn_->get_basisset("MINAO_BASIS"), TempMatrix, options_);
-    std::map<std::string, SharedMatrix> ret;
-    ret = iao->build_iaos();
+    std::tuple<SharedMatrix, SharedMatrix, SharedVector, double> calpha;
+    std::tuple<SharedMatrix, SharedMatrix, SharedVector, double> cbeta;
 
-    SharedMatrix IAO =
-        SharedMatrix(new Matrix("IAO coeffs in primary", basisset_->nbf(), basisset_->nbf()));
-    SharedMatrix iao_coeffs2 = ret["A"];
-    int nmin = iao_coeffs2->colspi()[0];
-    for (int i = 0; i < basisset_->nbf(); ++i) {
-        for (int j = 0; j < nmin; ++j) {
-            IAO->set(i, j, iao_coeffs2->get(i, j));
-        }
-    }
-    SharedMatrix Ca_A_iao = SharedMatrix(
-        new Matrix("Determinant A alpha coeffs IAO Basis", basisset_->nbf(), basisset_->nbf()));
-    SharedMatrix Ca_B_iao = SharedMatrix(
-        new Matrix("Determinant B alpha coeffs IAO Basis", basisset_->nbf(), basisset_->nbf()));
-    SharedMatrix Cb_A_iao = SharedMatrix(
-        new Matrix("Determinant A beta coeffs IAO Basis", basisset_->nbf(), basisset_->nbf()));
-    SharedMatrix Cb_B_iao = SharedMatrix(
-        new Matrix("Determinant B beta coeffs IAO Basis", basisset_->nbf(), basisset_->nbf()));
-    TempMatrix->gemm(true, false, 1.0, IAO, S_, 0.0);
     SharedDeterminant A = dets[temp_index];
     SharedDeterminant B = dets[dets.size() - 1];
-    // I. Form the corresponding alpha and beta orbitals
-    SharedMatrix Ca_A(A->Ca()->clone());
-    outfile->Printf("\n HERE!");
-    Ca_A_iao->gemm(false, false, 1.0, TempMatrix, Ca_A, 0.0);
-    outfile->Printf("\n HERE!");
-    // Ca_A_iao->print();
-    SharedMatrix Ca_B(B->Ca()->clone());
-    Ca_B_iao->gemm(false, false, 1.0, TempMatrix, Ca_B, 0.0);
-    SharedMatrix Cb_A(A->Cb()->clone());
-    Cb_A_iao->gemm(false, false, 1.0, TempMatrix, Cb_A, 0.0);
-    SharedMatrix Cb_B(B->Cb()->clone());
-    Cb_B_iao->gemm(false, false, 1.0, TempMatrix, Cb_B, 0.0);
-    std::tuple<SharedMatrix, SharedMatrix, SharedVector, double> calpha =
-        corresponding_orbitals(A->Ca(), B->Ca(), A->nalphapi(), B->nalphapi());
-    std::tuple<SharedMatrix, SharedMatrix, SharedVector, double> cbeta =
-        corresponding_orbitals(A->Cb(), B->Cb(), A->nbetapi(), B->nbetapi());
-    // std::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha =
-    // corresponding_orbitals(Ca_A_iao,Ca_B_iao,A->nalphapi(),B->nalphapi());
-    // std::tuple<SharedMatrix,SharedMatrix,SharedVector,double> cbeta  =
-    // corresponding_orbitals(Cb_A_iao,Cb_B_iao,A->nbetapi(),B->nbetapi());
+    if (nirrep_ != 1) {
+        // I. Form the corresponding alpha and beta orbitals
+        calpha = corresponding_orbitals(A->Ca(), B->Ca(), A->nalphapi(), B->nalphapi());
+        cbeta = corresponding_orbitals(A->Cb(), B->Cb(), A->nbetapi(), B->nbetapi());
+    } else {
+        TempMatrix->zero();
+        TempMatrix2->zero();
+        copy_block(Ca_, 1.0, TempMatrix, 0.0, nsopi_, nalphapi_);
+        std::shared_ptr<IAOBuilder> iao = IAOBuilder::build(
+            wfn_->basisset(), wfn_->get_basisset("MINAO_BASIS"), TempMatrix, options_);
+        std::map<std::string, SharedMatrix> ret;
+        ret = iao->build_iaos();
+
+        SharedMatrix IAO =
+            SharedMatrix(new Matrix("IAO coeffs in primary", basisset_->nbf(), basisset_->nbf()));
+        SharedMatrix iao_coeffs2 = ret["A"];
+        int nmin = iao_coeffs2->colspi()[0];
+        for (int i = 0; i < basisset_->nbf(); ++i) {
+            for (int j = 0; j < nmin; ++j) {
+                IAO->set(i, j, iao_coeffs2->get(i, j));
+            }
+        }
+        SharedMatrix Ca_A_iao = SharedMatrix(
+            new Matrix("Determinant A alpha coeffs IAO Basis", basisset_->nbf(), basisset_->nbf()));
+        SharedMatrix Ca_B_iao = SharedMatrix(
+            new Matrix("Determinant B alpha coeffs IAO Basis", basisset_->nbf(), basisset_->nbf()));
+        SharedMatrix Cb_A_iao = SharedMatrix(
+            new Matrix("Determinant A beta coeffs IAO Basis", basisset_->nbf(), basisset_->nbf()));
+        SharedMatrix Cb_B_iao = SharedMatrix(
+            new Matrix("Determinant B beta coeffs IAO Basis", basisset_->nbf(), basisset_->nbf()));
+        TempMatrix->gemm(true, false, 1.0, IAO, S_, 0.0);
+        SharedDeterminant A = dets[temp_index];
+        SharedDeterminant B = dets[dets.size() - 1];
+        // I. Form the corresponding alpha and beta orbitals
+        SharedMatrix Ca_A(A->Ca()->clone());
+        outfile->Printf("\n HERE!");
+        Ca_A_iao->gemm(false, false, 1.0, TempMatrix, Ca_A, 0.0);
+        outfile->Printf("\n HERE!");
+        // Ca_A_iao->print();
+        SharedMatrix Ca_B(B->Ca()->clone());
+        Ca_B_iao->gemm(false, false, 1.0, TempMatrix, Ca_B, 0.0);
+        SharedMatrix Cb_A(A->Cb()->clone());
+        Cb_A_iao->gemm(false, false, 1.0, TempMatrix, Cb_A, 0.0);
+        SharedMatrix Cb_B(B->Cb()->clone());
+        Cb_B_iao->gemm(false, false, 1.0, TempMatrix, Cb_B, 0.0);
+        calpha = corresponding_orbitals(A->Ca(), B->Ca(), A->nalphapi(), B->nalphapi());
+        cbeta = corresponding_orbitals(A->Cb(), B->Cb(), A->nbetapi(), B->nbetapi());
+    }
     SharedMatrix ACa = std::get<0>(calpha);
     SharedMatrix BCa = std::get<1>(calpha);
     SharedMatrix ACb = std::get<0>(cbeta);
@@ -3792,9 +3801,11 @@ double UOCDFT::compute_triplet_correction() {
     Cncb->print();
 
     //    if (options_.get_str("SCF_TYPE") == "DF") {
-    //        jk = JK::build_JK(get_basisset("ORBITAL"), get_basisset("DF_BASIS_SCF"), options_);
+    //        jk = JK::build_JK(get_basisset("ORBITAL"), get_basisset("DF_BASIS_SCF"),
+    //        options_);
     //    } else {
-    //        jk = JK::build_JK(get_basisset("ORBITAL"), BasisSet::zero_ao_basis_set(), options_);
+    //        jk = JK::build_JK(get_basisset("ORBITAL"), BasisSet::zero_ao_basis_set(),
+    //        options_);
     //    }
     //    //    std::shared_ptr<JK> jk = JK::build_JK(basisset_, options_);
     //    jk->initialize();
