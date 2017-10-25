@@ -1,6 +1,4 @@
 #include "rcks.h"
-#include <libmints/view.h>
-#include <libmints/mints.h>
 #include <libfock/apps.h>
 #include <libfock/v.h>
 #include <libfock/jk.h>
@@ -13,7 +11,7 @@ using namespace psi;
 
 namespace psi{ namespace scf{
 
-RCKS::RCKS(SharedWavefunction ref_scf, Options& options, boost::shared_ptr<PSIO> psio)
+RCKS::RCKS(SharedWavefunction ref_scf, Options& options, std::shared_ptr<PSIO> psio)
     : RKS(ref_scf, options, psio), Vc(0.0), optimize_Vc(false), gradW_threshold_(1.0e-9),nW_opt(0), old_gradW(0.0), BFGS_hessW(0.0)
 {
     outfile->Printf("\n  ==> Constrained DFT (RCKS) <==\n\n");
@@ -70,16 +68,16 @@ void RCKS::build_W_so()
     W_tot = SharedMatrix(factory_->create_matrix("W_tot"));
 
     //    Compute the overlap matrix
-    boost::shared_ptr<BasisSet> basisset_ = basisset();
-    boost::shared_ptr<Molecule> mol = basisset_->molecule();
-    boost::shared_ptr<OneBodyAOInt> overlap(integral_->ao_overlap());
+    std::shared_ptr<BasisSet> basisset_ = basisset();
+    std::shared_ptr<Molecule> mol = basisset_->molecule();
+    std::shared_ptr<OneBodyAOInt> overlap(integral_->ao_overlap());
     SharedMatrix S_ao(new Matrix("S_ao",basisset_->nbf(),basisset_->nbf()));
     overlap->compute(S_ao);
 
     //    Form the S^(1/2) matrix
     S_ao->power(1.0/2.0);
 
-    boost::shared_ptr<PetiteList> pet(new PetiteList(basisset_, integral_));
+    std::shared_ptr<PetiteList> pet(new PetiteList(basisset_, integral_));
     SharedMatrix AO2SO_ = pet->aotoso();
 
     int min_a = 0;
@@ -88,7 +86,7 @@ void RCKS::build_W_so()
         std::vector<int> flist;
         std::vector<int> glist;
         flist.push_back(f);
-        boost::shared_ptr<Molecule> frag = mol->extract_subsets(flist,glist);
+        std::shared_ptr<Molecule> frag = mol->extract_subsets(flist,glist);
 
         // Compute the nuclear charge on each fragment
         double frag_Z = 0.0;
@@ -180,7 +178,7 @@ double RCKS::compute_E()
     }
 
     double dashD_E = 0.0;
-    boost::shared_ptr<Dispersion> disp;
+    std::shared_ptr<Dispersion> disp;
     if (disp) {
         dashD_E = disp->compute_energy(HF::molecule_);
     }
@@ -366,8 +364,8 @@ void RCKS::Lowdin2()
 void RCKS::Lowdin()
 {
     //    Compute the overlap matrix
-    boost::shared_ptr<BasisSet> basisset_ = basisset();
-    boost::shared_ptr<OneBodyAOInt> overlap(integral_->ao_overlap());
+    std::shared_ptr<BasisSet> basisset_ = basisset();
+    std::shared_ptr<OneBodyAOInt> overlap(integral_->ao_overlap());
     SharedMatrix S_ao(new Matrix("S_ao",basisset_->nbf(),basisset_->nbf()));
     SharedMatrix D_ao(new Matrix("D_ao",basisset_->nbf(),basisset_->nbf()));
     SharedMatrix L_ao(new Matrix("L_ao",basisset_->nbf(),basisset_->nbf()));
@@ -376,13 +374,13 @@ void RCKS::Lowdin()
     //    Form the S^(1/2) matrix
     S_ao->power(1.0/2.0);
 
-    boost::shared_ptr<PetiteList> pet(new PetiteList(basisset_, integral_));
+    std::shared_ptr<PetiteList> pet(new PetiteList(basisset_, integral_));
     SharedMatrix SO2AO_ = pet->sotoao();
     D_ao->remove_symmetry(D_,SO2AO_);
     L_ao->transform(D_ao,S_ao);
     L_ao->print();
 
-    boost::shared_ptr<Molecule> mol = basisset_->molecule();
+    std::shared_ptr<Molecule> mol = basisset_->molecule();
     SharedVector Qa(new Vector(mol->natom()));
     double* Qa_pointer = Qa->pointer();
 
@@ -407,7 +405,7 @@ void RCKS::Lowdin()
         std::vector<int> flist;
         std::vector<int> glist;
         flist.push_back(f);
-        boost::shared_ptr<Molecule> frag = mol->extract_subsets(flist,glist);
+        std::shared_ptr<Molecule> frag = mol->extract_subsets(flist,glist);
         double fcharge = 0.0;
         for (int n = 0; n < frag->natom(); ++n){
             fcharge += Qa_pointer[a];

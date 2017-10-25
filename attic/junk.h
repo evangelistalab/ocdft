@@ -21,17 +21,17 @@ void UCKS::form_C_CH_algorithm()
         // Grab the occ block of Fa
         extract_square_subblock(TempMatrix,PoFaPo_,true,dets[m]->nalphapi(),1.0e9);
         PoFaPo_->diagonalize(Ua_o_,lambda_a_o_);
-        std::vector<boost::tuple<double,int,int> > sorted_holes; // (energy,irrep,mo in irrep)
+        std::vector<std::tuple<double,int,int> > sorted_holes; // (energy,irrep,mo in irrep)
         for (int h = 0; h < nirrep_; ++h){
             int nmo = nmopi_[h];
             for (int p = 0; p < nmo; ++p){
                 if (lambda_a_o_->get(h,p) < 1.0e6){
-                    sorted_holes.push_back(boost::make_tuple(lambda_a_o_->get(h,p),h,p));
+                    sorted_holes.push_back(std::make_tuple(lambda_a_o_->get(h,p),h,p));
                 }
             }
         }
         std::sort(sorted_holes.begin(),sorted_holes.end());
-        boost::tuple<double,int,int> hole;
+        std::tuple<double,int,int> hole;
         // Extract the hole alpha orbital according to an energy criteria (this needs a generalization)
         if (KS::options_.get_str("CDFT_EXC_TYPE") == "VALENCE"){
             // For valence excitations select the highest lying orbital (HOMO-like)
@@ -113,10 +113,10 @@ void UCKS::form_C_CH_algorithm()
 
 //    epsilon_a_->print();
 
-    std::vector<boost::tuple<double,int,int> > sorted_spectators;
+    std::vector<std::tuple<double,int,int> > sorted_spectators;
     for (int h = 0; h < nirrep_; ++h){
         for (int p = 0; p < nmopi_[h]; ++p){
-            sorted_spectators.push_back(boost::make_tuple(epsilon_a_->get(h,p),h,p));
+            sorted_spectators.push_back(std::make_tuple(epsilon_a_->get(h,p),h,p));
         }
     }
     std::sort(sorted_spectators.begin(),sorted_spectators.end());
@@ -218,16 +218,16 @@ void UCKS::form_C_CP_algorithm()
         // Grab the vir block of Fa
         extract_square_subblock(TempMatrix,PvFaPv_,false,dets[m]->nalphapi(),1.0e9);
         PvFaPv_->diagonalize(Ua_v_,lambda_a_v_);
-        std::vector<boost::tuple<double,int,int> > sorted_vir; // (energy,irrep,mo in irrep)
+        std::vector<std::tuple<double,int,int> > sorted_vir; // (energy,irrep,mo in irrep)
         for (int h = 0; h < nirrep_; ++h){
             int nmo = nmopi_[h];
             for (int p = 0; p < nmo; ++p){
-                sorted_vir.push_back(boost::make_tuple(lambda_a_v_->get(h,p),h,p));  // N.B. shifted to full indexing
+                sorted_vir.push_back(std::make_tuple(lambda_a_v_->get(h,p),h,p));  // N.B. shifted to full indexing
             }
         }
         std::sort(sorted_vir.begin(),sorted_vir.end());
         // In the case of particle, we assume that we are always interested in the lowest lying orbitals
-        boost::tuple<double,int,int> particle = sorted_vir.front();
+        std::tuple<double,int,int> particle = sorted_vir.front();
         int part_h = particle.get<1>();
         int part_mo = particle.get<2>();
         outfile->Printf("   constrained particle %d :(irrep = %d,mo = %d,energy = %.6f)\n",
@@ -296,10 +296,10 @@ void UCKS::form_C_CP_algorithm()
     TempMatrix->diagonalize(TempMatrix2,epsilon_a_);
     Ca_->gemm(false,false,1.0,dets[0]->Ca(),TempMatrix2,0.0);
 
-    std::vector<boost::tuple<double,int,int> > sorted_spectators;
+    std::vector<std::tuple<double,int,int> > sorted_spectators;
     for (int h = 0; h < nirrep_; ++h){
         for (int p = 0; p < nmopi_[h]; ++p){
-            sorted_spectators.push_back(boost::make_tuple(epsilon_a_->get(h,p),h,p));
+            sorted_spectators.push_back(std::make_tuple(epsilon_a_->get(h,p),h,p));
         }
     }
     std::sort(sorted_spectators.begin(),sorted_spectators.end());
@@ -410,12 +410,12 @@ void UCKS::form_C_CHP_algorithm()
 
         // Diagonalize the hole block
         PoFaPo_->diagonalize(Ua_o_,lambda_a_o_);
-        std::vector<boost::tuple<double,int,int> > sorted_holes; // (energy,irrep,mo in irrep)
+        std::vector<std::tuple<double,int,int> > sorted_holes; // (energy,irrep,mo in irrep)
         for (int h = 0; h < nirrep_; ++h){
             int nmo = nmopi_[h];
             for (int p = 0; p < nmo; ++p){
                 if (lambda_a_o_->get(h,p) < 1.0e6){
-                    sorted_holes.push_back(boost::make_tuple(lambda_a_o_->get(h,p),h,p));
+                    sorted_holes.push_back(std::make_tuple(lambda_a_o_->get(h,p),h,p));
                 }
             }
         }
@@ -423,18 +423,18 @@ void UCKS::form_C_CHP_algorithm()
 
         // Diagonalize the particle block
         PvFaPv_->diagonalize(Ua_v_,lambda_a_v_);
-        std::vector<boost::tuple<double,int,int> > sorted_vir; // (energy,irrep,mo in irrep)
+        std::vector<std::tuple<double,int,int> > sorted_vir; // (energy,irrep,mo in irrep)
         for (int h = 0; h < nirrep_; ++h){
             int nmo = nmopi_[h];
             for (int p = 0; p < nmo; ++p){
-                sorted_vir.push_back(boost::make_tuple(lambda_a_v_->get(h,p),h,p));  // N.B. shifted wrt to full indexing
+                sorted_vir.push_back(std::make_tuple(lambda_a_v_->get(h,p),h,p));  // N.B. shifted wrt to full indexing
             }
         }
         std::sort(sorted_vir.begin(),sorted_vir.end());
 
-        boost::tuple<double,int,int> hole;
-        boost::tuple<double,int,int> particle;
-        std::vector<boost::tuple<double,int,int,double,int,int,double> > sorted_hp_pairs;
+        std::tuple<double,int,int> hole;
+        std::tuple<double,int,int> particle;
+        std::vector<std::tuple<double,int,int,double,int,int,double> > sorted_hp_pairs;
 
         // Extract the hole alpha orbital according to an energy criteria (this needs a generalization)
         bool do_core_excitation = false;
@@ -462,7 +462,7 @@ void UCKS::form_C_CHP_algorithm()
                             double e_hp = do_core_excitation ? (e_p + e_h - hole_energy_shift) : (e_p - e_h);
                             int symm = h_h ^ h_p ^ ground_state_symmetry_;
                             if(not do_symmetry or (symm == excited_state_symmetry_)){ // Test for symmetry
-                                sorted_hp_pairs.push_back(boost::make_tuple(e_hp,h_h,h,e_h,h_p,p,e_p));  // N.B. shifted wrt to full indexing
+                                sorted_hp_pairs.push_back(std::make_tuple(e_hp,h_h,h,e_h,h_p,p,e_p));  // N.B. shifted wrt to full indexing
 //                                outfile->Printf( "  %s  gamma(h) = %s, gamma(p) = %s, gamma(hp) = %s, gamma(Phi-hp) = %s \n",do_symmetry ? "true" : "false",
 //                                        ct.gamma(h_h).symbol(),ct.gamma(h_p).symbol(),ct.gamma(h_h ^ h_p).symbol(),
 //                                        ct.gamma(symm).symbol());
@@ -657,10 +657,10 @@ void UCKS::form_C_CHP_algorithm()
         }
     }
 
-    std::vector<boost::tuple<double,int,int> > sorted_spectators;
+    std::vector<std::tuple<double,int,int> > sorted_spectators;
     for (int h = 0; h < nirrep_; ++h){
         for (int p = 0; p < nmopi_[h]; ++p){
-            sorted_spectators.push_back(boost::make_tuple(epsilon_a_->get(h,p),h,p));
+            sorted_spectators.push_back(std::make_tuple(epsilon_a_->get(h,p),h,p));
         }
     }
     std::sort(sorted_spectators.begin(),sorted_spectators.end());
@@ -809,8 +809,8 @@ void UCKS::form_C_CHP_algorithm()
 //    // or the particle all is ok
 //    Uo_->identity();
 //    Uv_->identity();
-//    boost::tuple<double,int,int> hole;
-//    boost::tuple<double,int,int> particle;
+//    std::tuple<double,int,int> hole;
+//    std::tuple<double,int,int> particle;
 //    // Grab the occ and vir blocks
 //    // |--------|--------|
 //    // |        |        |
@@ -825,11 +825,11 @@ void UCKS::form_C_CHP_algorithm()
 //        extract_square_subblock(TempMatrix,PoFPo_,true,dets[0]->nalphapi(),1.0e9);
 //        PoFPo_->diagonalize(Uo_,lambda_o_);
 //        // Sort the orbitals according to the eigenvalues of PoFaPo
-//        std::vector<boost::tuple<double,int,int> > sorted_occ;
+//        std::vector<std::tuple<double,int,int> > sorted_occ;
 //        for (int h = 0; h < nirrep_; ++h){
 //            int nocc = dets[0]->nalphapi()[h];
 //            for (int i = 0; i < nocc; ++i){
-//                sorted_occ.push_back(boost::make_tuple(lambda_o_->get(h,i),h,i));
+//                sorted_occ.push_back(std::make_tuple(lambda_o_->get(h,i),h,i));
 //            }
 //        }
 //        std::sort(sorted_occ.begin(),sorted_occ.end());
@@ -848,12 +848,12 @@ void UCKS::form_C_CHP_algorithm()
 //        extract_square_subblock(TempMatrix,PvFPv_,false,dets[0]->nalphapi(),1.0e9);
 //        PvFPv_->diagonalize(Uv_,lambda_v_);
 //        // Sort the orbitals according to the eigenvalues of PvFaPv
-//        std::vector<boost::tuple<double,int,int> > sorted_vir;
+//        std::vector<std::tuple<double,int,int> > sorted_vir;
 //        for (int h = 0; h < nirrep_; ++h){
 //            int nocc = dets[0]->nalphapi()[h];
 //            int nvir = nmopi_[h] - nocc;
 //            for (int i = 0; i < nvir; ++i){
-//                sorted_vir.push_back(boost::make_tuple(lambda_v_->get(h,i),h,i + nocc));  // N.B. shifted to full indexing
+//                sorted_vir.push_back(std::make_tuple(lambda_v_->get(h,i),h,i + nocc));  // N.B. shifted to full indexing
 //            }
 //        }
 //        std::sort(sorted_vir.begin(),sorted_vir.end());
@@ -1106,7 +1106,7 @@ double UCKS::compute_overlap(int n)
 //    double detS_aa = 1.0;
 //    double traceS2_aa = 0.0;
 //    {
-//        boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UsV = S_aa->svd_temps();
+//        std::tuple<SharedMatrix, SharedVector, SharedMatrix> UsV = S_aa->svd_temps();
 //        S_aa->svd(UsV.get<0>(),UsV.get<1>(),UsV.get<2>());
 //        if(dets[0]->nalphapi() == nalphapi_){
 //            for (int h = 0; h < nirrep_; ++h) {
@@ -1146,7 +1146,7 @@ double UCKS::compute_overlap(int n)
 //    double detS_bb = 1.0;
 //    double traceS2_bb = 0.0;
 //    {
-//        boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UsV = S_bb->svd_temps();
+//        std::tuple<SharedMatrix, SharedVector, SharedMatrix> UsV = S_bb->svd_temps();
 //        S_bb->svd(UsV.get<0>(),UsV.get<1>(),UsV.get<2>());
 //        if(state_nbetapi[0] == nbetapi_){
 //            for (int h = 0; h < nirrep_; ++h) {
@@ -1189,8 +1189,8 @@ void UCKS::form_C_CP_algorithm()
     // or the particle all is ok
     Uo_->identity();
     Uv_->identity();
-    boost::tuple<double,int,int> hole;
-    boost::tuple<double,int,int> particle;
+    std::tuple<double,int,int> hole;
+    std::tuple<double,int,int> particle;
     // Grab the occ and vir blocks
     // |--------|--------|
     // |        |        |
@@ -1218,11 +1218,11 @@ void UCKS::form_C_CP_algorithm()
         }
         PoFPo_->diagonalize(Uo_,lambda_o_);
         // Sort the orbitals according to the eigenvalues of PoFaPo
-        std::vector<boost::tuple<double,int,int> > sorted_occ;
+        std::vector<std::tuple<double,int,int> > sorted_occ;
         for (int h = 0; h < nirrep_; ++h){
             int nocc = dets[0]->nalphapi()[h];
             for (int i = 0; i < nocc; ++i){
-                sorted_occ.push_back(boost::make_tuple(lambda_o_->get(h,i),h,i));
+                sorted_occ.push_back(std::make_tuple(lambda_o_->get(h,i),h,i));
             }
         }
         std::sort(sorted_occ.begin(),sorted_occ.end());
@@ -1255,12 +1255,12 @@ void UCKS::form_C_CP_algorithm()
         }
         PvFPv_->diagonalize(Uv_,lambda_v_);
         // Sort the orbitals according to the eigenvalues of PvFaPv
-        std::vector<boost::tuple<double,int,int> > sorted_vir;
+        std::vector<std::tuple<double,int,int> > sorted_vir;
         for (int h = 0; h < nirrep_; ++h){
             int nocc = dets[0]->nalphapi()[h];
             int nvir = nmopi_[h] - nocc;
             for (int i = 0; i < nvir; ++i){
-                sorted_vir.push_back(boost::make_tuple(lambda_v_->get(h,i),h,i + nocc));  // N.B. shifted to full indexing
+                sorted_vir.push_back(std::make_tuple(lambda_v_->get(h,i),h,i + nocc));  // N.B. shifted to full indexing
             }
         }
         std::sort(sorted_vir.begin(),sorted_vir.end());
@@ -1816,7 +1816,7 @@ void UCKS::form_C_CP_algorithm()
 
 //        if(nexclude_occ == 0 and nexclude_vir){
 //            // Find the lowest single excitations
-//            std::vector<boost::tuple<double,int,int,int,int> > sorted_exc;
+//            std::vector<std::tuple<double,int,int,int,int> > sorted_exc;
 //            // Loop over occupied MOs
 //            for (int hi = 0; hi < nirrep_; ++hi){
 //                int nocci = ref_scf_->nalphapi_[0][hi];
@@ -1824,17 +1824,17 @@ void UCKS::form_C_CP_algorithm()
 //                    for (int ha = 0; ha < nirrep_; ++ha){
 //                        int nocca = ref_scf_->nalphapi_[0][ha];
 //                        for (int a = nocca; a < nmopi_[ha]; ++a){
-//                            sorted_exc.push_back(boost::make_tuple(
+//                            sorted_exc.push_back(std::make_tuple(
 //                        }
 //                    }
 //                    int nocc = dets[0]->nalphapi()[h];
 
 //                int nvir = nmopi_[h] - nocc;
 //                for (int i = 0; i < nocc; ++i){
-//                    sorted_occ.push_back(boost::make_tuple(lambda_o->get(h,i),h,i));
+//                    sorted_occ.push_back(std::make_tuple(lambda_o->get(h,i),h,i));
 //                }
 //                for (int i = 0; i < nvir; ++i){
-//                    sorted_vir.push_back(boost::make_tuple(lambda_v->get(h,i),h,i));
+//                    sorted_vir.push_back(std::make_tuple(lambda_v->get(h,i),h,i));
 //                }
 //            }
 //            std::sort(sorted_occ.begin(),sorted_occ.end());

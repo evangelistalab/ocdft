@@ -23,26 +23,21 @@ include(cmake/git-version.cmake)
 # List of CC files
 add_psi4_plugin(ocdft
 src/aosubspace.cc
-src/aosubspace.h
 src/constraint.cc
-src/constraint.h
 src/determinant.cc
-src/determinant.h
-src/fasnocis.cc
-src/fasnocis.h
+#src/fasnocis.cc
+#src/fasnocis.h
 src/helpers.cc
-src/helpers.h
 src/iao_builder.cc
-src/iao_builder.h
-src/junk.h
+#src/junk.h
 src/main.cc
-src/noci.h
-src/noci_mat.cc
-src/noci_mat.h
+#src/noci.h
+#src/noci_mat.cc
+#src/noci_mat.h
 src/ocdft.cc
-src/ocdft.h
-src/rcks.cc
-src/rcks.h
-src/ucks.h
+#src/rcks.cc
 src/ucks_determinant.cc
 )
+
+target_include_directories(ocdft PRIVATE src/mini-boost)
+

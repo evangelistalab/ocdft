@@ -1,7 +1,9 @@
 #ifndef DETERMINANT_H
 #define DETERMINANT_H
 
-#include <libscf_solver/ks.h>
+//#include <psi4/libscf_solver/ks.h>
+#include <psi4/libmints/matrix.h>
+//#include <psi4/libmints/matrix.h>
 
 namespace psi{
 namespace scf{
@@ -38,7 +40,7 @@ private:
 };
 
 }
-typedef boost::shared_ptr<psi::scf::Determinant> SharedDeterminant;
+typedef std::shared_ptr<psi::scf::Determinant> SharedDeterminant;
 } // Namespaces
 
 #endif // Header guard

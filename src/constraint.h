@@ -1,7 +1,8 @@
 #ifndef CONSTRAINT_H
 #define CONSTRAINT_H
 
-#include <libscf_solver/ks.h>
+//#include <psi4/libscf_solver/ks.h>
+#include <psi4/libmints/matrix.h>
 
 namespace psi{
 namespace scf{
@@ -29,7 +30,7 @@ protected:
 };
 
 }
-typedef boost::shared_ptr<psi::scf::Constraint> SharedConstraint;
+typedef std::shared_ptr<psi::scf::Constraint> SharedConstraint;
 } // Namespaces
 
 #endif // Header guard
