@@ -35,6 +35,7 @@ src/main.cc
 #src/noci_mat.cc
 #src/noci_mat.h
 src/ocdft.cc
+src/ocdft_analyze_excitations.cc
 #src/rcks.cc
 src/ucks_determinant.cc
 )
