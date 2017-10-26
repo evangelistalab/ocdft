@@ -719,7 +719,7 @@ void UOCDFT::analyze_excitations() {
     TempMatrix2->zero();
     TempMatrix->gemm(true, false, 1.0, L_livvo, S_, 0.0);
     TempMatrix2->gemm(false, false, 1.0, TempMatrix, L_vvo, 0.0);
-//    TempMatrix2->print();
+    //    TempMatrix2->print();
     // L_livvo_transpose->print();
     // VVO_Space_Matrix->print();
     for (int i = 0; i < nvvos; ++i) {
@@ -852,7 +852,8 @@ void UOCDFT::analyze_excitations() {
     for (int i = nocc; i < (nocc + nvvos); ++i) {
         labelsp_livvo.push_back("livvo");
     }
-    cube_livvo.compute_orbitals(L_livvo, indsp0_livvo, labelsp_livvo, "v");
+    std::string livvo_label = "state_" + to_string(state_) + "_";
+    cube_livvo.compute_orbitals(L_livvo, indsp0_livvo, labelsp_livvo, livvo_label);
     std::vector<std::pair<double, std::string>> pair_occ_iao_hole;
     SharedMatrix C_h_cont = SharedMatrix(
         new Matrix("Sum of IAO Contributions Hole ", basisset_->nbf(), basisset_->nbf()));
