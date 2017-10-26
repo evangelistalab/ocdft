@@ -1,59 +1,143 @@
-#include <algorithm>
+//#include <algorithm>
 
-#include <boost/format.hpp>
-#include <boost/tuple/tuple_comparison.hpp>
+//#include <boost/format.hpp>
+//#include <boost/tuple/tuple_comparison.hpp>
 
 #include "psi4/libpsi4util/PsiOutStream.h"
-#include <psi4/libmints/local.h>
-#include <psi4/libmints/factory.h>
-#include <psi4/libmints/pointgrp.h>
-#include <psi4/libmints/petitelist.h>
-#include <psi4/liboptions/liboptions.h>
-#include "psi4/libfunctional/superfunctional.h"
-#include <psi4/physconst.h>
-#include <psi4/psifiles.h>
-#include <psi4/libmints/oeprop.h>
-#include <psi4/libmints/onebody.h>
-#include <psi4/libmints/integral.h>
-//#include <libfock/apps.h>
-#include <psi4/libfock/jk.h>
-#include <psi4/libfock/v.h>
+#include <psi4/libmints/basisset.h>
+#include <psi4/libmints/vector.h>
+//#include <psi4/libmints/local.h>
+//#include <psi4/libmints/factory.h>
+//#include <psi4/libmints/pointgrp.h>
+//#include <psi4/libmints/petitelist.h>
+//#include <psi4/liboptions/liboptions.h>
+//#include "psi4/libfunctional/superfunctional.h"
+//#include <psi4/physconst.h>
+//#include <psi4/psifiles.h>
+//#include <psi4/libmints/oeprop.h>
+//#include <psi4/libmints/onebody.h>
+//#include <psi4/libmints/integral.h>
+////#include <libfock/apps.h>
+//#include <psi4/libfock/jk.h>
+//#include <psi4/libfock/v.h>
 
-#include <psi4/libcubeprop/cubeprop.h>
-#include <psi4/libdisp/dispersion.h>
-//#include <liboptions/liboptions.h>
-#include <psi4/libciomr/libciomr.h>
-#include <psi4/libiwl/iwl.hpp>
-#include <psi4/libqt/qt.h>
-#include <psi4/libscf_solver/hf.h>
-#include <psi4/libdiis/diismanager.h>
-#include "psi4/psi4-dec.h"
-#include "psi4/libpsi4util/libpsi4util.h"
-#include "psi4/libpsi4util/process.h"
+//#include <psi4/libcubeprop/cubeprop.h>
+//#include <psi4/libdisp/dispersion.h>
+////#include <liboptions/liboptions.h>
+//#include <psi4/libciomr/libciomr.h>
+//#include <psi4/libiwl/iwl.hpp>
+//#include <psi4/libqt/qt.h>
+//#include <psi4/libscf_solver/hf.h>
+//#include <psi4/libdiis/diismanager.h>
+//#include "psi4/psi4-dec.h"
+//#include "psi4/libpsi4util/libpsi4util.h"
+//#include "psi4/libpsi4util/process.h"
 
-#include "aosubspace.h"
+//#include "aosubspace.h"
 #include "helpers.h"
 #include "iao_builder.h"
 #include "ocdft.h"
-
-#define DEBUG_OCDFT 0
-
-#define DEBUG_THIS2(EXP)                                                                           \
-    outfile->Printf("\n  Starting " #EXP " ...");                                                  \
-    fflush(outfile);                                                                               \
-    EXP outfile->Printf("  done.");                                                                \
-    fflush(outfile);
 
 using namespace psi;
 
 namespace psi {
 namespace scf {
 
-void UOCDFT::analyze_excitations() {
-  livvo_analysis(dets[0]->Ca());
+void UOCDFT::livvo_analysis(SharedMatrix refC) {
+    outfile->Printf("\n\n  ==> Analysis of OCDFT orbitals <==\n\n");
 
+    // Get the virtual block of refC
+    int nocc = gs_nalphapi_[0];
+    int nvir = gs_navirpi_[0];
+    int nbf = basisset()->nbf();
+    Dimension dim_zero(1);
+    Dimension dim_bf(1);
+    Dimension dim_occ(1);
+    Dimension dim_vir(1);
+    dim_bf[0] = nbf;
+    dim_occ[0] = nocc;
+    dim_vir[0] = nvir;
+    SharedMatrix Cvir = std::make_shared<Matrix>("Cvir", dim_bf, dim_vir);
+    copy_block(refC, 1.0, Cvir,0.0, dim_bf, dim_vir,dim_zero, dim_occ);
 
-    CharacterTable ct = molecule_->point_group()->char_table();
+    // Build the IAOs
+    auto aios = build_aios(refC);
+
+    // Build the LIVVOs
+    SharedMatrix LIVVO = generate_livvos(aios, Cvir);
+}
+
+std::pair<SharedMatrix,std::shared_ptr<IAOBuilder>> UOCDFT::build_aios(SharedMatrix refC) {
+    // Build the IAOs using the MINAO_BASIS basis
+  std::shared_ptr<BasisSet> minao = get_basisset("MINAO_BASIS");
+    std::shared_ptr<IAOBuilder> iao =
+        IAOBuilder::build(wfn_->basisset(), minao, refC, options_);
+    std::map<std::string, SharedMatrix> iao_info = iao->build_iaos();
+    SharedMatrix C_IAO(iao_info["A"]->clone());
+    // returns a nbsf x niao matrix
+    return std::make_pair(C_IAO,iao);
+}
+
+SharedMatrix UOCDFT::generate_livvos(std::pair<SharedMatrix,std::shared_ptr<IAOBuilder>> iaos, SharedMatrix Cvir) {
+    SharedMatrix LIVVO;
+
+    // Compute the overlap of IAOs with virtual orbitals C_IAO^t S C_vir
+    SharedMatrix C_IAO = iaos.first;
+    SharedMatrix CiaoSCvir = Matrix::triplet(C_IAO, S_, Cvir, true, false, false);
+
+    // Do SVD of C_IAO^t S C_vir and determine the number of vvos
+    std::tuple<SharedMatrix, SharedVector, SharedMatrix> svd = CiaoSCvir->svd_temps();
+    SharedMatrix U = std::get<0>(svd);
+    SharedVector sigma = std::get<1>(svd);
+    SharedMatrix V = std::get<2>(svd);
+    CiaoSCvir->svd(U, sigma, V);
+    sigma->print();
+
+    int nvvos = 0;
+    for (int i = 0; i < sigma->dim(); ++i) {
+        double eigen = sigma->get(i);
+        if (eigen >= 0.9 and eigen <= 1.1) {
+            nvvos += 1;
+        }
+    }
+    outfile->Printf("\n  Found %d VVOs",nvvos);
+
+    // Extract the VVO block
+    SharedMatrix Cvir_p = Matrix::doublet(Cvir,V,false,false);
+    SharedMatrix C_IAO_p = Matrix::doublet(C_IAO,U,false,false);
+    SharedMatrix CiaoSCvir_p = Matrix::triplet(C_IAO_p, S_, Cvir_p, true, false, false);
+    CiaoSCvir_p->print();
+
+    // Localize the VVOs
+//    std::map<std::string, std::shared_ptr<Matrix>> livvo_info = iaos.second->localize(VVO_Space_Matrix, TempMatrix4, ranges);
+
+    //    // Copy the virtual block of Ca and Fa
+    //    std::map<std::string, std::shared_ptr<Matrix>> ret_vvo;
+    //    TempMatrix3->zero();
+    //    TempMatrix4->zero();
+    //    copy_block(dets[0]->Ca(), 1.0, TempMatrix3, 0.0, nsopi_, nmopi_ - nalphapi_, zero_dim_,
+    //               nalphapi_, zero_dim_, napartpi_);
+    //    copy_block(gs_Fa_, 1.0, TempMatrix4, 0.0, nsopi_, nmopi_ - nalphapi_, zero_dim_,
+    //    nalphapi_,
+    //               zero_dim_, napartpi_);
+
+    //    ranges.push_back(nocc);
+    //    ranges.push_back(nocc + nvvos);
+    //    // VVO_Space_Matrix->print();
+    //    ret_vvo = iao->localize(VVO_Space_Matrix, TempMatrix4, ranges);
+    //    SharedMatrix L_livvo = SharedMatrix(new Matrix("Localized Intrinsic Valence Virtual
+    //    Orbitals",
+    //                                                   basisset_->nbf(), basisset_->nbf()));
+    //    SharedMatrix L_livvo_transpose = SharedMatrix(new Matrix(
+    //        "Localized Intrinsic Valence Virtual Orbitals", basisset_->nbf(), basisset_->nbf()));
+    //    // L_livvo->print();
+    //    L_livvo = ret_vvo["L"];
+    return LIVVO;
+}
+
+/*
+{
+CharacterTable ct = molecule_->point_group()->char_table();
     SharedMatrix S_ao =
         SharedMatrix(new Matrix("AO Overlap matrix", basisset_->nbf(), basisset_->nbf()));
     std::shared_ptr<PetiteList> pet(new PetiteList(basisset_, integral_));
@@ -1095,5 +1179,6 @@ void UOCDFT::analyze_excitations() {
     }
     outfile->Printf("\n\n");
 }
+*/
 }
 } // Namespaces
