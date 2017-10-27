@@ -262,29 +262,36 @@ void UOCDFT::find_particle_orbital_character(
             int character_l = std::get<1>(IAO_character[rho]);
             std::string character_symbol = std::get<2>(IAO_character[rho]);
             if (S_l_rho > 0.1) {
-                outfile->Printf("\n  |<psi_LIVVO(%2d)|psi_IAO(%2d)>|^2 = %9.5f -> %s%d(%s)", l, rho,
-                                S_l_rho, character_symbol.c_str(), character_A + 1,
-                                l_to_symbol[character_l].c_str());
+                //                outfile->Printf("\n  |<psi_LIVVO(%2d)|psi_IAO(%2d)>|^2 = %9.5f ->
+                //                %s%d(%s)", l, rho,
+                //                                S_l_rho, character_symbol.c_str(), character_A +
+                //                                1,
+                //                                l_to_symbol[character_l].c_str());
                 contributions.push_back(
                     std::make_tuple(S_l_rho, character_symbol, character_A, character_l));
                 l_composition[character_l] += S_l_rho;
             }
         }
+        for (int character_l = 0; character_l < 3; character_l++) {
+            outfile->Printf("\n  Total %s character = %7.2f%%", l_to_symbol[character_l].c_str(),
+                            l_composition[character_l] * 100.0);
+        }
+        int type = 0;
+        if (l_composition[1] / l_composition[0] >= 3.0) {
+            type = 1;
+        }
+        outfile->Printf("\n    %s*", type == 0 ? "sigma" : "pi");
+
         std::sort(contributions.rbegin(), contributions.rend());
         for (const auto& contribution : contributions) {
             double S_l_rho;
             std::string character_symbol;
             int character_A, character_l;
             std::tie(S_l_rho, character_symbol, character_A, character_l) = contribution;
-            outfile->Printf("\n                   %9.5f : %s%d(%s)", l, S_l_rho,
+            outfile->Printf("\n                   %9.5f : %s%d(%s)", S_l_rho,
                             character_symbol.c_str(), character_A + 1,
                             l_to_symbol[character_l].c_str());
         }
-        for (int character_l = 0; character_l < 3; character_l++) {
-            outfile->Printf("\n  Total %s character = %7.2f%%", l_to_symbol[character_l].c_str(),
-                            l_composition[character_l] * 100.0);
-        }
-        //        bool if (l_composition[character_l])
     }
 }
 
