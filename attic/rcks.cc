@@ -31,7 +31,7 @@ RCKS::RCKS(SharedWavefunction ref_scf, Options& options, std::shared_ptr<PSIO> p
     outfile->Printf("  Number of fragments: %d\n",nfrag);
 
     // Check the option CHARGE, if it is defined use it to define the constrained charges
-    int charge_size = options["CHARGE"].size();
+    int charge_size = options["CONSTRAIN_CHARGE"].size();
     if (charge_size > 0){
         if (charge_size == nfrag){
             for (int n = 0; n < charge_size; ++n){

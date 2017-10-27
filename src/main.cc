@@ -42,7 +42,7 @@ extern "C" int read_options(std::string name, Options& options) {
         ///////////////////////////////////////
 
         /*- Charge constraints -*/
-        options.add("CHARGE", new ArrayType());
+        options.add("CONSTRAIN_CHARGE", new ArrayType());
         /*- Spin constraints -*/
         options.add("SPIN", new ArrayType());
         /*- Select the way the charges are computed -*/
