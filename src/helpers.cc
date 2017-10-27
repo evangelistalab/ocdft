@@ -1,4 +1,6 @@
 #include <ostream>
+#include <iterator>
+
 #include "helpers.h"
 
 namespace psi {
