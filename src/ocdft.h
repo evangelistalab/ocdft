@@ -233,6 +233,7 @@ class UOCDFT : public UHF {
                                  SharedMatrix Cvir);
     std::pair<SharedMatrix, std::shared_ptr<IAOBuilder>> build_aios(SharedMatrix refC);
     std::vector<std::tuple<int, int, std::string>> find_iao_character(SharedMatrix Ciao);
+    std::vector<std::tuple<int, int, int>> analyze_basis_set();
     void
     find_particle_orbital_character(SharedMatrix Cmo, SharedMatrix Clivvo, SharedMatrix Ciao,
                                     std::vector<std::tuple<int, int, std::string>>& IAO_character);
