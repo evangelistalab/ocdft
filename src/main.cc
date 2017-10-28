@@ -161,7 +161,7 @@ extern "C" int read_options(std::string name, Options& options) {
         //  Ensure that your computer has enough memory before printing cube files.
         options.add_bool("CUBE_HP", false);
 
-        options.add_str("MINAO_BASIS", "STO-3G");
+        options.add_str("MINAO_BASIS", "CC-PVTZ-MINAO");
 
         /////////////////////////////////////////////////////////////////
         // Options for Non-Orthogonal Configuration Interaction (NOCI) //

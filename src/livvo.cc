@@ -241,10 +241,10 @@ void UOCDFT::find_particle_orbital_character(
                 int character_A = std::get<0>(IAO_character[rho]);
                 int character_l = std::get<1>(IAO_character[rho]);
                 std::string character_symbol = std::get<2>(IAO_character[rho]);
-                if (S_l_rho > 0.1) {
+                l_composition[character_l] += S_l_rho;
+                if (S_l_rho > 0.02) {
                     contributions.push_back(
                         std::make_tuple(S_l_rho, character_symbol, character_A, character_l));
-                    l_composition[character_l] += S_l_rho;
                 }
             }
 
