@@ -1,23 +1,27 @@
-import psi4
-import re
-import os
-import inputparser
-import math
-import warnings
-from driver import *
-#from wrappers import *
-from molutil import *
-import p4util
-#from p4xcpt import *
+#import psi4
+#import re
+#import os
+#import inputparser
+#import math
+#import warnings
+#from driver import *
+##from wrappers import *
+#from molutil import *
+#import p4util
+##from p4xcpt import *
 
-plugdir = os.path.split(os.path.abspath(__file__))[0]
-sofile = plugdir + "/cdft.so"
+#plugdir = os.path.split(os.path.abspath(__file__))[0]
+#sofile = plugdir + "/cdft.so"
+
+import psi4
+import psi4.driver.p4util as p4util
+from psi4.driver.procrouting import proc_util
 
 def run_cdft(name, **kwargs):
     r"""Function encoding sequence of PSI module and plugin calls so that
     CDFT can be called via :py:func:`~driver.energy`.
 
-    >>> energy('cdft')
+    >>> energy('ocdft')
 
     """
     lowername = name.lower()
@@ -29,8 +33,13 @@ def run_cdft(name, **kwargs):
     if ref_wfn is None:
         ref_wfn = scf_helper(name, **kwargs)
 
+    if (psi4.core.get_option('OCDFT','MINAO_BASIS')):
+        minao_basis = psi4.core.BasisSet.build(ref_wfn.molecule(), 'MINAO_BASIS',
+                                                   psi4.core.get_option('FORTE','MINAO_BASIS'))
+        ref_wfn.set_basisset('MINAO_BASIS', minao_basis)
+
     # Run CDFT
-    psi4.set_local_option('CDFT','METHOD','CDFT')
+    psi4.set_local_option('OCDFT','METHOD','CDFT')
     returnvalue = psi4.plugin(sofile,ref_wfn)
 
     return returnvalue
@@ -71,17 +80,25 @@ def run_ocdft(name, **kwargs):
     lowername = name.lower()
     kwargs = p4util.kwargs_lower(kwargs)
 
-    scf_molecule = kwargs.get('molecule', psi4.get_active_molecule())
-    ref_wfn = psi4.new_wavefunction(scf_molecule, psi4.get_global_option('BASIS'))
-
+#    scf_molecule = kwargs.get('molecule', psi4.get_active_molecule())
+#    ref_wfn = psi4.new_wavefunction(scf_molecule, psi4.get_global_option('BASIS'))
+    ref_wfn = kwargs.get('ref_wfn', None)
     if ref_wfn is None:
-        ref_wfn = scf_helper(name, **kwargs)
+        ref_wfn = psi4.driver.scf_helper(name, **kwargs)
 
     # Run OCDFT
-    psi4.set_local_option('CDFT','METHOD','OCDFT')
-    returnvalue = psi4.plugin(sofile, ref_wfn)
+    psi4.core.set_local_option('OCDFT','METHOD','OCDFT')
+    if (psi4.core.get_option('OCDFT','MINAO_BASIS')):
+        minao_basis = psi4.core.BasisSet.build(ref_wfn.molecule(), 'MINAO_BASIS',
+                                                   psi4.core.get_option('OCDFT','MINAO_BASIS'))
+        ref_wfn.set_basisset('MINAO_BASIS', minao_basis)
 
-    return returnvalue
+    # Call the Psi4 plugin
+    # Please note that setting the reference wavefunction in this way is ONLY for plugins
+
+    ocdft_wfn = psi4.core.plugin('ocdft.so', ref_wfn)
+
+    return ocdft_wfn
 
 def run_fasnocis(name, **kwargs):
     r"""Function encoding sequence of PSI module and plugin calls so that
@@ -108,7 +125,7 @@ def run_fasnocis(name, **kwargs):
 
 
 # Integration with driver routines
-procedures['energy']['cdft'] = run_cdft
-procedures['energy']['ocdft'] = run_ocdft
-procedures['energy']['fasnocis'] = run_fasnocis
-procedures['energy']['noci'] = run_noci
+psi4.driver.procedures['energy']['cdft'] = run_cdft
+psi4.driver.procedures['energy']['ocdft'] = run_ocdft
+psi4.driver.procedures['energy']['fasnocis'] = run_fasnocis
+psi4.driver.procedures['energy']['noci'] = run_noci

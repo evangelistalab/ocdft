@@ -3,29 +3,33 @@
 
 #include "boost/tuple/tuple.hpp"
 
-#include <libscf_solver/ks.h>
+#include <psi4/libscf_solver/uhf.h>
 
+#include "iao_builder.h"
 #include "determinant.h"
 
-namespace psi{
-class Options;
-namespace scf{
+namespace psi {
+namespace scf {
 
 /// A class for unrestricted Orthogonality Constrained DFT
-class UOCDFT : public UKS {
-public:
-    explicit UOCDFT(SharedWavefunction ref_scf,Options &options, boost::shared_ptr<PSIO> psio);
-    explicit UOCDFT(Options &options, boost::shared_ptr<PSIO> psio, SharedWavefunction ref_scf, int state);
-    explicit UOCDFT(Options &options, boost::shared_ptr<PSIO> psio, SharedWavefunction ref_scf, int state, int symmetry);
+class UOCDFT : public UHF {
+  public:
+    explicit UOCDFT(SharedWavefunction ref_scf, std::shared_ptr<SuperFunctional> functional,
+                    Options& options, std::shared_ptr<PSIO> psio);
+    explicit UOCDFT(std::shared_ptr<SuperFunctional> functional, Options& options,
+                    std::shared_ptr<PSIO> psio, SharedWavefunction ref_scf, int state);
+    explicit UOCDFT(std::shared_ptr<SuperFunctional> functional, Options& options,
+                    std::shared_ptr<PSIO> psio, SharedWavefunction ref_scf, int state,
+                    int symmetry);
     virtual ~UOCDFT();
 
-    double singlet_exc_energy_s_plus() {return singlet_exc_energy_s_plus_;}
-    double oscillator_strength_s_plus() {return oscillator_strength_s_plus_;}
-    double oscillator_strength_s_plus_x() {return oscillator_strength_s_plus_x_;}
-    double oscillator_strength_s_plus_y() {return oscillator_strength_s_plus_y_;}
-    double oscillator_strength_s_plus_z() {return oscillator_strength_s_plus_z_;}
+    double singlet_exc_energy_s_plus() { return singlet_exc_energy_s_plus_; }
+    double oscillator_strength_s_plus() { return oscillator_strength_s_plus_; }
+    double oscillator_strength_s_plus_x() { return oscillator_strength_s_plus_x_; }
+    double oscillator_strength_s_plus_y() { return oscillator_strength_s_plus_y_; }
+    double oscillator_strength_s_plus_z() { return oscillator_strength_s_plus_z_; }
 
-protected:
+  protected:
     /// The fragment constraint matrices in the SO basis
     std::vector<SharedMatrix> W_frag;
 
@@ -49,13 +53,13 @@ protected:
     /// For multiple excited state project out previous particles
     bool do_save_particles;
     ///// Are we to do MOM?
-    //bool MOM_enabled_;
+    // bool MOM_enabled_;
     ///// Are we to do excited-state MOM?
-    //bool MOM_excited_;
+    // bool MOM_excited_;
     ///// MOM started?
-    //bool MOM_started_;
+    // bool MOM_started_;
     ///// MOM performed?
-    //bool MOM_performed_;
+    // bool MOM_performed_;
     /// Ground state energy
     double ground_state_energy;
     /// Ground state symmetry
@@ -86,7 +90,7 @@ protected:
     SharedMatrix Ch_;
     /// The particle orbitals coefficients
     SharedMatrix Cp_;
-    /// Natural Transition Orbitals 
+    /// Natural Transition Orbitals
     SharedMatrix NTOs_;
     /// Current Wavefunction
     SharedWavefunction wfn_;
@@ -119,21 +123,21 @@ protected:
     SharedMatrix Ub_o_;
     /// The eigenvectors of PvFPv
     SharedMatrix Ub_v_;
-    //SharedMatrix L_ibo;
-    //SharedMatrix A_iao;
+    // SharedMatrix L_ibo;
+    // SharedMatrix A_iao;
     ///// Old C Alpha matrix (if needed for MOM)
-    //SharedMatrix Ca_old_;
+    // SharedMatrix Ca_old_;
     ///// Old C Beta matrix (if needed for MOM)
-    //SharedMatrix Cb_old_;
+    // SharedMatrix Cb_old_;
     /// The eigenvalues of PoFPo
     SharedVector lambda_b_o_;
     /// The eigenvalues of PvFPv
     SharedVector lambda_b_v_;
 
     /// The list of alpha holes (irrep,mo,energy)
-    std::vector<boost::tuple<int,int,double> > aholes;
+    std::vector<std::tuple<int, int, double>> aholes;
     /// The list of alpha particles (irrep,mo,energy)
-    std::vector<boost::tuple<int,int,double> > aparts;
+    std::vector<std::tuple<int, int, double>> aparts;
     /// The ground state alpha occupation numbers per irrep
     Dimension gs_nalphapi_;
     /// The ground state alpha virtual mos per irrep
@@ -194,7 +198,7 @@ protected:
     /// Class initializer
     void init();
     /// Initialize the exctiation functions
-    void init_excitation( boost::shared_ptr<Wavefunction> ref_scf);
+    void init_excitation(std::shared_ptr<Wavefunction> ref_scf);
     /// The constrained hole/particle algorithm for computing the orbitals
     void form_C_ee();
     /// Finds the optimal holes
@@ -202,7 +206,7 @@ protected:
     /// Finds the optimal particles
     void compute_particles();
     /// Finds the optimal hole and particle pair
-    void find_ee_occupation(SharedVector lambda_o,SharedVector lambda_v);
+    void find_ee_occupation(SharedVector lambda_o, SharedVector lambda_v);
     ///
     void compute_hole_particle_mos();
     /// Form the Fock matrix for the spectator orbitals
@@ -213,39 +217,52 @@ protected:
     /// Accept subspace of particle orbitals
     std::vector<int> particle_subspace(SharedWavefunction wfn, SharedMatrix Ca);
     /// Accept subspace of hole orbitals
-    std::vector<boost::tuple<double,int>> hole_subspace(SharedWavefunction wfn, SharedMatrix Ca);
+    std::vector<std::tuple<double, int>> hole_subspace(SharedWavefunction wfn, SharedMatrix Ca);
 
     /// Maximum overlap method for prevention of oscillation/excited state SCF
-    //void HF::MOM();
+    // void HF::MOM();
     /// Start the MOM algorithm (requires one iteration worth of setup)
-    //void HF::MOM_start();
-
+    // void HF::MOM_start();
 
     /// Analyze excitations
     void analyze_excitations();
+    /// Perform a LIVVO analysis
+    void livvo_analysis(SharedMatrix refC);
+    /// Generate the LIVVO coefficient matrix
+    SharedMatrix generate_livvos(std::pair<SharedMatrix, std::shared_ptr<psi::IAOBuilder>> iaos,
+                                 SharedMatrix Cvir);
+    std::pair<SharedMatrix, std::shared_ptr<IAOBuilder>> build_aios(SharedMatrix refC);
+    std::vector<std::tuple<int, int, std::string>> find_iao_character(SharedMatrix Ciao);
+    std::vector<std::tuple<int, int, int>> analyze_basis_set();
+    void
+    find_particle_orbital_character(SharedMatrix Cmo, SharedMatrix Clivvo, SharedMatrix Ciao,
+                                    std::vector<std::tuple<int, int, std::string>>& IAO_character);
     /// Compute the transition dipole moment between the ground and excited states
     void compute_transition_moments(SharedWavefunction ref_scf);
     /// Compute a correction for the mixed excited states
     double compute_triplet_correction();
-    /// Compute a correction for the mixed excited state based on a triplet state generated by acting with the S+ operator
+    /// Compute a correction for the mixed excited state based on a triplet state
+    /// generated by acting with the S+ operator
     double compute_S_plus_triplet_correction();
     /// Compute the singlet and triplet energy of a mixed excited state
     void spin_adapt_mixed_excitation();
     /// Compute the CIS excitation energy
     void cis_excitation_energy();
     /// Compute the corresponding orbitals for a pair of MO sets
-    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimension dima, Dimension dimb);
+    std::tuple<SharedMatrix, SharedMatrix, SharedVector, double>
+    corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimension dima, Dimension dimb);
     /// Form_C for the beta MOs
     void form_C_beta();
-    /// Checks if the orbital defined by the matrix are orthogonal with respect to the metric S
+    /// Checks if the orbital defined by the matrix are orthogonal with respect to
+    /// the metric S
     void orthogonality_check(SharedMatrix C, SharedMatrix S);
     /// Performs varying fractional occupation for convergence
     void pFON();
 
-    std::pair<double,double> matrix_element(SharedDeterminant A, SharedDeterminant B);
+    std::pair<double, double> matrix_element(SharedDeterminant A, SharedDeterminant B);
 
     // Overloaded UKS function
-    //virtual void pFON();
+    // virtual void pFON();
     virtual void save_density_and_energy();
     virtual void form_F();
     virtual void form_C();
@@ -256,7 +273,7 @@ protected:
     virtual void save_information();
     virtual void compute_orbital_gradient(bool save_fock);
 };
-
-}} // Namespaces
+}
+} // Namespaces
 
 #endif // Header guard

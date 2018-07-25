@@ -1,7 +1,7 @@
 #ifndef SRC_LIB_RCKS_H
 #define SRC_LIB_RCKS_H
 
-#include <libscf_solver/ks.h>
+#include <psi4/libscf_solver/rhf.h>
 #include "constraint.h"
 
 namespace psi{
@@ -9,9 +9,9 @@ namespace psi{
 namespace scf{
 
 /// A class for restricted constrained Kohn-Sham theory
-class RCKS : public RKS {
+class RCKS : public RHF {
 public:
-     RCKS(SharedWavefunction ref_scf, Options &options, boost::shared_ptr<PSIO> psio);
+     RCKS(SharedWavefunction ref_scf, Options &options, std::shared_ptr<PSIO> psio);
      virtual ~RCKS();
      /// Compute the Lowdin charges
      virtual void Lowdin();

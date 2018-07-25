@@ -31,6 +31,8 @@
 #include <vector>
 #include <boost/shared_ptr.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <psi4/liboptions/liboptions.h>
+#include <psi4/libmints/matrix.h>
 
 namespace psi {
 
@@ -40,115 +42,111 @@ class BasisSet;
 class IAOBuilder {
 
 protected:
+  // => Overall Parameters <= //
 
-    // => Overall Parameters <= //
+  /// Print flag
+  int print_;
+  /// Debug flug
+  int debug_;
+  /// Bench flag
+  int bench_;
 
-    /// Print flag
-    int print_;
-    /// Debug flug
-    int debug_;
-    /// Bench flag
-    int bench_;
+  /// Relative convergence criteria
+  double convergence_;
+  /// Maximum number of iterations
+  int maxiter_;
 
-    /// Relative convergence criteria
-    double convergence_;
-    /// Maximum number of iterations
-    int maxiter_;
+  // => IAO Parameters <= //
 
-    // => IAO Parameters <= //
+  /// Use ghost IAOs?
+  bool use_ghosts_;
+  /// IAO localization power (4 or 2)
+  int power_;
+  /// Metric condition for IAO
+  double condition_;
 
-    /// Use ghost IAOs?
-    bool use_ghosts_;
-    /// IAO localization power (4 or 2)
-    int power_; 
-    /// Metric condition for IAO
-    double condition_;
-    
-    /// Occupied orbitals, in primary basis
-    boost::shared_ptr<Matrix> C_;
-    /// Primary orbital basis set
-    boost::shared_ptr<BasisSet> primary_;
-    /// MinAO orbital baiss set
-    boost::shared_ptr<BasisSet> minao_;
+  /// Occupied orbitals, in primary basis
+  std::shared_ptr<Matrix> C_;
+  /// Primary orbital basis set
+  std::shared_ptr<BasisSet> primary_;
+  /// MinAO orbital baiss set
+  std::shared_ptr<BasisSet> minao_;
 
-    // => Stars Parameters <= //
-    
-    /// Do stars treatment?
-    bool use_stars_;
-    /// Charge completeness for two-center orbitals
-    double stars_completeness_;
-    /// List of centers for stars
-    std::vector<int> stars_;
+  // => Stars Parameters <= //
 
-    // => IAO Data <= //
+  /// Do stars treatment?
+  bool use_stars_;
+  /// Charge completeness for two-center orbitals
+  double stars_completeness_;
+  /// List of centers for stars
+  std::vector<int> stars_;
 
-    /// Map from non-ghosted to full atoms: true_atoms[ind_true] = ind_full
-    std::vector<int> true_atoms_; 
-    /// Map from non-ghosted IAOs to full IAOs: true_iaos[ind_true] = ind_full
-    std::vector<int> true_iaos_;
-    /// Map from non-ghosted IAOs to non-ghosted atoms 
-    std::vector<int> iaos_to_atoms_;
+  // => IAO Data <= //
 
-    /// Overlap matrix in full basis
-    boost::shared_ptr<Matrix> S_;
-    /// Non-ghosted IAOs in full basis
-    boost::shared_ptr<Matrix> A_;
-    
-    
-    /// Set defaults
-    void common_init();
-    
+  /// Map from non-ghosted to full atoms: true_atoms[ind_true] = ind_full
+  std::vector<int> true_atoms_;
+  /// Map from non-ghosted IAOs to full IAOs: true_iaos[ind_true] = ind_full
+  std::vector<int> true_iaos_;
+  /// Map from non-ghosted IAOs to non-ghosted atoms
+  std::vector<int> iaos_to_atoms_;
+
+  /// Overlap matrix in full basis
+  std::shared_ptr<Matrix> S_;
+  /// Non-ghosted IAOs in full basis
+  std::shared_ptr<Matrix> A_;
+
+  /// Set defaults
+  void common_init();
 
 public:
+  // => Constructors <= //
 
-    // => Constructors <= //
+  IAOBuilder(std::shared_ptr<BasisSet> primary, std::shared_ptr<BasisSet> minao,
+             std::shared_ptr<Matrix> C);
 
-    IAOBuilder(
-        boost::shared_ptr<BasisSet> primary, 
-        boost::shared_ptr<BasisSet> minao, 
-        boost::shared_ptr<Matrix> C);
-    
-    virtual ~IAOBuilder();
+  virtual ~IAOBuilder();
 
-    /// Build IBO with defaults from Options object (including MINAO_BASIS)
-    static boost::shared_ptr<IAOBuilder> build(
-        boost::shared_ptr<BasisSet> primary, 
-        boost::shared_ptr<Matrix> C,
-        Options& options);
-    /// Build the IAOs for exporting
-    std::map<std::string, SharedMatrix> build_iaos();
+  /// Build IBO with defaults from Options object (including MINAO_BASIS)
+  static std::shared_ptr<IAOBuilder> build(std::shared_ptr<BasisSet> primary,
+                                           std::shared_ptr<BasisSet> minao,
+                                           std::shared_ptr<Matrix> C,
+                                           Options &options);
+  /// Build the IAOs for exporting
+  std::map<std::string, SharedMatrix> build_iaos();
 
-    std::vector<std::string> print_IAO(SharedMatrix A, int nmin, int nbf, SharedWavefunction wfn_);
+  std::vector<std::string> print_IAO(SharedMatrix A, int nmin, int nbf,
+                                     SharedWavefunction wfn_);
 
-std::map<std::string, boost::shared_ptr<Matrix>> ibo_localizer(boost::shared_ptr<Matrix> L, const std::vector<std::vector<int> >& minao_inds, const std::vector<std::pair<int, int> >& rot_inds, double convergence,int maxiter, int power);
+  std::map<std::string, std::shared_ptr<Matrix>>
+  ibo_localizer(std::shared_ptr<Matrix> L,
+                const std::vector<std::vector<int>> &minao_inds,
+                const std::vector<std::pair<int, int>> &rot_inds,
+                double convergence, int maxiter, int power);
 
-std::map<std::string, boost::shared_ptr<Matrix> > localize(
-        boost::shared_ptr<Matrix> Cocc,
-        boost::shared_ptr<Matrix> Focc,
-        const std::vector<int>& ranges2
-        );
+  std::map<std::string, std::shared_ptr<Matrix>>
+  localize(std::shared_ptr<Matrix> Cocc, std::shared_ptr<Matrix> Focc,
+           const std::vector<int> &ranges2);
 
-boost::shared_ptr<Matrix> reorder_orbitals(
-    boost::shared_ptr<Matrix> F,
-    const std::vector<int>& ranges);
+  std::shared_ptr<Matrix> reorder_orbitals(std::shared_ptr<Matrix> F,
+                                           const std::vector<int> &ranges);
 
-boost::shared_ptr<Matrix> orbital_charges(
-    boost::shared_ptr<Matrix> L);
+  std::shared_ptr<Matrix> orbital_charges(std::shared_ptr<Matrix> L);
 
-    // => Knobs <= //
+  // => Knobs <= //
 
-    void set_print(int print) { print_ = print; }
-    void set_debug(int debug) { debug_ = debug; }
-    void set_bench(int bench) { bench_ = bench; }
-    void set_convergence(double convergence) { convergence_ = convergence; }
-    void set_maxiter(int maxiter) { maxiter_ = maxiter; }
-    void set_use_ghosts(bool use_ghosts) { use_ghosts_ = use_ghosts; }
-    void set_condition(double condition) { condition_ = condition; }
-    void set_power(double power) { power_ = power; }
-    void set_use_stars(bool use_stars) { use_stars_ = use_stars; }
-    void set_stars_completeness(double stars_completeness) { stars_completeness_ = stars_completeness; }
-    void set_stars(const std::vector<int>& stars) { stars_ = stars; }
-
+  void set_print(int print) { print_ = print; }
+  void set_debug(int debug) { debug_ = debug; }
+  void set_bench(int bench) { bench_ = bench; }
+  void set_convergence(double convergence) { convergence_ = convergence; }
+  void set_maxiter(int maxiter) { maxiter_ = maxiter; }
+  void set_use_ghosts(bool use_ghosts) { use_ghosts_ = use_ghosts; }
+  void set_condition(double condition) { condition_ = condition; }
+  void set_power(double power) { power_ = power; }
+  void set_use_stars(bool use_stars) { use_stars_ = use_stars; }
+  void set_stars_completeness(double stars_completeness) {
+    stars_completeness_ = stars_completeness;
+  }
+  void set_stars(const std::vector<int> &stars) { stars_ = stars; }
 };
 
 } // Namespace psi

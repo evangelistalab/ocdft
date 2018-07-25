@@ -1,7 +1,7 @@
 #include <physconst.h>
 #include <psifiles.h>
-#include <libmints/mints.h>
-#include <libmints/wavefunction.h>
+#include <psi4/libmints/mints.h>
+#include <psi4/libmints/wavefunction.h>
 #include <libfock/apps.h>
 #include <libfock/v.h>
 #include <libfock/jk.h>
@@ -143,7 +143,7 @@ double NOCI_Hamiltonian::compute_energy(std::vector<double> energies)
     // Create a vector of matrices with the proper symmetry
     std::vector<SharedMatrix> dipole = msymm.create_matrices("SO Dipole");
 
-    boost::shared_ptr<OneBodySOInt> ints(integral_->so_dipole());
+    std::shared_ptr<OneBodySOInt> ints(integral_->so_dipole());
     ints->compute(dipole);
 
     std::vector<SharedMatrix> DipMom;
@@ -305,8 +305,8 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_c1(SharedDeterminant A, Sha
     size_t nocc_b = A->nbetapi()[0];
 
     // I. Form the corresponding alpha and beta orbitals
-    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
-    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> cbeta  = corresponding_orbitals(A->Cb(),B->Cb(),A->nbetapi(),B->nbetapi());
+    std::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
+    std::tuple<SharedMatrix,SharedMatrix,SharedVector,double> cbeta  = corresponding_orbitals(A->Cb(),B->Cb(),A->nbetapi(),B->nbetapi());
     SharedMatrix ACa = calpha.get<0>();
     SharedMatrix BCa = calpha.get<1>();
     SharedMatrix ACb = cbeta.get<0>();
@@ -602,8 +602,8 @@ std::vector<double> NOCI_Hamiltonian::matrix_element_one_body_c1(SharedDetermina
     size_t nocc_b = A->nbetapi()[0];
 
     // I. Form the corresponding alpha and beta orbitals
-    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
-    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> cbeta  = corresponding_orbitals(A->Cb(),B->Cb(),A->nbetapi(),B->nbetapi());
+    std::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
+    std::tuple<SharedMatrix,SharedMatrix,SharedVector,double> cbeta  = corresponding_orbitals(A->Cb(),B->Cb(),A->nbetapi(),B->nbetapi());
     SharedMatrix ACa = calpha.get<0>();
     SharedMatrix BCa = calpha.get<1>();
     SharedMatrix ACb = cbeta.get<0>();
@@ -756,7 +756,7 @@ void NOCI_Hamiltonian::build_D_i_JK_c1(SharedMatrix CA, SharedMatrix CB, size_t 
     fast_JK(Cl,Cr);
 }
 
-boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double>
+std::tuple<SharedMatrix,SharedMatrix,SharedVector,double>
 NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimension dima, Dimension dimb)
 {
     // Form <B|S|A>
@@ -782,7 +782,7 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
 #endif
 
     // SVD <B|S|A>
-    boost::tuple<SharedMatrix, SharedVector, SharedMatrix> UsV = Sba->svd_a_temps();
+    std::tuple<SharedMatrix, SharedVector, SharedMatrix> UsV = Sba->svd_a_temps();
     SharedMatrix U = UsV.get<0>();
     SharedVector sigma = UsV.get<1>();
     SharedMatrix V = UsV.get<2>();
@@ -878,7 +878,7 @@ NOCI_Hamiltonian::corresponding_orbitals(SharedMatrix A, SharedMatrix B, Dimensi
     outfile->Printf("\n det U = %f, det V = %f",detU,detV);
 #endif
     double detUV = detU * detV;
-    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> result(cA,cB,sigma,detUV);
+    std::tuple<SharedMatrix,SharedMatrix,SharedVector,double> result(cA,cB,sigma,detUV);
     return result;
 }
 
@@ -889,8 +889,8 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
     double hamiltonian = 0.0;
 
     // I. Form the corresponding alpha and beta orbitals
-    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
-    boost::tuple<SharedMatrix,SharedMatrix,SharedVector,double> cbeta  = corresponding_orbitals(A->Cb(),B->Cb(),A->nbetapi(),B->nbetapi());
+    std::tuple<SharedMatrix,SharedMatrix,SharedVector,double> calpha = corresponding_orbitals(A->Ca(),B->Ca(),A->nalphapi(),B->nalphapi());
+    std::tuple<SharedMatrix,SharedMatrix,SharedVector,double> cbeta  = corresponding_orbitals(A->Cb(),B->Cb(),A->nbetapi(),B->nbetapi());
     SharedMatrix ACa = calpha.get<0>();
     SharedMatrix BCa = calpha.get<1>();
     SharedMatrix ACb = cbeta.get<0>();
@@ -903,8 +903,8 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
     // Compute the number of noncoincidences
     double noncoincidence_threshold = 1.0e-9;
 
-    std::vector<boost::tuple<int,int,double> > Aalpha_nonc;
-    std::vector<boost::tuple<int,int,double> > Balpha_nonc;
+    std::vector<std::tuple<int,int,double> > Aalpha_nonc;
+    std::vector<std::tuple<int,int,double> > Balpha_nonc;
     double Sta = 1.0;
     for (int h = 0; h < nirrep_; ++h){
         // Count all the numerical noncoincidences
@@ -913,8 +913,8 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
             if(std::fabs(s_a->get(h,p)) >= noncoincidence_threshold){
                 Sta *= s_a->get(h,p);
             }else{
-                Aalpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
-                Balpha_nonc.push_back(boost::make_tuple(h,p,s_a->get(h,p)));
+                Aalpha_nonc.push_back(std::make_tuple(h,p,s_a->get(h,p)));
+                Balpha_nonc.push_back(std::make_tuple(h,p,s_a->get(h,p)));
             }
         }
         // Count all the symmetry noncoincidences
@@ -922,15 +922,15 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
         bool AgeB = A->nalphapi()[h] >= B->nalphapi()[h] ? true : false;
         for (int p = nmin; p < nmax; ++p){
             if(AgeB){
-                Aalpha_nonc.push_back(boost::make_tuple(h,p,0.0));
+                Aalpha_nonc.push_back(std::make_tuple(h,p,0.0));
             }else{
-                Balpha_nonc.push_back(boost::make_tuple(h,p,0.0));
+                Balpha_nonc.push_back(std::make_tuple(h,p,0.0));
             }
         }
     }
 
-    std::vector<boost::tuple<int,int,double> > Abeta_nonc;
-    std::vector<boost::tuple<int,int,double> > Bbeta_nonc;
+    std::vector<std::tuple<int,int,double> > Abeta_nonc;
+    std::vector<std::tuple<int,int,double> > Bbeta_nonc;
     double Stb = 1.0;
     for (int h = 0; h < nirrep_; ++h){
         // Count all the numerical noncoincidences
@@ -939,8 +939,8 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
             if(std::fabs(s_b->get(h,p)) >= noncoincidence_threshold){
                 Stb *= s_b->get(h,p);
             }else{
-                Abeta_nonc.push_back(boost::make_tuple(h,p,s_b->get(h,p)));
-                Bbeta_nonc.push_back(boost::make_tuple(h,p,s_b->get(h,p)));
+                Abeta_nonc.push_back(std::make_tuple(h,p,s_b->get(h,p)));
+                Bbeta_nonc.push_back(std::make_tuple(h,p,s_b->get(h,p)));
             }
         }
         // Count all the symmetry noncoincidences
@@ -948,9 +948,9 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
         bool AgeB = A->nbetapi()[h] >= B->nbetapi()[h] ? true : false;
         for (int p = nmin; p < nmax; ++p){
             if(AgeB){
-                Abeta_nonc.push_back(boost::make_tuple(h,p,0.0));
+                Abeta_nonc.push_back(std::make_tuple(h,p,0.0));
             }else{
-                Bbeta_nonc.push_back(boost::make_tuple(h,p,0.0));
+                Bbeta_nonc.push_back(std::make_tuple(h,p,0.0));
             }
         }
     }
@@ -1081,8 +1081,8 @@ std::pair<double,double> NOCI_Hamiltonian::matrix_element(SharedDeterminant A, S
                 }
             }
         }
-        boost::shared_ptr<IntegralFactory> integral_(new IntegralFactory(basisset_));
-        boost::shared_ptr<PetiteList> pet(new PetiteList(basisset_, integral_));
+        std::shared_ptr<IntegralFactory> integral_(new IntegralFactory(basisset_));
+        std::shared_ptr<PetiteList> pet(new PetiteList(basisset_, integral_));
 //        int nbf = basisset_->nbf();
         SharedMatrix SO2AO_ = pet->sotoao();
 

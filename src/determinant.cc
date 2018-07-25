@@ -1,4 +1,7 @@
-#include <libmints/mints.h>
+//#include <psi4/libmints/mints.h>
+
+#include "psi4/libpsi4util/PsiOutStream.h"
+#include "psi4/psi4-dec.h"
 
 #include "determinant.h"
 

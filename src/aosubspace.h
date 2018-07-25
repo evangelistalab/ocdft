@@ -1,33 +1,60 @@
-#ifndef AOSUBSPACE_H
-#define AOSUBSPACE_H
+/*
+ * @BEGIN LICENSE
+ *
+ * Forte: an open-source plugin to Psi4 (https://github.com/psi4/psi4)
+ * that implements a variety of quantum chemistry methods for strongly
+ * correlated electrons.
+ *
+ * Copyright (c) 2012-2017 by its authors (see COPYING, COPYING.LESSER, AUTHORS).
+ *
+ * The copyrights for code used from other parties are included in
+ * the corresponding files.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see http://www.gnu.org/licenses/.
+ *
+ * @END LICENSE
+ */
 
-#include <boost/shared_ptr.hpp>
-#include <libmints/molecule.h>
-#include <libmints/basisset.h>
-#include <libscf_solver/hf.h>
-#include <liboptions/liboptions.h>
+#ifndef _aosubspace_h_
+#define _aosubspace_h_
 
-namespace psi{
-namespace aosubspace {
+#include "psi4/libmints/molecule.h"
+#include "psi4/libmints/basisset.h"
+#include "psi4/liboptions/liboptions.h"
+
+#define _DEBUG_AOSUBSPACE_ 0
+
+namespace psi {
 
 /**
  * @brief The AOInfo class
  *
  * A class to store information about an atomic orbital
  */
-class AOInfo
-{
-public:
-    AOInfo(int A,int Z,int element_count,int n,int l,int m) : A_(A), Z_(Z), element_count_(element_count), n_(n), l_(l), m_(m) {}
+class AOInfo {
+  public:
+    AOInfo(int A, int Z, int element_count, int n, int l, int m)
+        : A_(A), Z_(Z), element_count_(element_count), n_(n), l_(l), m_(m) {}
 
-    int A() const {return A_;}
-    int Z() const {return Z_;}
-    int element_count() const {return element_count_;}
-    int n() const {return n_;}
-    int l() const {return l_;}
-    int m() const {return m_;}
+    int A() const { return A_; }
+    int Z() const { return Z_; }
+    int element_count() const { return element_count_; }
+    int n() const { return n_; }
+    int l() const { return l_; }
+    int m() const { return m_; }
 
-private:
+  private:
     int A_;
     int Z_;
     int element_count_;
@@ -36,14 +63,13 @@ private:
     int m_;
 };
 
-
 /**
  * @brief The AOSubspace class
  *
  * Typical usage:
  *
  *    // Find the AO subset
- *    boost::shared_ptr<Wavefunction> wfn = Process::environment.wavefunction();
+ *    std::shared_ptr<Wavefunction> wfn = Process::environment.wavefunction();
  *
  *    std::vector<std::string> subspace_str;
  *    if (options["SUBSPACE"].size() > 0){
@@ -62,6 +88,9 @@ private:
  *    // Get the subspaces
  *    std::vector<int> subspace = aosub.subspace();
  *
+ *    // Build a projector
+ *    SharedMatrix Ps =
+ * aosub.build_projector(subspace,molecule,min_basis,basis);
  *
  *  Syntax:
  *
@@ -72,7 +101,8 @@ private:
  *    <range>   - the range of the atoms selected.  Possible choices are:
  *                1) '' (empty): all atoms that match <element> are selected
  *                2) 'i'       : select the i-th atom of type <element>
- *                3) 'i-j'     : select atoms i through j (included) of type <element>
+ *                3) 'i-j'     : select atoms i through j (included) of type
+ * <element>
  *
  *    <ao set>  - the set of atomic orbitals to select.  Possible choices are:
  *                1) '' (empty): select all basis functions
@@ -80,11 +110,13 @@ private:
  *                               e.g. '(1s)', '(2s)', '(2p)',...
  *                               n = 1, 2, 3, ...
  *                               l = 's', 'p', 'd', 'f', 'g', ...
- *                3) '(nlm)'   : select the n-th level with angular momentum l and component m
+ *                3) '(nlm)'   : select the n-th level with angular momentum l
+ * and component m
  *                               e.g. '(2pz)', '(3dzz)', '(3dxx-yy)'
  *                               n = 1, 2, 3, ...
  *                               l = 's', 'p', 'd', 'f', 'g', ...
- *                               m = 'x', 'y', 'z', 'xy', 'xz', 'yz', 'zz', 'xx-yy'
+ *                               m = 'x', 'y', 'z', 'xy', 'xz', 'yz', 'zz',
+ * 'xx-yy'
  *
  *    Valid options include:
  *
@@ -96,16 +128,15 @@ private:
  *    ["C(1s,2s)"] - the 1s/2s subsets of all carbon atoms
  *    ["C1-3(2s)"] - the 2s subsets of carbon atoms #1, #2, #3
  */
-class AOSubspace
-{
-public:
-
+class AOSubspace {
+  public:
     // ==> Constructors <==
 
     // Simple constructor
-    AOSubspace(boost::shared_ptr<Molecule> molecule,boost::shared_ptr<BasisSet> basis);
+    AOSubspace(std::shared_ptr<Molecule> molecule, std::shared_ptr<BasisSet> basis);
     // Constructor with list of subspaces
-    AOSubspace(std::vector<std::string> subspace_str,boost::shared_ptr<Molecule> molecule,boost::shared_ptr<BasisSet> basis);
+    AOSubspace(std::vector<std::string> subspace_str, std::shared_ptr<Molecule> molecule,
+               std::shared_ptr<BasisSet> basis);
 
     // ==> User's interface <==
 
@@ -113,12 +144,18 @@ public:
     void add_subspace(std::string);
 
     // Compute the AOs in the subspace
-    int find_subspace(int iteration);
+    void find_subspace();
 
     // Return the index of the AOs that span the subspace selected
     const std::vector<int>& subspace();
 
-    /// Return a vector of labels for each atomic orbital.  This function accepts
+    SharedMatrix build_projector(const std::vector<int>& subspace,
+                                 std::shared_ptr<Molecule> molecule,
+                                 std::shared_ptr<BasisSet> min_basis,
+                                 std::shared_ptr<BasisSet> large_basis);
+
+    /// Return a vector of labels for each atomic orbital.  This function
+    /// accepts
     /// an optional argument that indicates the formatting that will be fed to
     /// boost::format.
     ///
@@ -135,13 +172,13 @@ public:
     /// Return a vector of AOInfo objects
     const std::vector<AOInfo>& aoinfo() const;
 
-private:
+  private:
     /// The vector of subspace descriptors passed by the user
     std::vector<std::string> subspace_str_;
     /// The molecule
-    boost::shared_ptr<Molecule> molecule_;
+    std::shared_ptr<Molecule> molecule_;
     /// The AO basis set
-    boost::shared_ptr<BasisSet> basis_;
+    std::shared_ptr<BasisSet> basis_;
 
     /// The label of Cartesian atomic orbitals.
     /// lm_labels_cartesian_[l][m] returns the label for an orbital
@@ -158,12 +195,12 @@ private:
     /// with angular momentum quantum number l and index m
     std::vector<std::vector<std::string>> lm_labels_sperical_;
 
-    std::map<std::string,std::vector<std::pair<int,int>>> labels_sperical_to_lm_;
+    std::map<std::string, std::vector<std::pair<int, int>>> labels_sperical_to_lm_;
 
     /// The list of all AOs with their properties
     std::vector<AOInfo> aoinfo_vec_;
 
-    std::map<int,std::vector<std::vector<int>>> atom_to_aos_;
+    std::map<int, std::vector<std::vector<int>>> atom_to_aos_;
 
     /// The AOs spanned by the subspace selected by the user
     std::vector<int> subspace_;
@@ -179,7 +216,7 @@ private:
     void startup();
 
     /// Parse the options object
-    int parse_subspace(int iteration);
+    void parse_subspace();
 
     /// Parse the options object
     void parse_subspace_entry(const std::string& s);
@@ -188,6 +225,8 @@ private:
     void parse_basis_set();
 };
 
-}}
+// Helper function to create a projector using info in wfn and options
+SharedMatrix create_aosubspace_projector(SharedWavefunction wfn, Options& options);
+}
 
-#endif // AOSUBSPACE_H
+#endif // _aosubspace_h_

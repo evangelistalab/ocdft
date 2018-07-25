@@ -3,7 +3,7 @@
 
 #include "boost/tuple/tuple.hpp"
 
-#include <libscf_solver/hf.h>
+#include <psi4/libscf_solver/hf.h>
 
 #include "determinant.h"
 
@@ -14,8 +14,8 @@ namespace scf{
 
 class NOCI : public UHF {
 public:
-    explicit NOCI(SharedWavefunction ref_scf, Options &options, boost::shared_ptr<PSIO> psio);
-    explicit NOCI(SharedWavefunction ref_scf, Options &options, boost::shared_ptr<PSIO> psio, int state_a,std::pair<int,int> fmo, int state_b, std::vector<std::pair<int,int>> frozen_occ_a,std::vector<std::pair<int,int>> frozen_occ_b, std::vector<std::pair<int,int>> frozen_mos,
+    explicit NOCI(SharedWavefunction ref_scf, Options &options, std::shared_ptr<PSIO> psio);
+    explicit NOCI(SharedWavefunction ref_scf, Options &options, std::shared_ptr<PSIO> psio, int state_a,std::pair<int,int> fmo, int state_b, std::vector<std::pair<int,int>> frozen_occ_a,std::vector<std::pair<int,int>> frozen_occ_b, std::vector<std::pair<int,int>> frozen_mos,
                   std::vector<int> occ_frozen,
                   std::vector<int> vir_frozen, SharedMatrix Ca_gs, SharedMatrix Cb_gs,bool valence_in);
     virtual ~NOCI();
