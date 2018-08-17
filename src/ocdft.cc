@@ -299,7 +299,7 @@ void UOCDFT::guess() {
         //        Ca_ = dets[0]->Ca();
         //        Cb_ = dets[0]->Cb();
         form_D();
-        E_ = compute_initial_E();
+        compute_initial_E();
     } else {
         UHF::guess();
     }
