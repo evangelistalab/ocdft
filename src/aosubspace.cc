@@ -39,7 +39,7 @@
 #include "psi4/libmints/wavefunction.h"
 #include "psi4/masses.h"
 
-#include "boost/format.hpp"
+#include "fmt/format.h"
 
 #include "aosubspace.h"
 
@@ -82,7 +82,7 @@ SharedMatrix create_aosubspace_projector(SharedWavefunction wfn, Options& option
         outfile->Printf("       AO    Atom    Label  AO type   \n");
         outfile->Printf("    ----------------------------------\n");
         {
-            std::vector<std::string> aolabels = aosub.aolabels("%1$4d%2$-2s %3$-4d  %4$d%5$s");
+            std::vector<std::string> aolabels = aosub.aolabels("{:4d}{:-2s} {:4d}  {:d}{:s}");
 
             int nbf = 0;
             for (const auto& s : aolabels) {
@@ -250,9 +250,8 @@ const std::vector<int>& AOSubspace::subspace() { return subspace_; }
 std::vector<std::string> AOSubspace::aolabels(std::string str_format) const {
     std::vector<std::string> aolbl;
     for (const AOInfo& aoinfo : aoinfo_vec_) {
-        std::string s = boost::str(boost::format(str_format) % (aoinfo.A() + 1) %
-                                   atomic_labels[aoinfo.Z()] % (aoinfo.element_count() + 1) %
-                                   aoinfo.n() % lm_labels_sperical_[aoinfo.l()][aoinfo.m()]);
+        std::string s = fmt::format(str_format,aoinfo.A() + 1,
+                                   atomic_labels[aoinfo.Z()],aoinfo.element_count() + 1, aoinfo.n() , lm_labels_sperical_[aoinfo.l()][aoinfo.m()]);
         aolbl.push_back(s);
     }
     return aolbl;

@@ -1,7 +1,6 @@
 #include <vector>
 
-#include <boost/format.hpp>
-#include <boost/tuple/tuple_comparison.hpp>
+#include "format.h"
 
 #include "psi4/libpsi4util/PsiOutStream.h"
 #include <psi4/physconst.h>
@@ -275,7 +274,7 @@ void OCDFT(SharedWavefunction ref_wfn, Options& options) {
                 Ddiff->subtract(new_scf->Da());
                 CubeProperties cube = CubeProperties(new_scf);
                 if (options.get_bool("CUBE_HP")) {
-                    std::string label_str = boost::str(boost::format("Ddiff%d") % state);
+                    std::string label_str = fmt::format("Ddiff{:d}", state);
                     labels.push_back(label_str);
                     cube.compute_density(Ddiff, label_str);
                 }

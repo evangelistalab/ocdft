@@ -1,6 +1,3 @@
-#include "boost/tuple/tuple.hpp"
-#include "boost/tuple/tuple_comparison.hpp"
-
 #include "psi4/libpsi4util/PsiOutStream.h"
 #include <psi4/physconst.h>
 #include <psi4/libmints/vector.h>

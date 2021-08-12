@@ -39,7 +39,8 @@ src/ocdft_analyze_excitations.cc
 src/livvo.cc
 #src/rcks.cc
 src/ucks_determinant.cc
+src/fmt/format.cc
 )
 
-target_include_directories(ocdft PRIVATE src/mini-boost)
+target_include_directories(ocdft PRIVATE src/fmt)
 

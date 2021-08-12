@@ -1,8 +1,6 @@
 #ifndef SRC_LIB_UCKS_H
 #define SRC_LIB_UCKS_H
 
-#include "boost/tuple/tuple.hpp"
-
 #include <psi4/libscf_solver/uhf.h>
 
 #include "constraint.h"
