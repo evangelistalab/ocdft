@@ -24,10 +24,10 @@
 namespace psi {
 namespace cdft {
 
-void CDFT(SharedWavefunction ref_wfn, Options& options);
+// void CDFT(SharedWavefunction ref_wfn, Options& options);
 void OCDFT(SharedWavefunction ref_wfn, Options& options);
-void FASNOCIS(SharedWavefunction ref_wfn, Options& options);
-void NOCI(SharedWavefunction ref_wfn, Options& options);
+// void FASNOCIS(SharedWavefunction ref_wfn, Options& options);
+// void NOCI(SharedWavefunction ref_wfn, Options& options);
 
 extern "C" int read_options(std::string name, Options& options) {
     if (name == "OCDFT" or options.read_globals()) {
@@ -194,17 +194,17 @@ extern "C" int read_options(std::string name, Options& options) {
 
 extern "C" SharedWavefunction ocdft(SharedWavefunction ref_wfn, Options& options) {
     if (options.get_str("METHOD") == "CDFT") {
-        outfile->Printf("\n  ==> Constrained DFT <==\n");
-        CDFT(ref_wfn, options);
+        // outfile->Printf("\n  ==> Constrained DFT <==\n");
+        // CDFT(ref_wfn, options);
     } else if (options.get_str("METHOD") == "OCDFT") {
         outfile->Printf("\n  ==> Orthogonality Constrained DFT <==\n");
         OCDFT(ref_wfn, options);
     } else if (options.get_str("METHOD") == "FASNOCIS") {
-        outfile->Printf("\n  ==> Frozen-active-space NOCI Singles <==\n");
-        FASNOCIS(ref_wfn, options);
+        // outfile->Printf("\n  ==> Frozen-active-space NOCI Singles <==\n");
+        // FASNOCIS(ref_wfn, options);
     } else if (options.get_str("METHOD") == "NOCI") {
-        outfile->Printf("\n  ==> NON-Orthogonality CI <==\n");
-        NOCI(ref_wfn, options);
+        // outfile->Printf("\n  ==> NON-Orthogonality CI <==\n");
+        // NOCI(ref_wfn, options);
     }
 
     // Set some environment variables

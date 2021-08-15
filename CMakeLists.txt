@@ -1,5 +1,5 @@
 cmake_policy(SET CMP0048 NEW)  # project_VERSION* variables populated from project(... VERSION x.x.x) string
-project(forte
+project(ocdft
         VERSION 0.1
         LANGUAGES CXX C)
 set(ocdft_AUTHORS      "Francesco A. Evangelista and Group")
@@ -12,7 +12,7 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 include(psi4OptionsTools)
 
-find_package(psi4 1.0 REQUIRED)
+find_package(psi4 1.1 REQUIRED)
 
 find_package(TargetLAPACK REQUIRED)
 
