@@ -53,5 +53,4 @@ import os
 import psi4
 plugdir = os.path.split(os.path.abspath(__file__))[0]
 sofile = plugdir + '/' + os.path.split(plugdir)[1] + '.so'
-print(sofile)
 psi4.core.plugin_load(sofile)
