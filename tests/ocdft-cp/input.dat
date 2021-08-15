@@ -19,7 +19,7 @@ C   0.000000   0.000000  -0.668188
 set {
   basis cc-pvdz
   df_basis_scf cc-pvdz-jkfit
-  guess sad
+#  guess sad
   scf_type df
   dft_spherical_points 302
   dft_radial_points 75
@@ -34,9 +34,9 @@ set ocdft {
   cdft_exc_method cp
 }
 
-set dft_functional B3LYP
+#set dft_functional B3LYP
 
-energy('ocdft')
+energy('ocdft',dft_functional="b3lyp")
 
 compare_values(refdft, get_variable("DFT ENERGY"),8, "DFT energy") #TEST
 compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST
