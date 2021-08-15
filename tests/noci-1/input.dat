@@ -1,5 +1,5 @@
 #! Tests NOCI using PK integrals
-import cdft 
+import ocdft 
 
 refnoci = [-91.899678674625,-91.836519620918, -91.785315434642,
            -91.743621181759, -91.719253700987, -91.709089354942,

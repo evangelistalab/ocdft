@@ -28,7 +28,7 @@
 
 memory 20 gb
 
-import cdft
+import ocdft
 
 refdft                = -113.36252126784055#TEST
 refocdft_singlet_spin = -93.749757027 #TEST

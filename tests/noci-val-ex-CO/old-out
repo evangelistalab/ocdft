@@ -24,7 +24,7 @@
 --------------------------------------------------------------------------
 #! OCDFT CPH algorithm test, B3LYP computation on ethene
 sys.path.insert(0, '/home/prakash')
-import cdft
+import ocdft
 
 HF_NOCI_Energy =  -112.74929280378284
 

@@ -27,7 +27,7 @@
 --------------------------------------------------------------------------
 #! OCDFT CPH algorithm test, B3LYP computation on ethene
 
-import cdft
+import ocdft
 refdft                = -78.531369464 #TEST
 refocdft_singlet_spin = -78.261631126 #TEST
 refocdft_triplet_spin = -78.363363976 #TEST

@@ -1,5 +1,5 @@
 #! Tests NOCI using DF integrals and the libfock class
-import cdft 
+import ocdft 
 
 refnoci = [-91.899683696186, -91.836522371331, -91.785319104579,
            -91.743627763050, -91.719255665707, -91.709095535452,

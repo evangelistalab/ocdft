@@ -1,7 +1,7 @@
 # K-Edge Calculation on CO at the pbe/def2-qzvp level of theory with x2c
 
 memory 40 gb
-import cdft
+import ocdft
 
 molecule mol{
 0 1
