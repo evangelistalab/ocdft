@@ -26,14 +26,12 @@ set {
   d_convergence 6
 }
 
-set cdft {
+set ocdft {
   roots_per_irrep [0,0,0,0,0,1,0,0]
   cdft_exc_method cis
 }
 
-set dft_functional b3lyp
-
-energy('ocdft')
+energy('ocdft',dft_functional='b3lyp')
 
 compare_values(refdft, get_variable("DFT ENERGY"),8, "DFT energy") #TEST
 compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST
