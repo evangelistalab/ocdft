@@ -125,7 +125,7 @@ void UOCDFT::analyze_excitations() {
             std::tuple<int, int, int> atom_am;
             atom_am = std::make_tuple(A, am, (principal_qn));
             for (int p = sum; p < sum + nfunction; ++p) {
-                outfile->Printf("\n nfunction_minao", p);
+                // outfile->Printf("\n nfunction_minao", p);
                 atom_am_to_f[atom_am].push_back(p);
             }
             sum += nfunction;
@@ -315,7 +315,7 @@ void UOCDFT::analyze_excitations() {
                                l_to_symbol[std::get<1>(i)].c_str() ,norm_sum);
 
                 std::string outstr_compact =
-                    fmt::format("{:3d} {:3s({:s},{:4.2f})", std::get<0>(i) + 1,
+                    fmt::format("{:3d} {:3s}({:s},{:4.2f})", std::get<0>(i) + 1,
                                molecule_->symbol(std::get<0>(i)).c_str(),
                                l_to_symbol[std::get<1>(i)].c_str(), norm_sum);
                 std::string label_string =
@@ -600,9 +600,9 @@ void UOCDFT::analyze_excitations() {
     // CtSAAtSC->print();
     CtSAAtSC->diagonalize(CtSAAtSC_eigvec, CtSAAtSC_eigvals);
     // CtSAAtSC_eigvals->print();
-    for (int i = 0; i < nvir; ++i) {
-        outfile->Printf("\n %f \n", CtSAAtSC_eigvals->get(i));
-    }
+    // for (int i = 0; i < nvir; ++i) {
+    //     outfile->Printf("\n %f \n", CtSAAtSC_eigvals->get(i));
+    // }
     // END //
     SharedMatrix LSCh = SharedMatrix(new Matrix("IBO Hole Overlap ", basisset_->nbf(), nocc));
     SharedMatrix LSCp = SharedMatrix(new Matrix("IBO Particle Overlap ", basisset_->nbf(), nvir));
@@ -968,7 +968,7 @@ void UOCDFT::analyze_excitations() {
                 //	is_sigma = true;
                 //}
                 std::string outstr =
-                    fmt::format("{:.2f}_{%s} +",overlap_iao, iao_labels[iao].c_str());
+                    fmt::format("{:.2f}_{:s} +",overlap_iao, iao_labels[iao]);
                 if (overlap_iao >= 0.01) {
                     iao_cont.push_back(std::make_pair(overlap_iao, outstr));
                     total_string.append(outstr.c_str());

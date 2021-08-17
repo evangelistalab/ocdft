@@ -192,7 +192,7 @@ std::vector<std::tuple<int, int, std::string>> UOCDFT::find_iao_character(Shared
         }
         std::sort(sorted_GP.rbegin(), sorted_GP.rend());
 
-        outfile->Printf("\n\n     =====> IAO %d: Population Analysis <=====", rho + 1);
+        outfile->Printf("\n\n     =====> IAO %d: Population Analysis (LIVVO) <=====", rho + 1);
         outfile->Printf("\n   =================================================");
         outfile->Printf("\n   Atom Number    Symbol     l            population");
         outfile->Printf("\n   =================================================");

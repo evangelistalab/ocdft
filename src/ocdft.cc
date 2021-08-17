@@ -1856,6 +1856,7 @@ bool UOCDFT::test_convergency() {
 }
 
 void UOCDFT::save_information() {
+    
     //    saved_naholepi_ = naholepi_;
     //    saved_napartpi_ = napartpi_;
 
@@ -1918,6 +1919,7 @@ void UOCDFT::save_information() {
         std::string particle_str = fmt::format("particle_{:d}", state_);
         std::string hole_str = fmt::format("hole_{:d}", state_);
         if (options_.get_bool("CUBE_HP")) {
+            outfile->Printf("\n  Computing cube files\n");
             cube.compute_orbitals(Ca_, indsp0, labelsp, particle_str);
             cube.compute_orbitals(Ca_, indsh0, labelsh, hole_str);
 
