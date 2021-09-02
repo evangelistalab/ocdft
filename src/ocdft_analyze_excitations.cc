@@ -290,11 +290,11 @@ void UOCDFT::analyze_excitations() {
         // iao_population_matrix->print();
         std::vector<std::pair<double, std::string>> ao_iao_coeff_contributions;
         std::vector<std::pair<double, std::string>> ao_iao_coeff_contributions_print;
-        outfile->Printf("\n Population Sum: %f\n", pop_sum);
-        outfile->Printf("\n\n     =====> IAO %d: Population Analysis <=====", k + 1);
-        outfile->Printf("\n   =================================================");
-        outfile->Printf("\n   Atom Number    Symbol     l            population");
-        outfile->Printf("\n   =================================================");
+        // outfile->Printf("\n Population Sum: %f\n", pop_sum);
+        // outfile->Printf("\n\n     =====> IAO %d: Population Analysis <=====", k + 1);
+        // outfile->Printf("\n   =================================================");
+        // outfile->Printf("\n   Atom Number    Symbol     l            population");
+        // outfile->Printf("\n   =================================================");
         for (auto& i : keys_ao) {
             auto& ifn = atom_am_to_f_ao[i];
             double sum = 0.0;
@@ -330,9 +330,9 @@ void UOCDFT::analyze_excitations() {
                   ao_iao_coeff_contributions_print.rend());
         std::sort(ao_iao_coeff_contributions.rbegin(), ao_iao_coeff_contributions.rend());
         // outfile->Printf("\n Sorted");
-        for (auto& kv : ao_iao_coeff_contributions_print) {
-            outfile->Printf("\n%s", kv.second.c_str());
-        }
+        // for (auto& kv : ao_iao_coeff_contributions_print) {
+        //     outfile->Printf("\n%s", kv.second.c_str());
+        // }
         iao_labels.push_back(ao_iao_coeff_contributions[0].second.c_str());
     }
     for (int i = 0; i < nmin; ++i) {
@@ -633,7 +633,7 @@ void UOCDFT::analyze_excitations() {
         double eigen = 0.0;
         eigen = sigma->get(i);
         if (eigen >= 0.9 and eigen <= 1.1) {
-            outfile->Printf("\n ADDING ONE %f", sigma->get(i));
+            // outfile->Printf("\n ADDING ONE %f", sigma->get(i));
             nvvos = nvvos + 1;
         }
     }

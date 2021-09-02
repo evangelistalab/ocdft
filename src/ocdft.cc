@@ -871,7 +871,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o, SharedVector lambda_v) {
         outfile->Printf("%4d%-3s (%+.6f)", std::get<1>(aholes[n]) + 1,
                         ct.gamma(std::get<0>(aholes[n])).symbol(), std::get<2>(aholes[n]));
     }
-    outfile->Printf("\nPARTICLE:");
+    outfile->Printf("      PARTICLE:");
     size_t naparts = aparts.size();
     for (size_t n = 0; n < naparts; ++n) {
         napartpi_[std::get<0>(aparts[n])] += 1;
@@ -1865,12 +1865,14 @@ void UOCDFT::save_information() {
     if (do_excitation) {
         Process::environment.globals["DFT ENERGY"] = ground_state_energy;
 
+        // if (options_.get_bool("ANALYZE_EXCITATIONS")){
         if (nirrep_ == 1) {
             analyze_excitations();
         } else {
             outfile->Printf(
                 "\n\n  Skipping analysis of excitations. To enable run in C1 symmetry.\n");
         }
+        // }
         std::vector<std::tuple<double, int, int>> info_a_;
         int nirrep = wfn_->nirrep();
         Dimension nmopi = wfn_->nmopi();

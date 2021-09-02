@@ -140,15 +140,15 @@ std::vector<std::tuple<int, int, int>> UOCDFT::analyze_basis_set() {
 
         std::vector<int> ao_list;
 
-        //      if (debug_)
-        outfile->Printf("\n  Atom %d (Z = %d) has %d shells\n", A, Z, n_shell);
+        if (debug_)
+            outfile->Printf("\n  Atom %d (Z = %d) has %d shells\n", A, Z, n_shell);
 
         for (int Q = 0; Q < n_shell; Q++) {
             const GaussianShell& shell = basisset_->shell(A, Q);
             int nfunction = shell.nfunction();
             int l = shell.am();
-            //            if (debug_)
-            outfile->Printf("    Shell %d: L = %d, N = %d (%d -> %d)\n", Q, l, nfunction, count,
+            if (debug_)
+                outfile->Printf("    Shell %d: L = %d, N = %d (%d -> %d)\n", Q, l, nfunction, count,
                             count + nfunction);
             for (int m = 0; m < nfunction; ++m) {
                 atom_n_l.push_back(std::make_tuple(A, n_count[l], l));
@@ -192,6 +192,7 @@ std::vector<std::tuple<int, int, std::string>> UOCDFT::find_iao_character(Shared
         }
         std::sort(sorted_GP.rbegin(), sorted_GP.rend());
 
+        if (false){
         outfile->Printf("\n\n     =====> IAO %d: Population Analysis (LIVVO) <=====", rho + 1);
         outfile->Printf("\n   =================================================");
         outfile->Printf("\n   Atom Number    Symbol     l            population");
@@ -206,6 +207,7 @@ std::vector<std::tuple<int, int, std::string>> UOCDFT::find_iao_character(Shared
                             molecule_->symbol(A).c_str(), l_to_symbol[l].c_str(), GP);
         }
         outfile->Printf("\n Population Sum: %f\n", pop_sum);
+        }
         int character_A = std::get<1>(sorted_GP[0]);
         int character_l = std::get<2>(sorted_GP[0]);
         std::string character_symbol = molecule_->symbol(character_A);

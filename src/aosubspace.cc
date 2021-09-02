@@ -260,16 +260,19 @@ std::vector<std::string> AOSubspace::aolabels(std::string str_format) const {
 const std::vector<AOInfo>& AOSubspace::aoinfo() const { return aoinfo_vec_; }
 
 void AOSubspace::parse_subspace() {
-    outfile->Printf("\n\n  List of subspaces:");
+    if (print_debug_){
+        outfile->Printf("\n\n  List of subspaces:");
     for (const std::string& s : subspace_str_) {
         outfile->Printf(" %s", s.c_str());
     }
     outfile->Printf("\n");
+    }
 
     for (const std::string& s : subspace_str_) {
         parse_subspace_entry(s);
     }
 
+if (print_debug_){
     outfile->Printf("\n  Subspace contains AOs:\n");
     for (size_t i = 0; i < subspace_.size(); ++i) {
         outfile->Printf("  %6d", subspace_[i] + 1);
@@ -277,6 +280,7 @@ void AOSubspace::parse_subspace() {
             outfile->Printf("\n");
     }
     outfile->Printf("\n");
+}
 }
 
 void AOSubspace::parse_subspace_entry(const std::string& s) {
