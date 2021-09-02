@@ -1,6 +1,7 @@
 #! OCDFT CPH algorithm test, B3LYP computation on ethene
+# Fails
 
-import cdft
+import ocdft
 
 refdft                = -113.321135785 #TEST
 refocdft_singlet_spin = -113.031338099 #TEST
@@ -16,7 +17,6 @@ symmetry c1
 set {
   basis cc-pvdz
   df_basis_scf cc-pvdz-jkfit
-  guess sad
   scf_type df
   reference uks
   maxiter 100
@@ -33,9 +33,7 @@ set cdft {
   cdft_project_out H
 }
 
-set dft_functional B3LYP
-
-energy('ocdft')
+energy('ocdft',dft_functional='b3lyp')
 compare_values(refdft, get_variable("DFT ENERGY"),8, "DFT energy") #TEST
 compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST
 compare_values(refocdft_triplet_spin, get_variable("OCDFT TRIPLET ENERGY"),8, "OCDFT triplet energy") #TEST

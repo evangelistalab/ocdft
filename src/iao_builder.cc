@@ -28,8 +28,7 @@
 #include "psi4/libpsi4util/PsiOutStream.h"
 
 #include "iao_builder.h"
-#include <boost/format.hpp>
-#include <boost/tuple/tuple_comparison.hpp>
+#include "fmt/format.h"
 #include <psi4/libcubeprop/cubeprop.h>
 #include <psi4/libmints/basisset.h>
 #include <psi4/libmints/integral.h>
@@ -38,7 +37,6 @@
 #include <psi4/liboptions/liboptions.h>
 #include <psi4/libqt/qt.h>
 
-using namespace boost;
 using namespace psi;
 
 namespace psi {
@@ -348,9 +346,8 @@ std::vector<std::string> IAOBuilder::print_IAO(SharedMatrix A_, int nmin, int nb
                 auto& ifn_primary = atom_am_to_f_primary[k];
                 for (auto& nbf_primary : ifn_primary) {
                     int num = iao;
-                    std::string outstr_primary = boost::str(
-                        boost::format("%d%s%s_%d") % (get<0>(k) + 1) %
-                        mol->symbol(get<0>(k)).c_str() % l_to_symbol[get<1>(k)].c_str() % num);
+                    std::string outstr_primary = fmt::format("{:d}{:s}{:s}_{:d}",std::get<0>(k) + 1,
+                        mol->symbol(std::get<0>(k)).c_str() , l_to_symbol[std::get<1>(k)].c_str() , num);
                     // iao_labs.push_back(outstr);
                     double a = 0.0;
                     a = A_nbf->get(nbf_primary, iao);
@@ -363,9 +360,9 @@ std::vector<std::string> IAOBuilder::print_IAO(SharedMatrix A_, int nmin, int nb
                     all_iao_contributions.push_back(iao_cont);
                 }
 
-                std::string outstr = boost::str(boost::format("%d%s%s_%d") % (get<0>(i) + 1) %
-                                                mol->symbol(get<0>(i)).c_str() %
-                                                l_to_symbol[get<1>(i)].c_str() % iao);
+                std::string outstr = fmt::format("{:d}{:s}{:s}_{:d}",std::get<0>(i) + 1,
+                                                mol->symbol(std::get<0>(i)).c_str(),
+                                                l_to_symbol[std::get<1>(i)].c_str() , iao);
                 std::string istring = outstr;
                 if (std::find(duplicates_iao.begin(), duplicates_iao.end(), istring.c_str()) !=
                     duplicates_iao.end()) {
@@ -390,13 +387,13 @@ std::vector<std::string> IAOBuilder::print_IAO(SharedMatrix A_, int nmin, int nb
     std::vector<std::tuple<int, std::string>> iao_sum_final;
     for (int i = 0; i < all_iao_size; ++i) {
         double total_basis_cont = 0.0;
-        std::string istring = get<2>(all_iao_contributions[i]);
+        std::string istring = std::get<2>(all_iao_contributions[i]);
         if (std::find(duplicates.begin(), duplicates.end(), istring.c_str()) != duplicates.end()) {
         } else {
             for (int j = 0; j < basis_conts_size; ++j) {
-                std::string jstring = get<0>(all_basis_conts[j]);
+                std::string jstring = std::get<0>(all_basis_conts[j]);
                 if (istring == jstring) {
-                    total_basis_cont += std::abs(get<1>(all_iao_contributions[j]));
+                    total_basis_cont += std::abs(std::get<1>(all_iao_contributions[j]));
                 }
             }
         }
@@ -404,8 +401,8 @@ std::vector<std::string> IAOBuilder::print_IAO(SharedMatrix A_, int nmin, int nb
         if (total_basis_cont > 0.001) {
             outfile->Printf("SUM(%s): %.2f \n", istring.c_str(), total_basis_cont);
             std::tuple<int, double, std::string> iao_sum_cont;
-            iao_sum_cont = std::make_tuple(get<0>(all_iao_contributions[i]), total_basis_cont,
-                                           get<2>(all_iao_contributions[i]).c_str());
+            iao_sum_cont = std::make_tuple(std::get<0>(all_iao_contributions[i]), total_basis_cont,
+                                           std::get<2>(all_iao_contributions[i]).c_str());
             iao_sum.push_back(iao_sum_cont);
             // outfile->Printf("Saved Tuple:
             // (%d,%.2f,%s)\n",all_iao_contributions[i].get<0>(),total_basis_cont,all_iao_contributions[i].get<2>().c_str());
@@ -419,13 +416,13 @@ std::vector<std::string> IAOBuilder::print_IAO(SharedMatrix A_, int nmin, int nb
         double a = 0.0;
         for (int j = 0; j < iao_sum_size; ++j) {
             std::vector<double> max_candidates;
-            if (i == get<0>(iao_sum[j])) {
-                a = get<1>(iao_sum[j]);
+            if (i == std::get<0>(iao_sum[j])) {
+                a = std::get<1>(iao_sum[j]);
                 // outfile->Printf("for i=%d -> (%s)\n", iao_sum[j].get<0>(),
                 // iao_sum[j].get<2>().c_str());
                 std::tuple<double, int, std::string> iao_max_candidate;
-                iao_max_candidate = std::make_tuple(get<1>(iao_sum[j]), get<0>(iao_sum[j]),
-                                                    get<2>(iao_sum[j]).c_str());
+                iao_max_candidate = std::make_tuple(std::get<1>(iao_sum[j]), std::get<0>(iao_sum[j]),
+                                                    std::get<2>(iao_sum[j]).c_str());
                 iao_max_contributions.push_back(iao_max_candidate);
             } else {
             }
@@ -434,9 +431,9 @@ std::vector<std::string> IAOBuilder::print_IAO(SharedMatrix A_, int nmin, int nb
         }
         std::sort(iao_max_contributions.begin(), iao_max_contributions.end());
         std::reverse(iao_max_contributions.begin(), iao_max_contributions.end());
-        outfile->Printf("IAO%d -> %s(%.2f) \n", get<1>(iao_max_contributions[0]),
-                        get<2>(iao_max_contributions[0]).c_str(), get<0>(iao_max_contributions[0]));
-        iao_labs.push_back(get<2>(iao_max_contributions[0]).c_str());
+        outfile->Printf("IAO%d -> %s(%.2f) \n", std::get<1>(iao_max_contributions[0]),
+                        std::get<2>(iao_max_contributions[0]).c_str(), std::get<0>(iao_max_contributions[0]));
+        iao_labs.push_back(std::get<2>(iao_max_contributions[0]).c_str());
     }
 
     for (int ind = 0; ind < nmin; ++ind) {

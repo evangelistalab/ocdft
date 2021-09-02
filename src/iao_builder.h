@@ -29,8 +29,6 @@
 #define IAO_BUILDER_H
 
 #include <vector>
-#include <boost/shared_ptr.hpp>
-#include <boost/tuple/tuple.hpp>
 #include <psi4/liboptions/liboptions.h>
 #include <psi4/libmints/matrix.h>
 

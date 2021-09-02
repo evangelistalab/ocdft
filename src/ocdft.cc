@@ -1,7 +1,6 @@
 #include <algorithm>
 
-#include <boost/format.hpp>
-#include <boost/tuple/tuple_comparison.hpp>
+#include "fmt/format.h"
 
 #include "psi4/libpsi4util/PsiOutStream.h"
 #include <psi4/libmints/local.h>
@@ -872,7 +871,7 @@ void UOCDFT::find_ee_occupation(SharedVector lambda_o, SharedVector lambda_v) {
         outfile->Printf("%4d%-3s (%+.6f)", std::get<1>(aholes[n]) + 1,
                         ct.gamma(std::get<0>(aholes[n])).symbol(), std::get<2>(aholes[n]));
     }
-    outfile->Printf("\nPARTICLE:");
+    outfile->Printf("      PARTICLE:");
     size_t naparts = aparts.size();
     for (size_t n = 0; n < naparts; ++n) {
         napartpi_[std::get<0>(aparts[n])] += 1;
@@ -1027,13 +1026,13 @@ std::vector<std::tuple<double, int>> UOCDFT::hole_subspace(SharedWavefunction wf
         if (iteration_ == 0) {
             if (print_count == 4) {
                 auto temp_string =
-                    boost::str(boost::format("     %2dA       %-5f") % (i + 1) % m_sub_diag[i]);
+                    fmt::format("     {:2d}A       {:-5f}", (i + 1) , m_sub_diag[i]);
                 outfile->Printf("%s", temp_string.c_str());
                 outfile->Printf("\n");
                 print_count = 0;
             } else {
                 auto temp_string =
-                    boost::str(boost::format("     %2dA       %-5f") % (i + 1) % m_sub_diag[i]);
+                    fmt::format("     {:2d}A       {:-5f}", (i + 1) , m_sub_diag[i]);
                 // outfile->Printf("  %d-A      %f  ",mu+1,kappa);
                 outfile->Printf("%s", temp_string.c_str());
             }
@@ -1132,13 +1131,13 @@ std::vector<int> UOCDFT::particle_subspace(SharedWavefunction wfn, SharedMatrix 
         if (iteration_ == 0) {
             if (print_count == 4) {
                 auto temp_string =
-                    boost::str(boost::format("     %2dA       %-5f") % (i + 1) % m_sub_diag[i]);
+                    fmt::format("     {:2d}A       {:-5f}",i + 1,m_sub_diag[i]);
                 outfile->Printf("%s", temp_string.c_str());
                 outfile->Printf("\n");
                 print_count = 0;
             } else {
                 auto temp_string =
-                    boost::str(boost::format("     %2dA       %-5f") % (i + 1) % m_sub_diag[i]);
+                    fmt::format("     {:2d}A       {:-5f}",i + 1,m_sub_diag[i]);
                 outfile->Printf("%s", temp_string.c_str());
             }
             print_count++;
@@ -1857,6 +1856,7 @@ bool UOCDFT::test_convergency() {
 }
 
 void UOCDFT::save_information() {
+    
     //    saved_naholepi_ = naholepi_;
     //    saved_napartpi_ = napartpi_;
 
@@ -1865,12 +1865,14 @@ void UOCDFT::save_information() {
     if (do_excitation) {
         Process::environment.globals["DFT ENERGY"] = ground_state_energy;
 
+        // if (options_.get_bool("ANALYZE_EXCITATIONS")){
         if (nirrep_ == 1) {
             analyze_excitations();
         } else {
             outfile->Printf(
                 "\n\n  Skipping analysis of excitations. To enable run in C1 symmetry.\n");
         }
+        // }
         std::vector<std::tuple<double, int, int>> info_a_;
         int nirrep = wfn_->nirrep();
         Dimension nmopi = wfn_->nmopi();
@@ -1916,9 +1918,10 @@ void UOCDFT::save_information() {
         SharedMatrix Dh_ =
             SharedMatrix(new Matrix("Hole Detachment Density", nsopi_, gs_nalphapi_));
         Dh_->gemm(false, true, 1.0, Ch_, Ch_, 0.0);
-        std::string particle_str = boost::str(boost::format("particle_%d") % state_);
-        std::string hole_str = boost::str(boost::format("hole_%d") % state_);
+        std::string particle_str = fmt::format("particle_{:d}", state_);
+        std::string hole_str = fmt::format("hole_{:d}", state_);
         if (options_.get_bool("CUBE_HP")) {
+            outfile->Printf("\n  Computing cube files\n");
             cube.compute_orbitals(Ca_, indsp0, labelsp, particle_str);
             cube.compute_orbitals(Ca_, indsh0, labelsh, hole_str);
 
@@ -2374,12 +2377,11 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf) {
             double abs_dipole = std::sqrt(de[0] * de[0] + de[1] * de[1] + de[2] * de[2]);
             double dipole_percent = abs_dipole / (full_abs_dipole)*100.0;
             if (dipole_percent >= 2.0) {
-                std::string outstr = boost::str(
-                    boost::format("  %3d %2s %1s  %3d %2s %1s  %9f  %9f  %9f  %9f %9.2f%% %9f") %
-                    (i.first + 1) % molecule_->symbol(i.first).c_str() %
-                    l_to_symbol[i.second].c_str() % (f.first + 1) %
-                    molecule_->symbol(f.first).c_str() % l_to_symbol[f.second].c_str() % de[0] %
-                    de[1] % de[2] % abs_dipole % participation_percentage % charge_transfer_number);
+                std::string outstr = fmt::format("  {:3d} {:2s} {:1s}  {:3d} {:2s} {:1s}  {:9f}  {:9f}  {:9f}  {:9f} {:9.2f}% {:9f}",
+                    (i.first + 1) , molecule_->symbol(i.first).c_str() ,
+                    l_to_symbol[i.second].c_str() , (f.first + 1) ,
+                    molecule_->symbol(f.first).c_str() , l_to_symbol[f.second].c_str() , de[0] ,
+                    de[1] , de[2] , abs_dipole , participation_percentage , charge_transfer_number);
                 sorted_contributions.push_back(std::make_pair(dipole_percent, outstr));
                 all_atomic_trans.push_back(std::make_tuple(
                     molecule_->symbol(i.first).c_str(), l_to_symbol[i.second].c_str(),
@@ -2412,18 +2414,17 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf) {
         double total_muy = 0.0;
         double total_muz = 0.0;
         double total_dipole_percent = 0.0;
-        std::string istring = boost::str(
-            boost::format("%s %s %s %s") % std::get<0>(all_atomic_trans[i]).c_str() %
-            std::get<1>(all_atomic_trans[i]).c_str() % std::get<2>(all_atomic_trans[i]).c_str() %
+        std::string istring = fmt::format("{:s} {:s} {:s} {:s}", std::get<0>(all_atomic_trans[i]).c_str(),
+            std::get<1>(all_atomic_trans[i]).c_str(), std::get<2>(all_atomic_trans[i]).c_str(),
             std::get<3>(all_atomic_trans[i]).c_str());
         if (std::find(duplicates.begin(), duplicates.end(), istring.c_str()) != duplicates.end()) {
             // outfile->Printf("\n%s is a duplicate!\n", istring.c_str());
         } else {
             for (int j = 0; j < atomic_trans; ++j) {
-                std::string jstring = boost::str(boost::format("%s %s %s %s") %
-                                                 std::get<0>(all_atomic_trans[j]).c_str() %
-                                                 std::get<1>(all_atomic_trans[j]).c_str() %
-                                                 std::get<2>(all_atomic_trans[j]).c_str() %
+                std::string jstring = fmt::format("{:s} {:s} {:s} {:s}",
+                                                 std::get<0>(all_atomic_trans[j]).c_str(),
+                                                 std::get<1>(all_atomic_trans[j]).c_str(),
+                                                 std::get<2>(all_atomic_trans[j]).c_str(),
                                                  std::get<3>(all_atomic_trans[j]).c_str());
                 if (istring == jstring) {
                     // outfile->Printf("\n%s = %s\n", istring.c_str(), jstring.c_str());
@@ -2439,13 +2440,12 @@ void UOCDFT::compute_transition_moments(SharedWavefunction ref_scf) {
             }
             duplicates.push_back(istring.c_str());
             total_dipole_percent = (total_dipole / total_abs_dipole_all) * 100.0;
-            std::string trans_str = boost::str(
-                boost::format("    %2s %1s ---> %2s %1s  %9.2f%%  %9.2f  %9f  %9f  %9f  %9f") %
-                std::get<0>(all_atomic_trans[i]).c_str() %
-                std::get<1>(all_atomic_trans[i]).c_str() %
-                std::get<2>(all_atomic_trans[i]).c_str() %
-                std::get<3>(all_atomic_trans[i]).c_str() % total_pr % total_dipole_percent %
-                total_dipole % total_mux % total_muy % total_muz);
+            std::string trans_str = fmt::format("    {:2s} {:1s} ---> {:2s} {:1s}  {:9.2f}%  {:9.2f}  {:9f}  {:9f}  {:9f}  {:9f}",
+                std::get<0>(all_atomic_trans[i]).c_str() ,
+                std::get<1>(all_atomic_trans[i]).c_str() ,
+                std::get<2>(all_atomic_trans[i]).c_str() ,
+                std::get<3>(all_atomic_trans[i]).c_str() , total_pr , total_dipole_percent ,
+                total_dipole , total_mux , total_muy , total_muz);
             restricted_sums.push_back(std::make_pair(total_dipole_percent, trans_str.c_str()));
         }
     }

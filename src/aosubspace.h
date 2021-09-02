@@ -211,6 +211,7 @@ class AOSubspace {
     /// Counts how many copies of each element are there
 
     bool debug_ = false;
+    bool print_debug_ = false;
 
     /// The startup function
     void startup();

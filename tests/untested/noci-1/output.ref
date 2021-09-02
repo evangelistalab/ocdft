@@ -16,39 +16,40 @@
     -----------------------------------------------------------------------
 
 
-    Psi4 started on: Mon Sep  7 22:46:28 2015
+    Psi4 started on: Sat Sep  5 14:20:39 2015
 
-    Process ID:  25998
+    Process ID:  97914
     PSI4DATADIR: /Users/francesco/Source/psi4/lib
     Memory level set to 256.000 MB
 
   ==> Input File <==
 
 --------------------------------------------------------------------------
-#! Tests NOCI using DF integrals and the libfock class
-import cdft 
+#
+sys.path.insert(0, './..')
+import ocdft 
 
-refnoci = [-91.899683696186, -91.836522371331, -91.785319104579,
-           -91.743627763050, -91.719255665707, -91.709095535452,
-           -91.680982627881, -91.655480299562, -91.235864422723]
-
-molecule {
+molecule h2o {
 1 1
 C          2.37059       -1.21851        0.91624
 N          1.25941       -1.84561        0.86389
 H          2.70138       -0.59950       -0.05828
 H          0.17401       -2.15371        1.00621
+#N       0.0000  0.0500   0.5800
+#N       0.0100  0.0000  -0.5800
 }
+
 
 set {
   basis sto-3g
-  scf_type df
-  df_basis_scf aug-cc-pV5Z-JKFIT
+  df_scf_guess false
+  scf_type pk
   reference uhf
   e_convergence 9
   d_convergence 1
   maxiter 100
 }
+
 
 set cdft {
   OCC_FROZEN [2]
@@ -56,10 +57,6 @@ set cdft {
 }
 
 energy('fasnocis')
-
-for n in xrange(9):
-    compare_values(refnoci[n], get_variable("NOCI ENERGY STATE %d" % n),8, "NOCI Energy State %d" % n) #TEST
-
 --------------------------------------------------------------------------
 /Users/francesco/Source/cdft/cdft.so loaded.
 Reading options from the CDFT block
@@ -102,7 +99,7 @@ Calling plugin cdft.so.
 
   ==> Algorithm <==
 
-  SCF Algorithm Type is DF.
+  SCF Algorithm Type is PK.
   DIIS enabled.
   MOM disabled.
   Fractional occupation disabled.
@@ -135,27 +132,36 @@ Calling plugin cdft.so.
 
   ==> Integral Setup <==
 
-  ==> DFJK: Density-Fitted J/K Matrices <==
+ MINTS: Wrapper to libmints.
+   by Justin Turney
+
+   Calculation information:
+      Number of atoms:                   4
+      Number of AO shells:               8
+      Number of SO shells:               8
+      Number of primitives:             24
+      Number of atomic orbitals:        12
+      Number of basis functions:        12
+
+      Number of irreps:                  1
+      Integral cutoff                 1.00e-12
+      Number of functions per irrep: [  12 ]
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+      Computing two-electron integrals...done
+      Computed 2907 non-zero two-electron integrals.
+        Stored in file 33.
+
+	Batch   1 pq = [       0,      78] index = [             0,3081]
+  ==> DiskJK: Disk-Based J/K Matrices <==
 
     J tasked:                  Yes
     K tasked:                  Yes
     wK tasked:                  No
-    OpenMP threads:              1
-    Integrals threads:           1
     Memory (MB):               183
-    Algorithm:                Core
-    Integral Cache:           NONE
     Schwarz Cutoff:          1E-12
-    Fitting Condition:       1E-12
-
-   => Auxiliary Basis Set <=
-
-  Basis Set: AUG-CC-PV5Z-JKFIT
-    Number of shells: 124
-    Number of basis function: 628
-    Number of Cartesian functions: 948
-    Spherical Harmonics?: true
-    Max angular momentum: 6
 
   Minimum eigenvalue in the overlap matrix is 2.2379141931E-01.
   Using Symmetric Orthogonalization.
@@ -163,32 +169,32 @@ Calling plugin cdft.so.
 
   ==> Iterations <==
 
-                           Total Energy        Delta E     RMS |[F,P]|
+                        Total Energy        Delta E     RMS |[F,P]|
 
-   @DF-UHF iter   1:   -86.81937545475193   -8.68194e+01   8.90161e-02 
-   @DF-UHF iter   2:   -84.66181060771225    2.15756e+00   2.23777e-01 DIIS
-   @DF-UHF iter   3:   -89.79653362285430   -5.13472e+00   1.31267e-01 DIIS
-   @DF-UHF iter   4:   -90.68605441646250   -8.89521e-01   1.07210e-01 DIIS
-   @DF-UHF iter   5:   -91.37942449593515   -6.93370e-01   7.50185e-02 DIIS
-   @DF-UHF iter   6:   -91.76992985361937   -3.90505e-01   3.86532e-02 DIIS
-   @DF-UHF iter   7:   -91.87999751585892   -1.10068e-01   1.26113e-02 DIIS
-   @DF-UHF iter   8:   -91.89556152528363   -1.55640e-02   2.03774e-03 DIIS
-   @DF-UHF iter   9:   -91.89763099896697   -2.06947e-03   1.91475e-03 DIIS
-   @DF-UHF iter  10:   -91.89865127285111   -1.02027e-03   6.21793e-04 DIIS
-   @DF-UHF iter  11:   -91.89880088155488   -1.49609e-04   1.09340e-04 DIIS
-   @DF-UHF iter  12:   -91.89880451637438   -3.63482e-06   2.33333e-05 DIIS
-   @DF-UHF iter  13:   -91.89880469348162   -1.77107e-07   9.67505e-06 DIIS
-   @DF-UHF iter  14:   -91.89880473717494   -4.36933e-08   4.33278e-06 DIIS
-   @DF-UHF iter  15:   -91.89880474839396   -1.12190e-08   3.04685e-06 DIIS
-   @DF-UHF iter  16:   -91.89880475306506   -4.67111e-09   1.43583e-06 DIIS
-   @DF-UHF iter  17:   -91.89880475456164   -1.49657e-09   3.65767e-07 DIIS
-   @DF-UHF iter  18:   -91.89880475463769   -7.60565e-11   7.89338e-08 DIIS
+   @UHF iter   1:   -86.81937337511280   -8.68194e+01   8.90162e-02 
+   @UHF iter   2:   -84.66174844284296    2.15762e+00   2.23777e-01 DIIS
+   @UHF iter   3:   -89.79653254728876   -5.13478e+00   1.31267e-01 DIIS
+   @UHF iter   4:   -90.68605611850853   -8.89524e-01   1.07210e-01 DIIS
+   @UHF iter   5:   -91.37942033687156   -6.93364e-01   7.50184e-02 DIIS
+   @UHF iter   6:   -91.76992281466863   -3.90502e-01   3.86534e-02 DIIS
+   @UHF iter   7:   -91.87999407699817   -1.10071e-01   1.26105e-02 DIIS
+   @UHF iter   8:   -91.89555681999545   -1.55627e-02   2.03768e-03 DIIS
+   @UHF iter   9:   -91.89762617200304   -2.06935e-03   1.91468e-03 DIIS
+   @UHF iter  10:   -91.89864634526819   -1.02017e-03   6.21760e-04 DIIS
+   @UHF iter  11:   -91.89879593175039   -1.49586e-04   1.09343e-04 DIIS
+   @UHF iter  12:   -91.89879956699926   -3.63525e-06   2.33306e-05 DIIS
+   @UHF iter  13:   -91.89879974405414   -1.77055e-07   9.67389e-06 DIIS
+   @UHF iter  14:   -91.89879978773413   -4.36800e-08   4.33176e-06 DIIS
+   @UHF iter  15:   -91.89879979894624   -1.12121e-08   3.04625e-06 DIIS
+   @UHF iter  16:   -91.89879980361502   -4.66878e-09   1.43560e-06 DIIS
+   @UHF iter  17:   -91.89879980511105   -1.49603e-09   3.65627e-07 DIIS
+   @UHF iter  18:   -91.89879980518705   -7.59997e-11   7.89200e-08 DIIS
 
   ==> Post-Iterations <==
 
-   @Spin Contamination Metric:   3.552713679E-15
+   @Spin Contamination Metric:   4.440892099E-15
    @S^2 Expected:                0.000000000E+00
-   @S^2 Observed:                3.552713679E-15
+   @S^2 Observed:                4.440892099E-15
    @S   Expected:                0.000000000E+00
    @S   Observed:                0.000000000E+00
 
@@ -197,25 +203,25 @@ Calling plugin cdft.so.
 
     Alpha Occupied:                                                       
 
-       1A    -15.822763     2A    -11.517535     3A     -1.503877  
-       4A     -1.110479     5A     -0.938689     6A     -0.778801  
+       1A    -15.822752     2A    -11.517531     3A     -1.503876  
+       4A     -1.110478     5A     -0.938687     6A     -0.778798  
        7A     -0.753171  
 
     Alpha Virtual:                                                        
 
-       8A     -0.186989     9A     -0.088200    10A      0.093485  
-      11A      0.268696    12A      0.618169  
+       8A     -0.186989     9A     -0.088198    10A      0.093489  
+      11A      0.268701    12A      0.618172  
 
     Beta Occupied:                                                        
 
-       1A    -15.822763     2A    -11.517535     3A     -1.503877  
-       4A     -1.110479     5A     -0.938689     6A     -0.778801  
+       1A    -15.822752     2A    -11.517531     3A     -1.503876  
+       4A     -1.110478     5A     -0.938687     6A     -0.778798  
        7A     -0.753171  
 
     Beta Virtual:                                                         
 
-       8A     -0.186989     9A     -0.088200    10A      0.093485  
-      11A      0.268696    12A      0.618169  
+       8A     -0.186989     9A     -0.088198    10A      0.093489  
+      11A      0.268701    12A      0.618172  
 
     Final Occupation by Irrep:
               A 
@@ -224,18 +230,18 @@ Calling plugin cdft.so.
 
   Energy converged.
 
-  @DF-UHF Final Energy:   -91.89880475463769
+  @UHF Final Energy:   -91.89879980518705
 
    => Energetics <=
 
     Nuclear Repulsion Energy =             26.5520286076818977
-    One-Electron Energy =                -172.0510358641308244
-    Two-Electron Energy =                  53.6002025018112249
+    One-Electron Energy =                -172.0510700988943142
+    Two-Electron Energy =                  53.6002416860253632
     DFT Exchange-Correlation Energy =       0.0000000000000000
     Empirical Dispersion Energy =           0.0000000000000000
     PCM Polarization Energy =               0.0000000000000000
     EFP Energy =                            0.0000000000000000
-    Total Energy =                        -91.8988047546376947
+    Total Energy =                        -91.8987998051870534
 
     Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
 
@@ -312,7 +318,7 @@ Properties computed using the SCF density matrix
 
   ==> Algorithm <==
 
-  SCF Algorithm Type is DF.
+  SCF Algorithm Type is PK.
   DIIS enabled.
   MOM disabled.
   Fractional occupation disabled.
@@ -361,27 +367,36 @@ Properties computed using the SCF density matrix
 
   ==> Integral Setup <==
 
-  ==> DFJK: Density-Fitted J/K Matrices <==
+ MINTS: Wrapper to libmints.
+   by Justin Turney
+
+   Calculation information:
+      Number of atoms:                   4
+      Number of AO shells:               8
+      Number of SO shells:               8
+      Number of primitives:             24
+      Number of atomic orbitals:        12
+      Number of basis functions:        12
+
+      Number of irreps:                  1
+      Integral cutoff                 1.00e-12
+      Number of functions per irrep: [  12 ]
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+      Computing two-electron integrals...done
+      Computed 2907 non-zero two-electron integrals.
+        Stored in file 33.
+
+	Batch   1 pq = [       0,      78] index = [             0,3081]
+  ==> DiskJK: Disk-Based J/K Matrices <==
 
     J tasked:                  Yes
     K tasked:                  Yes
     wK tasked:                  No
-    OpenMP threads:              1
-    Integrals threads:           1
     Memory (MB):               183
-    Algorithm:                Core
-    Integral Cache:           NONE
     Schwarz Cutoff:          1E-12
-    Fitting Condition:       1E-12
-
-   => Auxiliary Basis Set <=
-
-  Basis Set: AUG-CC-PV5Z-JKFIT
-    Number of shells: 124
-    Number of basis function: 628
-    Number of Cartesian functions: 948
-    Spherical Harmonics?: true
-    Max angular momentum: 6
 
   Minimum eigenvalue in the overlap matrix is 2.2379141931E-01.
   Using Symmetric Orthogonalization.
@@ -389,19 +404,19 @@ Properties computed using the SCF density matrix
 
   ==> Iterations <==
 
-                           Total Energy        Delta E     RMS |[F,P]|
+                        Total Energy        Delta E     RMS |[F,P]|
 
-   @DF-UHF iter   1:   -88.69798187095989   -8.86980e+01   8.90781e-02 
-   @DF-UHF iter   2:   -91.55728633231760   -2.85930e+00   3.23836e-02 
-   @DF-UHF iter   3:   -91.65803740509037   -1.00751e-01   8.98102e-03 
-   @DF-UHF iter   4:   -91.66348346259051   -5.44606e-03   6.16532e-03 
-   @DF-UHF iter   5:   -91.66391490518521   -4.31443e-04   5.81819e-03 
-   @DF-UHF iter   6:   -91.66395145156491   -3.65464e-05   5.76704e-03 
-   @DF-UHF iter   7:   -91.66395464610014   -3.19454e-06   5.75695e-03 
-   @DF-UHF iter   8:   -91.66395493136906   -2.85269e-07   5.75449e-03 
-   @DF-UHF iter   9:   -91.66395495726118   -2.58921e-08   5.75382e-03 
-   @DF-UHF iter  10:   -91.66395495964144   -2.38026e-09   5.75364e-03 
-   @DF-UHF iter  11:   -91.66395495986248   -2.21036e-10   5.75358e-03 
+   @UHF iter   1:   -88.69798618166362   -8.86980e+01   8.90781e-02 
+   @UHF iter   2:   -91.55728063937983   -2.85929e+00   3.23837e-02 
+   @UHF iter   3:   -91.65803230485943   -1.00752e-01   8.98103e-03 
+   @UHF iter   4:   -91.66347816314391   -5.44586e-03   6.16539e-03 
+   @UHF iter   5:   -91.66390957590869   -4.31413e-04   5.81827e-03 
+   @UHF iter   6:   -91.66394611853332   -3.65426e-05   5.76712e-03 
+   @UHF iter   7:   -91.66394931262684   -3.19409e-06   5.75703e-03 
+   @UHF iter   8:   -91.66394959784577   -2.85219e-07   5.75457e-03 
+   @UHF iter   9:   -91.66394962373244   -2.58867e-08   5.75390e-03 
+   @UHF iter  10:   -91.66394962611204   -2.37961e-09   5.75371e-03 
+   @UHF iter  11:   -91.66394962633311   -2.21064e-10   5.75366e-03 
 
   ==> Post-Iterations <==
 
@@ -443,18 +458,18 @@ Properties computed using the SCF density matrix
 
   Energy converged.
 
-  @DF-UHF Final Energy:   -91.66395495986248
+  @UHF Final Energy:   -91.66394962633311
 
    => Energetics <=
 
     Nuclear Repulsion Energy =             26.5520286076818977
-    One-Electron Energy =                -171.6601285245448310
-    Two-Electron Energy =                  53.4441449570004465
+    One-Electron Energy =                -171.6601601586659456
+    Two-Electron Energy =                  53.4441819246509553
     DFT Exchange-Correlation Energy =       0.0000000000000000
     Empirical Dispersion Energy =           0.0000000000000000
     PCM Polarization Energy =               0.0000000000000000
     EFP Energy =                            0.0000000000000000
-    Total Energy =                        -91.6639549598624797
+    Total Energy =                        -91.6639496263330784
 
     Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
 
@@ -486,7 +501,7 @@ Properties computed using the SCF density matrix
   LUNO+0 :    8  A 1.0000000
   LUNO+1 :    9  A 0.0000000
   LUNO+2 :   10  A 0.0000000
-  LUNO+3 :   11  A -0.0000000
+  LUNO+3 :   11  A 0.0000000
 
 
   ==> State 0 -> 3
@@ -526,7 +541,7 @@ Properties computed using the SCF density matrix
 
   ==> Algorithm <==
 
-  SCF Algorithm Type is DF.
+  SCF Algorithm Type is PK.
   DIIS enabled.
   MOM disabled.
   Fractional occupation disabled.
@@ -575,27 +590,36 @@ Properties computed using the SCF density matrix
 
   ==> Integral Setup <==
 
-  ==> DFJK: Density-Fitted J/K Matrices <==
+ MINTS: Wrapper to libmints.
+   by Justin Turney
+
+   Calculation information:
+      Number of atoms:                   4
+      Number of AO shells:               8
+      Number of SO shells:               8
+      Number of primitives:             24
+      Number of atomic orbitals:        12
+      Number of basis functions:        12
+
+      Number of irreps:                  1
+      Integral cutoff                 1.00e-12
+      Number of functions per irrep: [  12 ]
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+      Computing two-electron integrals...done
+      Computed 2907 non-zero two-electron integrals.
+        Stored in file 33.
+
+	Batch   1 pq = [       0,      78] index = [             0,3081]
+  ==> DiskJK: Disk-Based J/K Matrices <==
 
     J tasked:                  Yes
     K tasked:                  Yes
     wK tasked:                  No
-    OpenMP threads:              1
-    Integrals threads:           1
     Memory (MB):               183
-    Algorithm:                Core
-    Integral Cache:           NONE
     Schwarz Cutoff:          1E-12
-    Fitting Condition:       1E-12
-
-   => Auxiliary Basis Set <=
-
-  Basis Set: AUG-CC-PV5Z-JKFIT
-    Number of shells: 124
-    Number of basis function: 628
-    Number of Cartesian functions: 948
-    Spherical Harmonics?: true
-    Max angular momentum: 6
 
   Minimum eigenvalue in the overlap matrix is 2.2379141931E-01.
   Using Symmetric Orthogonalization.
@@ -603,19 +627,19 @@ Properties computed using the SCF density matrix
 
   ==> Iterations <==
 
-                           Total Energy        Delta E     RMS |[F,P]|
+                        Total Energy        Delta E     RMS |[F,P]|
 
-   @DF-UHF iter   1:   -88.74343718264856   -8.87434e+01   7.89949e-02 
-   @DF-UHF iter   2:   -91.58694767104581   -2.84351e+00   3.16414e-02 
-   @DF-UHF iter   3:   -91.68253052784706   -9.55829e-02   1.00038e-02 
-   @DF-UHF iter   4:   -91.68773698320180   -5.20646e-03   7.72602e-03 
-   @DF-UHF iter   5:   -91.68814246550582   -4.05482e-04   7.51119e-03 
-   @DF-UHF iter   6:   -91.68817634234802   -3.38768e-05   7.48761e-03 
-   @DF-UHF iter   7:   -91.68817926337786   -2.92103e-06   7.48385e-03 
-   @DF-UHF iter   8:   -91.68817952062551   -2.57248e-07   7.48298e-03 
-   @DF-UHF iter   9:   -91.68817954365369   -2.30282e-08   7.48273e-03 
-   @DF-UHF iter  10:   -91.68817954574237   -2.08868e-09   7.48266e-03 
-   @DF-UHF iter  11:   -91.68817954593391   -1.91534e-10   7.48264e-03 
+   @UHF iter   1:   -88.74343320990209   -8.87434e+01   7.89950e-02 
+   @UHF iter   2:   -91.58693903228195   -2.84351e+00   3.16417e-02 
+   @UHF iter   3:   -91.68252335519023   -9.55843e-02   1.00038e-02 
+   @UHF iter   4:   -91.68772965035927   -5.20630e-03   7.72602e-03 
+   @UHF iter   5:   -91.68813510743226   -4.05457e-04   7.51120e-03 
+   @UHF iter   6:   -91.68816898107218   -3.38736e-05   7.48762e-03 
+   @UHF iter   7:   -91.68817190172524   -2.92065e-06   7.48386e-03 
+   @UHF iter   8:   -91.68817215893048   -2.57205e-07   7.48299e-03 
+   @UHF iter   9:   -91.68817218195389   -2.30234e-08   7.48274e-03 
+   @UHF iter  10:   -91.68817218404206   -2.08817e-09   7.48267e-03 
+   @UHF iter  11:   -91.68817218423345   -1.91392e-10   7.48265e-03 
 
   ==> Post-Iterations <==
 
@@ -657,18 +681,18 @@ Properties computed using the SCF density matrix
 
   Energy converged.
 
-  @DF-UHF Final Energy:   -91.68817954593391
+  @UHF Final Energy:   -91.68817218423345
 
    => Energetics <=
 
     Nuclear Repulsion Energy =             26.5520286076818977
-    One-Electron Energy =                -171.7869127083579599
-    Two-Electron Energy =                  53.5467045547421634
+    One-Electron Energy =                -171.7869507900409758
+    Two-Electron Energy =                  53.5467499981256054
     DFT Exchange-Correlation Energy =       0.0000000000000000
     Empirical Dispersion Energy =           0.0000000000000000
     PCM Polarization Energy =               0.0000000000000000
     EFP Energy =                            0.0000000000000000
-    Total Energy =                        -91.6881795459338917
+    Total Energy =                        -91.6881721842334656
 
     Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
 
@@ -740,7 +764,7 @@ Properties computed using the SCF density matrix
 
   ==> Algorithm <==
 
-  SCF Algorithm Type is DF.
+  SCF Algorithm Type is PK.
   DIIS enabled.
   MOM disabled.
   Fractional occupation disabled.
@@ -789,27 +813,36 @@ Properties computed using the SCF density matrix
 
   ==> Integral Setup <==
 
-  ==> DFJK: Density-Fitted J/K Matrices <==
+ MINTS: Wrapper to libmints.
+   by Justin Turney
+
+   Calculation information:
+      Number of atoms:                   4
+      Number of AO shells:               8
+      Number of SO shells:               8
+      Number of primitives:             24
+      Number of atomic orbitals:        12
+      Number of basis functions:        12
+
+      Number of irreps:                  1
+      Integral cutoff                 1.00e-12
+      Number of functions per irrep: [  12 ]
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+      Computing two-electron integrals...done
+      Computed 2907 non-zero two-electron integrals.
+        Stored in file 33.
+
+	Batch   1 pq = [       0,      78] index = [             0,3081]
+  ==> DiskJK: Disk-Based J/K Matrices <==
 
     J tasked:                  Yes
     K tasked:                  Yes
     wK tasked:                  No
-    OpenMP threads:              1
-    Integrals threads:           1
     Memory (MB):               183
-    Algorithm:                Core
-    Integral Cache:           NONE
     Schwarz Cutoff:          1E-12
-    Fitting Condition:       1E-12
-
-   => Auxiliary Basis Set <=
-
-  Basis Set: AUG-CC-PV5Z-JKFIT
-    Number of shells: 124
-    Number of basis function: 628
-    Number of Cartesian functions: 948
-    Spherical Harmonics?: true
-    Max angular momentum: 6
 
   Minimum eigenvalue in the overlap matrix is 2.2379141931E-01.
   Using Symmetric Orthogonalization.
@@ -817,19 +850,19 @@ Properties computed using the SCF density matrix
 
   ==> Iterations <==
 
-                           Total Energy        Delta E     RMS |[F,P]|
+                        Total Energy        Delta E     RMS |[F,P]|
 
-   @DF-UHF iter   1:   -88.91485465332977   -8.89149e+01   7.96523e-02 
-   @DF-UHF iter   2:   -91.65828606743926   -2.74343e+00   3.28123e-02 
-   @DF-UHF iter   3:   -91.75173963098456   -9.34536e-02   1.26512e-02 
-   @DF-UHF iter   4:   -91.75687938271088   -5.13975e-03   1.08031e-02 
-   @DF-UHF iter   5:   -91.75728040958771   -4.01027e-04   1.06091e-02 
-   @DF-UHF iter   6:   -91.75731388057022   -3.34710e-05   1.05790e-02 
-   @DF-UHF iter   7:   -91.75731676264289   -2.88207e-06   1.05720e-02 
-   @DF-UHF iter   8:   -91.75731701614845   -2.53506e-07   1.05700e-02 
-   @DF-UHF iter   9:   -91.75731703882335   -2.26749e-08   1.05694e-02 
-   @DF-UHF iter  10:   -91.75731704087971   -2.05637e-09   1.05692e-02 
-   @DF-UHF iter  11:   -91.75731704106840   -1.88692e-10   1.05691e-02 
+   @UHF iter   1:   -88.91485340766636   -8.89149e+01   7.96525e-02 
+   @UHF iter   2:   -91.65827915366017   -2.74343e+00   3.28125e-02 
+   @UHF iter   3:   -91.75173396222056   -9.34548e-02   1.26512e-02 
+   @UHF iter   4:   -91.75687353968982   -5.13958e-03   1.08031e-02 
+   @UHF iter   5:   -91.75727454038878   -4.01001e-04   1.06091e-02 
+   @UHF iter   6:   -91.75730800811738   -3.34677e-05   1.05790e-02 
+   @UHF iter   7:   -91.75731088981220   -2.88169e-06   1.05720e-02 
+   @UHF iter   8:   -91.75731114327547   -2.53463e-07   1.05700e-02 
+   @UHF iter   9:   -91.75731116594579   -2.26703e-08   1.05694e-02 
+   @UHF iter  10:   -91.75731116800162   -2.05583e-09   1.05692e-02 
+   @UHF iter  11:   -91.75731116819026   -1.88635e-10   1.05692e-02 
 
   ==> Post-Iterations <==
 
@@ -871,18 +904,18 @@ Properties computed using the SCF density matrix
 
   Energy converged.
 
-  @DF-UHF Final Energy:   -91.75731704106840
+  @UHF Final Energy:   -91.75731116819026
 
    => Energetics <=
 
     Nuclear Repulsion Energy =             26.5520286076818977
-    One-Electron Energy =                -171.4329407367415001
-    Two-Electron Energy =                  53.1235950879911982
+    One-Electron Energy =                -171.4329802016975464
+    Two-Electron Energy =                  53.1236404258253998
     DFT Exchange-Correlation Energy =       0.0000000000000000
     Empirical Dispersion Energy =           0.0000000000000000
     PCM Polarization Energy =               0.0000000000000000
     EFP Energy =                            0.0000000000000000
-    Total Energy =                        -91.7573170410684043
+    Total Energy =                        -91.7573111681902418
 
     Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
 
@@ -913,7 +946,7 @@ Properties computed using the SCF density matrix
   HONO-0 :    7  A 1.0000000
   LUNO+0 :    8  A 1.0000000
   LUNO+1 :    9  A 0.0000000
-  LUNO+2 :   10  A -0.0000000
+  LUNO+2 :   10  A 0.0000000
   LUNO+3 :   11  A -0.0000000
 
 
@@ -954,7 +987,7 @@ Properties computed using the SCF density matrix
 
   ==> Algorithm <==
 
-  SCF Algorithm Type is DF.
+  SCF Algorithm Type is PK.
   DIIS enabled.
   MOM disabled.
   Fractional occupation disabled.
@@ -1003,27 +1036,36 @@ Properties computed using the SCF density matrix
 
   ==> Integral Setup <==
 
-  ==> DFJK: Density-Fitted J/K Matrices <==
+ MINTS: Wrapper to libmints.
+   by Justin Turney
+
+   Calculation information:
+      Number of atoms:                   4
+      Number of AO shells:               8
+      Number of SO shells:               8
+      Number of primitives:             24
+      Number of atomic orbitals:        12
+      Number of basis functions:        12
+
+      Number of irreps:                  1
+      Integral cutoff                 1.00e-12
+      Number of functions per irrep: [  12 ]
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+      Computing two-electron integrals...done
+      Computed 2907 non-zero two-electron integrals.
+        Stored in file 33.
+
+	Batch   1 pq = [       0,      78] index = [             0,3081]
+  ==> DiskJK: Disk-Based J/K Matrices <==
 
     J tasked:                  Yes
     K tasked:                  Yes
     wK tasked:                  No
-    OpenMP threads:              1
-    Integrals threads:           1
     Memory (MB):               183
-    Algorithm:                Core
-    Integral Cache:           NONE
     Schwarz Cutoff:          1E-12
-    Fitting Condition:       1E-12
-
-   => Auxiliary Basis Set <=
-
-  Basis Set: AUG-CC-PV5Z-JKFIT
-    Number of shells: 124
-    Number of basis function: 628
-    Number of Cartesian functions: 948
-    Spherical Harmonics?: true
-    Max angular momentum: 6
 
   Minimum eigenvalue in the overlap matrix is 2.2379141931E-01.
   Using Symmetric Orthogonalization.
@@ -1031,19 +1073,19 @@ Properties computed using the SCF density matrix
 
   ==> Iterations <==
 
-                           Total Energy        Delta E     RMS |[F,P]|
+                        Total Energy        Delta E     RMS |[F,P]|
 
-   @DF-UHF iter   1:   -88.74694691223797   -8.87469e+01   7.97679e-02 
-   @DF-UHF iter   2:   -91.48049055751406   -2.73354e+00   3.34458e-02 
-   @DF-UHF iter   3:   -91.56879643258833   -8.83059e-02   1.49466e-02 
-   @DF-UHF iter   4:   -91.57365640426801   -4.85997e-03   1.33826e-02 
-   @DF-UHF iter   5:   -91.57402838189043   -3.71978e-04   1.32211e-02 
-   @DF-UHF iter   6:   -91.57405897516620   -3.05933e-05   1.31946e-02 
-   @DF-UHF iter   7:   -91.57406157210525   -2.59694e-06   1.31880e-02 
-   @DF-UHF iter   8:   -91.57406179720007   -2.25095e-07   1.31861e-02 
-   @DF-UHF iter   9:   -91.57406181703419   -1.98341e-08   1.31855e-02 
-   @DF-UHF iter  10:   -91.57406181880609   -1.77189e-09   1.31853e-02 
-   @DF-UHF iter  11:   -91.57406181896633   -1.60242e-10   1.31852e-02 
+   @UHF iter   1:   -88.74694133105450   -8.87469e+01   7.97682e-02 
+   @UHF iter   2:   -91.48048407452296   -2.73354e+00   3.34460e-02 
+   @UHF iter   3:   -91.56879204055366   -8.83080e-02   1.49464e-02 
+   @UHF iter   4:   -91.57365188042976   -4.85984e-03   1.33824e-02 
+   @UHF iter   5:   -91.57402383684899   -3.71956e-04   1.32208e-02 
+   @UHF iter   6:   -91.57405442745795   -3.05906e-05   1.31944e-02 
+   @UHF iter   7:   -91.57405702408664   -2.59663e-06   1.31878e-02 
+   @UHF iter   8:   -91.57405724914688   -2.25060e-07   1.31858e-02 
+   @UHF iter   9:   -91.57405726897716   -1.98303e-08   1.31852e-02 
+   @UHF iter  10:   -91.57405727074874   -1.77158e-09   1.31850e-02 
+   @UHF iter  11:   -91.57405727090887   -1.60128e-10   1.31850e-02 
 
   ==> Post-Iterations <==
 
@@ -1085,18 +1127,18 @@ Properties computed using the SCF density matrix
 
   Energy converged.
 
-  @DF-UHF Final Energy:   -91.57406181896633
+  @UHF Final Energy:   -91.57405727090887
 
    => Energetics <=
 
     Nuclear Repulsion Energy =             26.5520286076818977
-    One-Electron Energy =                -171.5557428022763702
-    Two-Electron Energy =                  53.4296523756281445
+    One-Electron Energy =                -171.5557888982072541
+    Two-Electron Energy =                  53.4297030196164968
     DFT Exchange-Correlation Energy =       0.0000000000000000
     Empirical Dispersion Energy =           0.0000000000000000
     PCM Polarization Energy =               0.0000000000000000
     EFP Energy =                            0.0000000000000000
-    Total Energy =                        -91.5740618189663280
+    Total Energy =                        -91.5740572709088525
 
     Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
 
@@ -1127,8 +1169,8 @@ Properties computed using the SCF density matrix
   HONO-0 :    7  A 1.0000000
   LUNO+0 :    8  A 1.0000000
   LUNO+1 :    9  A 0.0000000
-  LUNO+2 :   10  A -0.0000000
-  LUNO+3 :   11  A -0.0000000
+  LUNO+2 :   10  A 0.0000000
+  LUNO+3 :   11  A 0.0000000
 
 
   ==> State 0 -> 2
@@ -1168,7 +1210,7 @@ Properties computed using the SCF density matrix
 
   ==> Algorithm <==
 
-  SCF Algorithm Type is DF.
+  SCF Algorithm Type is PK.
   DIIS enabled.
   MOM disabled.
   Fractional occupation disabled.
@@ -1217,27 +1259,36 @@ Properties computed using the SCF density matrix
 
   ==> Integral Setup <==
 
-  ==> DFJK: Density-Fitted J/K Matrices <==
+ MINTS: Wrapper to libmints.
+   by Justin Turney
+
+   Calculation information:
+      Number of atoms:                   4
+      Number of AO shells:               8
+      Number of SO shells:               8
+      Number of primitives:             24
+      Number of atomic orbitals:        12
+      Number of basis functions:        12
+
+      Number of irreps:                  1
+      Integral cutoff                 1.00e-12
+      Number of functions per irrep: [  12 ]
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+      Computing two-electron integrals...done
+      Computed 2907 non-zero two-electron integrals.
+        Stored in file 33.
+
+	Batch   1 pq = [       0,      78] index = [             0,3081]
+  ==> DiskJK: Disk-Based J/K Matrices <==
 
     J tasked:                  Yes
     K tasked:                  Yes
     wK tasked:                  No
-    OpenMP threads:              1
-    Integrals threads:           1
     Memory (MB):               183
-    Algorithm:                Core
-    Integral Cache:           NONE
     Schwarz Cutoff:          1E-12
-    Fitting Condition:       1E-12
-
-   => Auxiliary Basis Set <=
-
-  Basis Set: AUG-CC-PV5Z-JKFIT
-    Number of shells: 124
-    Number of basis function: 628
-    Number of Cartesian functions: 948
-    Spherical Harmonics?: true
-    Max angular momentum: 6
 
   Minimum eigenvalue in the overlap matrix is 2.2379141931E-01.
   Using Symmetric Orthogonalization.
@@ -1245,19 +1296,19 @@ Properties computed using the SCF density matrix
 
   ==> Iterations <==
 
-                           Total Energy        Delta E     RMS |[F,P]|
+                        Total Energy        Delta E     RMS |[F,P]|
 
-   @DF-UHF iter   1:   -88.69798187095989   -8.86980e+01   8.90781e-02 
-   @DF-UHF iter   2:   -91.55728633231760   -2.85930e+00   3.23836e-02 
-   @DF-UHF iter   3:   -91.65803740509037   -1.00751e-01   8.98102e-03 
-   @DF-UHF iter   4:   -91.66348346259051   -5.44606e-03   6.16532e-03 
-   @DF-UHF iter   5:   -91.66391490518521   -4.31443e-04   5.81819e-03 
-   @DF-UHF iter   6:   -91.66395145156491   -3.65464e-05   5.76704e-03 
-   @DF-UHF iter   7:   -91.66395464610014   -3.19454e-06   5.75695e-03 
-   @DF-UHF iter   8:   -91.66395493136906   -2.85269e-07   5.75449e-03 
-   @DF-UHF iter   9:   -91.66395495726118   -2.58921e-08   5.75382e-03 
-   @DF-UHF iter  10:   -91.66395495964144   -2.38026e-09   5.75364e-03 
-   @DF-UHF iter  11:   -91.66395495986248   -2.21036e-10   5.75358e-03 
+   @UHF iter   1:   -88.69798618166362   -8.86980e+01   8.90781e-02 
+   @UHF iter   2:   -91.55728063937983   -2.85929e+00   3.23837e-02 
+   @UHF iter   3:   -91.65803230485943   -1.00752e-01   8.98103e-03 
+   @UHF iter   4:   -91.66347816314391   -5.44586e-03   6.16539e-03 
+   @UHF iter   5:   -91.66390957590869   -4.31413e-04   5.81827e-03 
+   @UHF iter   6:   -91.66394611853332   -3.65426e-05   5.76712e-03 
+   @UHF iter   7:   -91.66394931262684   -3.19409e-06   5.75703e-03 
+   @UHF iter   8:   -91.66394959784577   -2.85219e-07   5.75457e-03 
+   @UHF iter   9:   -91.66394962373246   -2.58867e-08   5.75390e-03 
+   @UHF iter  10:   -91.66394962611204   -2.37958e-09   5.75371e-03 
+   @UHF iter  11:   -91.66394962633311   -2.21064e-10   5.75366e-03 
 
   ==> Post-Iterations <==
 
@@ -1299,18 +1350,18 @@ Properties computed using the SCF density matrix
 
   Energy converged.
 
-  @DF-UHF Final Energy:   -91.66395495986248
+  @UHF Final Energy:   -91.66394962633311
 
    => Energetics <=
 
     Nuclear Repulsion Energy =             26.5520286076818977
-    One-Electron Energy =                -171.6601285245448310
-    Two-Electron Energy =                  53.4441449570004465
+    One-Electron Energy =                -171.6601601586659456
+    Two-Electron Energy =                  53.4441819246509553
     DFT Exchange-Correlation Energy =       0.0000000000000000
     Empirical Dispersion Energy =           0.0000000000000000
     PCM Polarization Energy =               0.0000000000000000
     EFP Energy =                            0.0000000000000000
-    Total Energy =                        -91.6639549598624797
+    Total Energy =                        -91.6639496263330784
 
     Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
 
@@ -1342,7 +1393,7 @@ Properties computed using the SCF density matrix
   LUNO+0 :    8  A 1.0000000
   LUNO+1 :    9  A 0.0000000
   LUNO+2 :   10  A 0.0000000
-  LUNO+3 :   11  A -0.0000000
+  LUNO+3 :   11  A 0.0000000
 
 
   ==> State 0 -> 3
@@ -1382,7 +1433,7 @@ Properties computed using the SCF density matrix
 
   ==> Algorithm <==
 
-  SCF Algorithm Type is DF.
+  SCF Algorithm Type is PK.
   DIIS enabled.
   MOM disabled.
   Fractional occupation disabled.
@@ -1431,27 +1482,36 @@ Properties computed using the SCF density matrix
 
   ==> Integral Setup <==
 
-  ==> DFJK: Density-Fitted J/K Matrices <==
+ MINTS: Wrapper to libmints.
+   by Justin Turney
+
+   Calculation information:
+      Number of atoms:                   4
+      Number of AO shells:               8
+      Number of SO shells:               8
+      Number of primitives:             24
+      Number of atomic orbitals:        12
+      Number of basis functions:        12
+
+      Number of irreps:                  1
+      Integral cutoff                 1.00e-12
+      Number of functions per irrep: [  12 ]
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+      Computing two-electron integrals...done
+      Computed 2907 non-zero two-electron integrals.
+        Stored in file 33.
+
+	Batch   1 pq = [       0,      78] index = [             0,3081]
+  ==> DiskJK: Disk-Based J/K Matrices <==
 
     J tasked:                  Yes
     K tasked:                  Yes
     wK tasked:                  No
-    OpenMP threads:              1
-    Integrals threads:           1
     Memory (MB):               183
-    Algorithm:                Core
-    Integral Cache:           NONE
     Schwarz Cutoff:          1E-12
-    Fitting Condition:       1E-12
-
-   => Auxiliary Basis Set <=
-
-  Basis Set: AUG-CC-PV5Z-JKFIT
-    Number of shells: 124
-    Number of basis function: 628
-    Number of Cartesian functions: 948
-    Spherical Harmonics?: true
-    Max angular momentum: 6
 
   Minimum eigenvalue in the overlap matrix is 2.2379141931E-01.
   Using Symmetric Orthogonalization.
@@ -1459,19 +1519,19 @@ Properties computed using the SCF density matrix
 
   ==> Iterations <==
 
-                           Total Energy        Delta E     RMS |[F,P]|
+                        Total Energy        Delta E     RMS |[F,P]|
 
-   @DF-UHF iter   1:   -88.74343718264856   -8.87434e+01   7.89949e-02 
-   @DF-UHF iter   2:   -91.58694767104581   -2.84351e+00   3.16414e-02 
-   @DF-UHF iter   3:   -91.68253052784706   -9.55829e-02   1.00038e-02 
-   @DF-UHF iter   4:   -91.68773698320180   -5.20646e-03   7.72602e-03 
-   @DF-UHF iter   5:   -91.68814246550582   -4.05482e-04   7.51119e-03 
-   @DF-UHF iter   6:   -91.68817634234802   -3.38768e-05   7.48761e-03 
-   @DF-UHF iter   7:   -91.68817926337786   -2.92103e-06   7.48385e-03 
-   @DF-UHF iter   8:   -91.68817952062554   -2.57248e-07   7.48298e-03 
-   @DF-UHF iter   9:   -91.68817954365369   -2.30282e-08   7.48273e-03 
-   @DF-UHF iter  10:   -91.68817954574234   -2.08865e-09   7.48266e-03 
-   @DF-UHF iter  11:   -91.68817954593391   -1.91562e-10   7.48264e-03 
+   @UHF iter   1:   -88.74343320990209   -8.87434e+01   7.89950e-02 
+   @UHF iter   2:   -91.58693903228195   -2.84351e+00   3.16417e-02 
+   @UHF iter   3:   -91.68252335519023   -9.55843e-02   1.00038e-02 
+   @UHF iter   4:   -91.68772965035927   -5.20630e-03   7.72602e-03 
+   @UHF iter   5:   -91.68813510743226   -4.05457e-04   7.51120e-03 
+   @UHF iter   6:   -91.68816898107218   -3.38736e-05   7.48762e-03 
+   @UHF iter   7:   -91.68817190172524   -2.92065e-06   7.48386e-03 
+   @UHF iter   8:   -91.68817215893048   -2.57205e-07   7.48299e-03 
+   @UHF iter   9:   -91.68817218195389   -2.30234e-08   7.48274e-03 
+   @UHF iter  10:   -91.68817218404206   -2.08817e-09   7.48267e-03 
+   @UHF iter  11:   -91.68817218423345   -1.91392e-10   7.48265e-03 
 
   ==> Post-Iterations <==
 
@@ -1513,18 +1573,18 @@ Properties computed using the SCF density matrix
 
   Energy converged.
 
-  @DF-UHF Final Energy:   -91.68817954593391
+  @UHF Final Energy:   -91.68817218423345
 
    => Energetics <=
 
     Nuclear Repulsion Energy =             26.5520286076818977
-    One-Electron Energy =                -171.7869127083579599
-    Two-Electron Energy =                  53.5467045547421634
+    One-Electron Energy =                -171.7869507900409758
+    Two-Electron Energy =                  53.5467499981256054
     DFT Exchange-Correlation Energy =       0.0000000000000000
     Empirical Dispersion Energy =           0.0000000000000000
     PCM Polarization Energy =               0.0000000000000000
     EFP Energy =                            0.0000000000000000
-    Total Energy =                        -91.6881795459338917
+    Total Energy =                        -91.6881721842334656
 
     Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
 
@@ -1596,7 +1656,7 @@ Properties computed using the SCF density matrix
 
   ==> Algorithm <==
 
-  SCF Algorithm Type is DF.
+  SCF Algorithm Type is PK.
   DIIS enabled.
   MOM disabled.
   Fractional occupation disabled.
@@ -1645,27 +1705,36 @@ Properties computed using the SCF density matrix
 
   ==> Integral Setup <==
 
-  ==> DFJK: Density-Fitted J/K Matrices <==
+ MINTS: Wrapper to libmints.
+   by Justin Turney
+
+   Calculation information:
+      Number of atoms:                   4
+      Number of AO shells:               8
+      Number of SO shells:               8
+      Number of primitives:             24
+      Number of atomic orbitals:        12
+      Number of basis functions:        12
+
+      Number of irreps:                  1
+      Integral cutoff                 1.00e-12
+      Number of functions per irrep: [  12 ]
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+      Computing two-electron integrals...done
+      Computed 2907 non-zero two-electron integrals.
+        Stored in file 33.
+
+	Batch   1 pq = [       0,      78] index = [             0,3081]
+  ==> DiskJK: Disk-Based J/K Matrices <==
 
     J tasked:                  Yes
     K tasked:                  Yes
     wK tasked:                  No
-    OpenMP threads:              1
-    Integrals threads:           1
     Memory (MB):               183
-    Algorithm:                Core
-    Integral Cache:           NONE
     Schwarz Cutoff:          1E-12
-    Fitting Condition:       1E-12
-
-   => Auxiliary Basis Set <=
-
-  Basis Set: AUG-CC-PV5Z-JKFIT
-    Number of shells: 124
-    Number of basis function: 628
-    Number of Cartesian functions: 948
-    Spherical Harmonics?: true
-    Max angular momentum: 6
 
   Minimum eigenvalue in the overlap matrix is 2.2379141931E-01.
   Using Symmetric Orthogonalization.
@@ -1673,19 +1742,19 @@ Properties computed using the SCF density matrix
 
   ==> Iterations <==
 
-                           Total Energy        Delta E     RMS |[F,P]|
+                        Total Energy        Delta E     RMS |[F,P]|
 
-   @DF-UHF iter   1:   -88.91485465332977   -8.89149e+01   7.96523e-02 
-   @DF-UHF iter   2:   -91.65828606743926   -2.74343e+00   3.28123e-02 
-   @DF-UHF iter   3:   -91.75173963098456   -9.34536e-02   1.26512e-02 
-   @DF-UHF iter   4:   -91.75687938271088   -5.13975e-03   1.08031e-02 
-   @DF-UHF iter   5:   -91.75728040958771   -4.01027e-04   1.06091e-02 
-   @DF-UHF iter   6:   -91.75731388057022   -3.34710e-05   1.05790e-02 
-   @DF-UHF iter   7:   -91.75731676264289   -2.88207e-06   1.05720e-02 
-   @DF-UHF iter   8:   -91.75731701614845   -2.53506e-07   1.05700e-02 
-   @DF-UHF iter   9:   -91.75731703882335   -2.26749e-08   1.05694e-02 
-   @DF-UHF iter  10:   -91.75731704087971   -2.05637e-09   1.05692e-02 
-   @DF-UHF iter  11:   -91.75731704106840   -1.88692e-10   1.05691e-02 
+   @UHF iter   1:   -88.91485340766636   -8.89149e+01   7.96525e-02 
+   @UHF iter   2:   -91.65827915366017   -2.74343e+00   3.28125e-02 
+   @UHF iter   3:   -91.75173396222056   -9.34548e-02   1.26512e-02 
+   @UHF iter   4:   -91.75687353968982   -5.13958e-03   1.08031e-02 
+   @UHF iter   5:   -91.75727454038878   -4.01001e-04   1.06091e-02 
+   @UHF iter   6:   -91.75730800811741   -3.34677e-05   1.05790e-02 
+   @UHF iter   7:   -91.75731088981220   -2.88169e-06   1.05720e-02 
+   @UHF iter   8:   -91.75731114327550   -2.53463e-07   1.05700e-02 
+   @UHF iter   9:   -91.75731116594579   -2.26703e-08   1.05694e-02 
+   @UHF iter  10:   -91.75731116800162   -2.05583e-09   1.05692e-02 
+   @UHF iter  11:   -91.75731116819026   -1.88635e-10   1.05692e-02 
 
   ==> Post-Iterations <==
 
@@ -1727,18 +1796,18 @@ Properties computed using the SCF density matrix
 
   Energy converged.
 
-  @DF-UHF Final Energy:   -91.75731704106840
+  @UHF Final Energy:   -91.75731116819026
 
    => Energetics <=
 
     Nuclear Repulsion Energy =             26.5520286076818977
-    One-Electron Energy =                -171.4329407367415001
-    Two-Electron Energy =                  53.1235950879911982
+    One-Electron Energy =                -171.4329802016975464
+    Two-Electron Energy =                  53.1236404258253998
     DFT Exchange-Correlation Energy =       0.0000000000000000
     Empirical Dispersion Energy =           0.0000000000000000
     PCM Polarization Energy =               0.0000000000000000
     EFP Energy =                            0.0000000000000000
-    Total Energy =                        -91.7573170410684043
+    Total Energy =                        -91.7573111681902418
 
     Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
 
@@ -1769,7 +1838,7 @@ Properties computed using the SCF density matrix
   HONO-0 :    7  A 1.0000000
   LUNO+0 :    8  A 1.0000000
   LUNO+1 :    9  A 0.0000000
-  LUNO+2 :   10  A -0.0000000
+  LUNO+2 :   10  A 0.0000000
   LUNO+3 :   11  A -0.0000000
 
 
@@ -1810,7 +1879,7 @@ Properties computed using the SCF density matrix
 
   ==> Algorithm <==
 
-  SCF Algorithm Type is DF.
+  SCF Algorithm Type is PK.
   DIIS enabled.
   MOM disabled.
   Fractional occupation disabled.
@@ -1859,27 +1928,36 @@ Properties computed using the SCF density matrix
 
   ==> Integral Setup <==
 
-  ==> DFJK: Density-Fitted J/K Matrices <==
+ MINTS: Wrapper to libmints.
+   by Justin Turney
+
+   Calculation information:
+      Number of atoms:                   4
+      Number of AO shells:               8
+      Number of SO shells:               8
+      Number of primitives:             24
+      Number of atomic orbitals:        12
+      Number of basis functions:        12
+
+      Number of irreps:                  1
+      Integral cutoff                 1.00e-12
+      Number of functions per irrep: [  12 ]
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+      Computing two-electron integrals...done
+      Computed 2907 non-zero two-electron integrals.
+        Stored in file 33.
+
+	Batch   1 pq = [       0,      78] index = [             0,3081]
+  ==> DiskJK: Disk-Based J/K Matrices <==
 
     J tasked:                  Yes
     K tasked:                  Yes
     wK tasked:                  No
-    OpenMP threads:              1
-    Integrals threads:           1
     Memory (MB):               183
-    Algorithm:                Core
-    Integral Cache:           NONE
     Schwarz Cutoff:          1E-12
-    Fitting Condition:       1E-12
-
-   => Auxiliary Basis Set <=
-
-  Basis Set: AUG-CC-PV5Z-JKFIT
-    Number of shells: 124
-    Number of basis function: 628
-    Number of Cartesian functions: 948
-    Spherical Harmonics?: true
-    Max angular momentum: 6
 
   Minimum eigenvalue in the overlap matrix is 2.2379141931E-01.
   Using Symmetric Orthogonalization.
@@ -1887,19 +1965,19 @@ Properties computed using the SCF density matrix
 
   ==> Iterations <==
 
-                           Total Energy        Delta E     RMS |[F,P]|
+                        Total Energy        Delta E     RMS |[F,P]|
 
-   @DF-UHF iter   1:   -88.74694691223797   -8.87469e+01   7.97679e-02 
-   @DF-UHF iter   2:   -91.48049055751406   -2.73354e+00   3.34458e-02 
-   @DF-UHF iter   3:   -91.56879643258833   -8.83059e-02   1.49466e-02 
-   @DF-UHF iter   4:   -91.57365640426801   -4.85997e-03   1.33826e-02 
-   @DF-UHF iter   5:   -91.57402838189043   -3.71978e-04   1.32211e-02 
-   @DF-UHF iter   6:   -91.57405897516620   -3.05933e-05   1.31946e-02 
-   @DF-UHF iter   7:   -91.57406157210522   -2.59694e-06   1.31880e-02 
-   @DF-UHF iter   8:   -91.57406179720007   -2.25095e-07   1.31861e-02 
-   @DF-UHF iter   9:   -91.57406181703419   -1.98341e-08   1.31855e-02 
-   @DF-UHF iter  10:   -91.57406181880609   -1.77189e-09   1.31853e-02 
-   @DF-UHF iter  11:   -91.57406181896633   -1.60242e-10   1.31852e-02 
+   @UHF iter   1:   -88.74694133105450   -8.87469e+01   7.97682e-02 
+   @UHF iter   2:   -91.48048407452296   -2.73354e+00   3.34460e-02 
+   @UHF iter   3:   -91.56879204055366   -8.83080e-02   1.49464e-02 
+   @UHF iter   4:   -91.57365188042976   -4.85984e-03   1.33824e-02 
+   @UHF iter   5:   -91.57402383684899   -3.71956e-04   1.32208e-02 
+   @UHF iter   6:   -91.57405442745798   -3.05906e-05   1.31944e-02 
+   @UHF iter   7:   -91.57405702408664   -2.59663e-06   1.31878e-02 
+   @UHF iter   8:   -91.57405724914688   -2.25060e-07   1.31858e-02 
+   @UHF iter   9:   -91.57405726897716   -1.98303e-08   1.31852e-02 
+   @UHF iter  10:   -91.57405727074874   -1.77158e-09   1.31850e-02 
+   @UHF iter  11:   -91.57405727090887   -1.60128e-10   1.31850e-02 
 
   ==> Post-Iterations <==
 
@@ -1941,18 +2019,18 @@ Properties computed using the SCF density matrix
 
   Energy converged.
 
-  @DF-UHF Final Energy:   -91.57406181896633
+  @UHF Final Energy:   -91.57405727090887
 
    => Energetics <=
 
     Nuclear Repulsion Energy =             26.5520286076818977
-    One-Electron Energy =                -171.5557428022763702
-    Two-Electron Energy =                  53.4296523756281445
+    One-Electron Energy =                -171.5557888982072541
+    Two-Electron Energy =                  53.4297030196164968
     DFT Exchange-Correlation Energy =       0.0000000000000000
     Empirical Dispersion Energy =           0.0000000000000000
     PCM Polarization Energy =               0.0000000000000000
     EFP Energy =                            0.0000000000000000
-    Total Energy =                        -91.5740618189663280
+    Total Energy =                        -91.5740572709088525
 
     Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
 
@@ -1983,16 +2061,40 @@ Properties computed using the SCF density matrix
   HONO-0 :    7  A 1.0000000
   LUNO+0 :    8  A 1.0000000
   LUNO+1 :    9  A 0.0000000
-  LUNO+2 :   10  A -0.0000000
-  LUNO+3 :   11  A -0.0000000
+  LUNO+2 :   10  A 0.0000000
+  LUNO+3 :   11  A 0.0000000
 
 
   ==> Nonorthogonal CI (NOCI) <==
 
   Number of determinants: 9
+ MINTS: Wrapper to libmints.
+   by Justin Turney
 
-  Using Density Fitting and LibFock JK algorithm
+   Calculation information:
+      Number of atoms:                   4
+      Number of AO shells:               8
+      Number of SO shells:               8
+      Number of primitives:             24
+      Number of atomic orbitals:        12
+      Number of basis functions:        12
 
+      Number of irreps:                  1
+      Integral cutoff                 1.00e-12
+      Number of functions per irrep: [  12 ]
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+      Computing two-electron integrals...done
+      Computed 2907 non-zero two-electron integrals.
+        Stored in file 33.
+
+	Batch   1 pq = [       0,      78] index = [             0,3081]
+
+  Using PK integrals and the incore JK algorithm
+
+  ==> Reading the two-electron integrals (C1 symmetry) <==
   Computing the NOCI Hamiltonian
 
   ## Overlap matrix (Symmetry 0) ##
@@ -2001,10 +2103,10 @@ Properties computed using the SCF density matrix
                  1                   2                   3                   4                   5
 
     1     0.99999999999999     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000
-    2     0.00000000000000     0.99999999999999     0.00000000000000     0.00000000000000     0.00000000000000
-    3     0.00000000000000     0.00000000000000     0.99999999999998     0.00000000000000     0.00000000000000
-    4     0.00000000000000     0.00000000000000     0.00000000000000     1.00000000000002     0.00000000000000
-    5     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000     1.00000000000002
+    2     0.00000000000000     0.99999999999998     0.00000000000000     0.00000000000000     0.00000000000000
+    3     0.00000000000000     0.00000000000000     1.00000000000000     0.00000000000000     0.00000000000000
+    4     0.00000000000000     0.00000000000000     0.00000000000000     0.99999999999999     0.00000000000000
+    5     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000     0.99999999999997
     6     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000
     7     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000
     8     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000
@@ -2017,10 +2119,10 @@ Properties computed using the SCF density matrix
     3     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000
     4     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000
     5     0.00000000000000     0.00000000000000     0.00000000000000     0.00000000000000
-    6     0.99999999999999     0.00000000000000     0.00000000000000     0.00000000000000
-    7     0.00000000000000     0.99999999999998     0.00000000000000     0.00000000000000
-    8     0.00000000000000     0.00000000000000     1.00000000000002     0.00000000000000
-    9     0.00000000000000     0.00000000000000     0.00000000000000     1.00000000000002
+    6     0.99999999999998     0.00000000000000     0.00000000000000     0.00000000000000
+    7     0.00000000000000     1.00000000000000     0.00000000000000     0.00000000000000
+    8     0.00000000000000     0.00000000000000     0.99999999999999     0.00000000000000
+    9     0.00000000000000     0.00000000000000     0.00000000000000     0.99999999999997
 
 
 
@@ -2029,27 +2131,27 @@ Properties computed using the SCF density matrix
 
                  1                   2                   3                   4                   5
 
-    1   -91.89880475464790     0.00010199691688     0.00036573680927    -0.00092053120191     0.01249302803523
-    2     0.00010199691688   -91.66395495988681     0.00854138316513    -0.01472271050890     0.09906381399382
-    3     0.00036573680927     0.00854138316513   -91.68817954594608    -0.00241360943341     0.00345773803258
-    4    -0.00092053120191    -0.01472271050890    -0.00241360943341   -91.75731704108738    -0.00850568978839
-    5     0.01249302803523     0.09906381399382     0.00345773803258    -0.00850568978839   -91.57406181899110
-    6     0.00010199691688     0.16880327091712     0.00842089484204    -0.01649283252746     0.11944799398926
-    7     0.00036573680927     0.00842089484204     0.02884468186179     0.01805010889971     0.00570443981915
-    8    -0.00092053120191    -0.01649283252746     0.01805010889971     0.02160394784218    -0.01488483895694
-    9     0.01249302803523     0.11944799398926     0.00570443981915    -0.01488483895694     0.14742741053686
+    1   -91.89879980518752     0.00010228623583     0.00036580518025    -0.00092060916291     0.01249273038783
+    2     0.00010228623582   -91.66394962635151     0.00854229610341    -0.01472360880012     0.09906330518365
+    3     0.00036580518025     0.00854229610341   -91.68817218425066    -0.00241376764074     0.00345882788599
+    4    -0.00092060916291    -0.01472360880012    -0.00241376764074   -91.75731116820627    -0.00850684472476
+    5     0.01249273038782     0.09906330518365     0.00345882788599    -0.00850684472476   -91.57405727092073
+    6     0.00010228623582     0.16880531530995     0.00842268690808    -0.01649449827422     0.11944860930466
+    7     0.00036580518025     0.00842268690808     0.02884589198720     0.01805107067560     0.00570613883277
+    8    -0.00092060916291    -0.01649449827422     0.01805107067560     0.02160570380849    -0.01488665121404
+    9     0.01249273038782     0.11944860930466     0.00570613883277    -0.01488665121404     0.14743095065390
 
                  6                   7                   8                   9
 
-    1     0.00010199691688     0.00036573680927    -0.00092053120191     0.01249302803523
-    2     0.16880327091712     0.00842089484204    -0.01649283252746     0.11944799398926
-    3     0.00842089484204     0.02884468186179     0.01805010889971     0.00570443981915
-    4    -0.01649283252746     0.01805010889971     0.02160394784218    -0.01488483895694
-    5     0.11944799398926     0.00570443981915    -0.01488483895694     0.14742741053686
-    6   -91.66395495988681     0.00854138316513    -0.01472271050890     0.09906381399382
-    7     0.00854138316513   -91.68817954594611    -0.00241360943341     0.00345773803258
-    8    -0.01472271050890    -0.00241360943341   -91.75731704108735    -0.00850568978839
-    9     0.09906381399382     0.00345773803258    -0.00850568978839   -91.57406181899110
+    1     0.00010228623583     0.00036580518025    -0.00092060916291     0.01249273038783
+    2     0.16880531530995     0.00842268690808    -0.01649449827422     0.11944860930466
+    3     0.00842268690808     0.02884589198720     0.01805107067560     0.00570613883277
+    4    -0.01649449827422     0.01805107067560     0.02160570380849    -0.01488665121404
+    5     0.11944860930466     0.00570613883277    -0.01488665121404     0.14743095065390
+    6   -91.66394962635151     0.00854229610341    -0.01472360880012     0.09906330518365
+    7     0.00854229610341   -91.68817218425066    -0.00241376764074     0.00345882788599
+    8    -0.01472360880012    -0.00241376764074   -91.75731116820627    -0.00850684472476
+    9     0.09906330518365     0.00345882788599    -0.00850684472476   -91.57405727092075
 
 
 
@@ -2090,15 +2192,15 @@ Properties computed using the SCF density matrix
   ----------------------------------------------------
     State       Energy (Eh)    Omega (eV)   Osc. Str.
   ----------------------------------------------------
-  @NOCI-0        -91.899683696186      0.0000     0.0000e+00
-  @NOCI-1        -91.836522371331      1.7187     0.0000e+00
-  @NOCI-2        -91.785319104579      3.1120     0.0000e+00
-  @NOCI-3        -91.743627763050      4.2465     0.0000e+00
-  @NOCI-4        -91.719255665707      4.9097     0.0000e+00
-  @NOCI-5        -91.709095535452      5.1862     0.0000e+00
-  @NOCI-6        -91.680982627881      5.9512     0.0000e+00
-  @NOCI-7        -91.655480299562      6.6451     0.0000e+00
-  @NOCI-8        -91.235864422723     18.0634     0.0000e+00
+  @NOCI-0        -91.899678674625      0.0000     0.0000e+00
+  @NOCI-1        -91.836519620918      1.7186     0.0000e+00
+  @NOCI-2        -91.785315434642      3.1120     0.0000e+00
+  @NOCI-3        -91.743621181759      4.2465     0.0000e+00
+  @NOCI-4        -91.719253700987      4.9096     0.0000e+00
+  @NOCI-5        -91.709089354942      5.1862     0.0000e+00
+  @NOCI-6        -91.680975106109      5.9512     0.0000e+00
+  @NOCI-7        -91.655471581949      6.6452     0.0000e+00
+  @NOCI-8        -91.235855648715     18.0635     0.0000e+00
   ----------------------------------------------------
 
 *** PSI4 exiting successfully. Buy a developer a beer!

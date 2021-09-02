@@ -1,8 +1,6 @@
 #ifndef _ocdft_h_
 #define _ocdft_h_
 
-#include "boost/tuple/tuple.hpp"
-
 #include <psi4/libscf_solver/uhf.h>
 
 #include "iao_builder.h"

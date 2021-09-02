@@ -1,6 +1,6 @@
 #! OCDFT CPH algorithm test, B3LYP computation on ethene
 
-import cdft
+import ocdft
 
 refdft                = -78.590987984 #TEST
 refocdft_singlet_spin = -78.319791740 #TEST
@@ -26,14 +26,12 @@ set {
   d_convergence 6
 }
 
-set cdft {
+set ocdft {
   roots_per_irrep [0,0,0,0,0,1,0,0]
   cdft_exc_method chp-fb
 }
 
-set dft_functional B3LYP
-
-energy('ocdft')
+energy('ocdft',dft_functional='b3lyp')
 
 compare_values(refdft, get_variable("DFT ENERGY"),8, "DFT energy") #TEST
 compare_values(refocdft_singlet_spin, get_variable("OCDFT SINGLET ENERGY"),8, "OCDFT singlet energy") #TEST

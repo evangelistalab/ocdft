@@ -1,18 +1,3 @@
-#import psi4
-#import re
-#import os
-#import inputparser
-#import math
-#import warnings
-#from driver import *
-##from wrappers import *
-#from molutil import *
-#import p4util
-##from p4xcpt import *
-
-#plugdir = os.path.split(os.path.abspath(__file__))[0]
-#sofile = plugdir + "/cdft.so"
-
 import psi4
 import psi4.driver.p4util as p4util
 from psi4.driver.procrouting import proc_util
@@ -80,8 +65,6 @@ def run_ocdft(name, **kwargs):
     lowername = name.lower()
     kwargs = p4util.kwargs_lower(kwargs)
 
-#    scf_molecule = kwargs.get('molecule', psi4.get_active_molecule())
-#    ref_wfn = psi4.new_wavefunction(scf_molecule, psi4.get_global_option('BASIS'))
     ref_wfn = kwargs.get('ref_wfn', None)
     if ref_wfn is None:
         ref_wfn = psi4.driver.scf_helper(name, **kwargs)

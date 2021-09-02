@@ -1,7 +1,7 @@
 #NOCI with OCDFT determinant CO val excitation energy
 #sys.path.insert(0, './..')
 #sys.path.insert(0, '/home/prakash')
-import cdft 
+import ocdft 
 
 molecule h2o {
 C       0.0000  0.0000  0.0000
@@ -21,7 +21,7 @@ set {
 
 set reference uks
 set cdft {
-  cdft_exc_type core    
+  cdft_exc_type valence
   nroots 2
   cdft_spin_adapt_ci false
   cdft_exc_method chp

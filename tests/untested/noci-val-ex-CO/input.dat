@@ -1,7 +1,7 @@
 #! CO valence excitation energy with HF NOCI  
 #sys.path.insert(0, '/home/prakash')
 sys.path.insert(0, 'add cdft path')
-import cdft
+import ocdft
 
 HF_NOCI_Energy =  -112.74929280378284
 

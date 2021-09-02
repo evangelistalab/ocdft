@@ -1,7 +1,6 @@
 #include <algorithm>
 
-#include <boost/format.hpp>
-#include <boost/tuple/tuple_comparison.hpp>
+#include "fmt/format.h"
 
 #include "psi4/libpsi4util/PsiOutStream.h"
 #include <psi4/libmints/local.h>
@@ -126,7 +125,7 @@ void UOCDFT::analyze_excitations() {
             std::tuple<int, int, int> atom_am;
             atom_am = std::make_tuple(A, am, (principal_qn));
             for (int p = sum; p < sum + nfunction; ++p) {
-                outfile->Printf("\n nfunction_minao", p);
+                // outfile->Printf("\n nfunction_minao", p);
                 atom_am_to_f[atom_am].push_back(p);
             }
             sum += nfunction;
@@ -291,11 +290,11 @@ void UOCDFT::analyze_excitations() {
         // iao_population_matrix->print();
         std::vector<std::pair<double, std::string>> ao_iao_coeff_contributions;
         std::vector<std::pair<double, std::string>> ao_iao_coeff_contributions_print;
-        outfile->Printf("\n Population Sum: %f\n", pop_sum);
-        outfile->Printf("\n\n     =====> IAO %d: Population Analysis <=====", k + 1);
-        outfile->Printf("\n   =================================================");
-        outfile->Printf("\n   Atom Number    Symbol     l            population");
-        outfile->Printf("\n   =================================================");
+        // outfile->Printf("\n Population Sum: %f\n", pop_sum);
+        // outfile->Printf("\n\n     =====> IAO %d: Population Analysis <=====", k + 1);
+        // outfile->Printf("\n   =================================================");
+        // outfile->Printf("\n   Atom Number    Symbol     l            population");
+        // outfile->Printf("\n   =================================================");
         for (auto& i : keys_ao) {
             auto& ifn = atom_am_to_f_ao[i];
             double sum = 0.0;
@@ -311,18 +310,18 @@ void UOCDFT::analyze_excitations() {
             if (std::fabs(norm_sum) >= 0.00001) {
                 // outfile->Printf("\n In here");
                 std::string outstr =
-                    boost::str(boost::format("   %3d            %3s      %3s           %9.2f ") %
-                               (std::get<0>(i) + 1) % molecule_->symbol(std::get<0>(i)).c_str() %
-                               l_to_symbol[std::get<1>(i)].c_str() % norm_sum);
+                    fmt::format("   {:3d}            {:3s}      {:3s}           {:9.2f} ",
+                               (std::get<0>(i) + 1) , molecule_->symbol(std::get<0>(i)).c_str() ,
+                               l_to_symbol[std::get<1>(i)].c_str() ,norm_sum);
 
                 std::string outstr_compact =
-                    boost::str(boost::format("%3d %3s(%s,%4.2f)") % (std::get<0>(i) + 1) %
-                               molecule_->symbol(std::get<0>(i)).c_str() %
-                               l_to_symbol[std::get<1>(i)].c_str() % norm_sum);
+                    fmt::format("{:3d} {:3s}({:s},{:4.2f})", std::get<0>(i) + 1,
+                               molecule_->symbol(std::get<0>(i)).c_str(),
+                               l_to_symbol[std::get<1>(i)].c_str(), norm_sum);
                 std::string label_string =
-                    boost::str(boost::format("%d%s%s_%d") % (std::get<0>(i) + 1) %
-                               molecule_->symbol(std::get<0>(i)).c_str() %
-                               l_to_symbol[std::get<1>(i)].c_str() % (k + 1));
+                    fmt::format("{:d}{:s}{:s}_{:d}", std::get<0>(i) + 1,
+                               molecule_->symbol(std::get<0>(i)).c_str(),
+                               l_to_symbol[std::get<1>(i)].c_str(), (k + 1));
                 ao_iao_coeff_contributions_print.push_back(std::make_pair(norm_sum, outstr));
                 ao_iao_coeff_contributions.push_back(std::make_pair(norm_sum, outstr_compact));
             }
@@ -331,9 +330,9 @@ void UOCDFT::analyze_excitations() {
                   ao_iao_coeff_contributions_print.rend());
         std::sort(ao_iao_coeff_contributions.rbegin(), ao_iao_coeff_contributions.rend());
         // outfile->Printf("\n Sorted");
-        for (auto& kv : ao_iao_coeff_contributions_print) {
-            outfile->Printf("\n%s", kv.second.c_str());
-        }
+        // for (auto& kv : ao_iao_coeff_contributions_print) {
+        //     outfile->Printf("\n%s", kv.second.c_str());
+        // }
         iao_labels.push_back(ao_iao_coeff_contributions[0].second.c_str());
     }
     for (int i = 0; i < nmin; ++i) {
@@ -405,9 +404,9 @@ void UOCDFT::analyze_excitations() {
         // i.first+1,molecule_->symbol(i.first).c_str(),l_to_symbol[i.second].c_str(),trace);
         if (std::fabs(trace) >= 0.01) {
             std::string outstr =
-                boost::str(boost::format("   %3d            %3s          %3s           %9.2f ") %
-                           (std::get<0>(i) + 1) % molecule_->symbol(std::get<0>(i)).c_str() %
-                           l_to_symbol[std::get<1>(i)].c_str() % trace);
+                fmt::format("   {:3d}            {:3s}          {:3s}           {:9.2f} ",
+                           (std::get<0>(i) + 1), molecule_->symbol(std::get<0>(i)).c_str(),
+                           l_to_symbol[std::get<1>(i)].c_str(), trace);
             iao_hole_contributions.push_back(std::make_pair(trace, outstr));
         }
     }
@@ -432,9 +431,9 @@ void UOCDFT::analyze_excitations() {
         }
         if (std::fabs(trace) >= 0.01) {
             std::string outstr =
-                boost::str(boost::format("   %3d            %3s          %3s           %9.2f ") %
-                           (std::get<0>(i) + 1) % molecule_->symbol(std::get<0>(i)).c_str() %
-                           l_to_symbol[std::get<1>(i)].c_str() % trace);
+                fmt::format("   {:3d}            {:3s}          {:3s}           {:9.2f} ",
+                           (std::get<0>(i) + 1) , molecule_->symbol(std::get<0>(i)).c_str() ,
+                           l_to_symbol[std::get<1>(i)].c_str() , trace);
             iao_part_contributions.push_back(std::make_pair(trace, outstr));
         }
     }
@@ -490,10 +489,9 @@ void UOCDFT::analyze_excitations() {
                 trace += population_matrix_hole_full->get(iao, iao);
             }
             if (std::fabs(trace) >= 0.01) {
-                std::string outstr = boost::str(
-                    boost::format("   %3d            %3s          %3s           %9.2f ") %
-                    (i.first + 1) % molecule_->symbol(i.first).c_str() %
-                    l_to_symbol[i.second].c_str() % trace);
+                std::string outstr = fmt::format("   {:3d}            {:3s}          {:3s}           {:9.2f} ",
+                    (i.first + 1), molecule_->symbol(i.first).c_str(),
+                    l_to_symbol[i.second].c_str(), trace);
                 ao_hole_contributions.push_back(std::make_pair(trace, outstr));
             }
             if (std::fabs(trace) >= 0.85) {
@@ -529,10 +527,9 @@ void UOCDFT::analyze_excitations() {
                 trace += population_matrix_particle_full->get(iao, iao);
             }
             if (std::fabs(trace) >= 0.01) {
-                std::string outstr = boost::str(
-                    boost::format("   %3d            %3s          %3s           %9.2f ") %
-                    (i.first + 1) % molecule_->symbol(i.first).c_str() %
-                    l_to_symbol[i.second].c_str() % trace);
+                std::string outstr = fmt::format("   {:3d}            {:3s}          {:3s}           {:9.2f} ",
+                    (i.first + 1), molecule_->symbol(i.first).c_str(),
+                    l_to_symbol[i.second].c_str(), trace);
                 ao_part_contributions.push_back(std::make_pair(trace, outstr));
             }
         }
@@ -603,9 +600,9 @@ void UOCDFT::analyze_excitations() {
     // CtSAAtSC->print();
     CtSAAtSC->diagonalize(CtSAAtSC_eigvec, CtSAAtSC_eigvals);
     // CtSAAtSC_eigvals->print();
-    for (int i = 0; i < nvir; ++i) {
-        outfile->Printf("\n %f \n", CtSAAtSC_eigvals->get(i));
-    }
+    // for (int i = 0; i < nvir; ++i) {
+    //     outfile->Printf("\n %f \n", CtSAAtSC_eigvals->get(i));
+    // }
     // END //
     SharedMatrix LSCh = SharedMatrix(new Matrix("IBO Hole Overlap ", basisset_->nbf(), nocc));
     SharedMatrix LSCp = SharedMatrix(new Matrix("IBO Particle Overlap ", basisset_->nbf(), nvir));
@@ -636,7 +633,7 @@ void UOCDFT::analyze_excitations() {
         double eigen = 0.0;
         eigen = sigma->get(i);
         if (eigen >= 0.9 and eigen <= 1.1) {
-            outfile->Printf("\n ADDING ONE %f", sigma->get(i));
+            // outfile->Printf("\n ADDING ONE %f", sigma->get(i));
             nvvos = nvvos + 1;
         }
     }
@@ -867,9 +864,9 @@ void UOCDFT::analyze_excitations() {
         auto& ifn = atom_am_to_f[i];
         for (auto& iao : ifn) {
             double overlap = std::pow(ASCh->get(iao, 0), 2.0);
-            std::string outstr = boost::str(boost::format("%d%s(%d%s)") % (std::get<0>(i) + 1) %
-                                            molecule_->symbol(std::get<0>(i)).c_str() %
-                                            std::get<2>(i) % l_to_symbol[std::get<1>(i)].c_str());
+            std::string outstr = fmt::format("{:d}{:s}({:d}{:s})", std::get<0>(i) + 1,
+                                            molecule_->symbol(std::get<0>(i)).c_str() ,
+                                            std::get<2>(i) , l_to_symbol[std::get<1>(i)].c_str());
             // outfile->Printf("\n %s",outstr.c_str());
             TempMatrix->zero();
             if (overlap > 0.01) {
@@ -915,9 +912,9 @@ void UOCDFT::analyze_excitations() {
         auto& ifn = atom_am_to_f[i];
         for (auto& iao : ifn) {
             double overlap = std::pow(ASCp->get(iao, 0), 2.0);
-            std::string outstr = boost::str(boost::format("%d%s(%d%s)") % (std::get<0>(i) + 1) %
-                                            molecule_->symbol(std::get<0>(i)).c_str() %
-                                            std::get<2>(i) % l_to_symbol[std::get<1>(i)].c_str());
+            std::string outstr = fmt::format("{:d}{:s}({:d}{:s})", std::get<0>(i) + 1,
+                                            molecule_->symbol(std::get<0>(i)).c_str(),
+                                            std::get<2>(i), l_to_symbol[std::get<1>(i)].c_str());
             // outfile->Printf("\n %s",outstr.c_str());
             TempMatrix->zero();
             if (overlap > 0.01) {
@@ -953,7 +950,7 @@ void UOCDFT::analyze_excitations() {
     for (auto occ_vvo : pair_occ_vvo_part) {
         double overlap_iao = 0.0;
         bool is_sigma = false;
-        total_string = boost::str(boost::format(""));
+        total_string = std::string("");
         std::vector<std::pair<double, std::string>> iao_cont;
         // outfile->Printf("\n     %d                       %.1f%%",occ_vvo.second,
         // occ_vvo.first*100.0);
@@ -971,7 +968,7 @@ void UOCDFT::analyze_excitations() {
                 //	is_sigma = true;
                 //}
                 std::string outstr =
-                    boost::str(boost::format("%.2f_%s +") % overlap_iao % iao_labels[iao].c_str());
+                    fmt::format("{:.2f}_{:s} +",overlap_iao, iao_labels[iao]);
                 if (overlap_iao >= 0.01) {
                     iao_cont.push_back(std::make_pair(overlap_iao, outstr));
                     total_string.append(outstr.c_str());
@@ -1052,8 +1049,8 @@ void UOCDFT::analyze_excitations() {
                 std::vector<std::string> vec_str;
                 for (auto occ_mo : pair_occ_mo) {
                     if (occ_mo.first > 0.01) {
-                        vec_str.push_back(boost::str(boost::format(" %.1f%% %d%s") %
-                                                     (occ_mo.first * 100.0) % occ_mo.second %
+                        vec_str.push_back(fmt::format(" {:.1f}% {:d}{:s}",
+                                                     (occ_mo.first * 100.0) , occ_mo.second ,
                                                      ct.gamma(h).symbol()));
                     }
                 }
@@ -1083,8 +1080,8 @@ void UOCDFT::analyze_excitations() {
                 std::vector<std::string> vec_str;
                 for (auto occ_mo : pair_occ_mo) {
                     if (occ_mo.first > 0.01) {
-                        vec_str.push_back(boost::str(boost::format(" %.1f%% %d%s") %
-                                                     (occ_mo.first * 100.0) % occ_mo.second %
+                        vec_str.push_back(fmt::format(" {:.1f}% {:d}{:s}",
+                                                     (occ_mo.first * 100.0), occ_mo.second,
                                                      ct.gamma(h).symbol()));
                     }
                 }
